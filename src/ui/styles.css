@@ -1,0 +1,440 @@
+/*
+ * Presence. Swiss: paper, ink, one family, a grid, and a dot.
+ * The schedule is the one loud thing; everything else stays quiet.
+ */
+
+:root {
+  --paper: #ffffff;
+  --ink: #000000;
+  --muted: #8a8a8a;
+  --rule: #e6e6e6;
+  --danger: #000000; /* errors are ink too; the words carry the meaning */
+
+  --font: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Type scale (ratio 1.25 from 17px, plus a display size) */
+  --t-sm: 0.8125rem; /* 13 */
+  --t-base: 1.0625rem; /* 17 */
+  --t-md: 1.3125rem; /* 21 */
+  --t-lg: 2rem; /* 32 */
+  --t-xl: clamp(2.5rem, 6vw, 4rem);
+  --t-display: clamp(3.5rem, 13vw, 10.5rem);
+
+  --gutter: 16px;
+  --time-col: 5.5ch;
+  --max: 1200px;
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--t-base);
+  line-height: 1.45;
+  letter-spacing: -0.011em;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Layout ------------------------------------------------------------------ */
+
+.page {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 96px;
+}
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0 0;
+}
+
+.bar nav {
+  display: flex;
+  gap: 20px;
+}
+
+.bar a {
+  text-decoration: none;
+}
+
+.bar nav a[aria-current="page"] {
+  text-decoration: underline;
+}
+
+.wordmark {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.narrow {
+  max-width: 38rem;
+}
+
+/* Type -------------------------------------------------------------------- */
+
+.display {
+  font-size: var(--t-display);
+  font-weight: 600;
+  line-height: 0.86;
+  letter-spacing: -0.055em;
+  margin: 18vh 0 0;
+  text-transform: uppercase;
+}
+
+.lede {
+  font-size: var(--t-md);
+  line-height: 1.35;
+  margin: 28px 0 0;
+  max-width: 26ch;
+}
+
+h1.title {
+  font-size: var(--t-xl);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  margin: 64px 0 0;
+}
+
+h2.section {
+  font-size: var(--t-base);
+  font-weight: 600;
+  margin: 72px 0 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: var(--t-sm);
+}
+
+p {
+  margin: 12px 0 0;
+}
+
+/* The schedule: time on the left, like a departures board --------------- */
+
+.schedule {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: var(--time-col) 1fr;
+  column-gap: 20px;
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--ink);
+}
+
+.slot:last-child {
+  border-bottom: 1px solid var(--ink);
+}
+
+.slot .time {
+  font-size: var(--t-md);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.slot .what {
+  font-size: var(--t-md);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.slot .what a {
+  text-decoration: none;
+}
+
+.slot .what a:hover {
+  text-decoration: underline;
+}
+
+.slot .meta {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  margin-top: 4px;
+}
+
+@media (min-width: 720px) {
+  .slot {
+    grid-template-columns: var(--time-col) 1fr auto;
+    align-items: baseline;
+  }
+  .slot .meta {
+    grid-column: 3;
+    margin-top: 0;
+    text-align: right;
+  }
+}
+
+.day {
+  margin: 56px 0 0;
+  font-weight: 600;
+}
+
+.day + .schedule {
+  margin-top: 12px;
+}
+
+/* Rows for hosts, sessions, observations --------------------------------- */
+
+.rows {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.rows > li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 20px;
+  align-items: baseline;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.rows > li > .full {
+  grid-column: 1 / -1;
+}
+
+/* The dot: hollow when idle, solid when the agent is present -------------- */
+
+.dot {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  vertical-align: 0.08em;
+  margin-right: 0.45em;
+}
+
+.dot.on {
+  background: currentColor;
+}
+
+/* In a big title the dot stays a mark, not a scaled up circle. */
+.title .dot {
+  width: 0.22em;
+  height: 0.22em;
+  border-width: 0.05em;
+  vertical-align: 0.32em;
+  margin-right: 0.18em;
+}
+
+.section + .schedule,
+.section + .rows {
+  margin-top: 16px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dot.on.breathe {
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Forms ------------------------------------------------------------------- */
+
+form.stack {
+  display: grid;
+  gap: 28px;
+  margin-top: 40px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field > span {
+  font-weight: 600;
+}
+
+.field > small {
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="url"],
+input[type="datetime-local"],
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 8px 0;
+  width: 100%;
+}
+
+textarea {
+  border: 1px solid var(--ink);
+  padding: 12px;
+  min-height: 9rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 10px 24px;
+}
+
+.checks label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--ink);
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.button {
+  font: inherit;
+  font-weight: 600;
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 12px 20px;
+  cursor: pointer;
+  text-decoration: none;
+  justify-self: start;
+}
+
+.button.quiet {
+  background: transparent;
+  color: var(--ink);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.button.huge {
+  width: 100%;
+  padding: 22px;
+  font-size: var(--t-md);
+  letter-spacing: -0.02em;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.error {
+  border-left: 3px solid var(--ink);
+  padding: 4px 0 4px 14px;
+  margin-top: 24px;
+}
+
+/* Host session: the phone screen in the room ------------------------------ */
+
+.session {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 20px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.session .clock {
+  font-size: clamp(4rem, 22vw, 7rem);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  margin: 0;
+}
+
+.session .center {
+  align-self: center;
+}
+
+.meter {
+  height: 3px;
+  background: var(--rule);
+  margin-top: 24px;
+}
+
+.meter > i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.4s linear;
+}
+
+/* Briefing ------------------------------------------------------------------ */
+
+.briefing ol,
+.briefing ul {
+  margin: 12px 0 0;
+  padding-left: 1.2em;
+}
+
+.briefing li + li {
+  margin-top: 8px;
+}
+
+.prose {
+  white-space: pre-wrap;
+  max-width: 68ch;
+}
