@@ -23,7 +23,7 @@ function build(): Deps {
     blobs: store,
     memory: store,
     asr: new DeepgramTranscriber(required("DEEPGRAM_API_KEY")),
-    agent: new ClaudeAgentProvider(required("ANTHROPIC_API_KEY")),
+    agent: new ClaudeAgentProvider(required("ANTHROPIC_API_KEY"), process.env.ANTHROPIC_WORKSPACE_ID || undefined),
     now: () => new Date().toISOString(),
     newId: () => crypto.randomUUID(),
   };

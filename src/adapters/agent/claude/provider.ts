@@ -20,9 +20,14 @@ export class ClaudeAgentProvider implements AgentProvider {
 
   constructor(
     apiKey: string,
+    workspaceId?: string,
     private readonly models = { observe: "claude-sonnet-5-5", brief: "claude-sonnet-5-5", answer: "claude-sonnet-5-5" },
   ) {
-    this.client = new Anthropic({ apiKey });
+    // Keys not scoped to a workspace must name one on every request.
+    this.client = new Anthropic({
+      apiKey,
+      defaultHeaders: workspaceId ? { "anthropic-workspace-id": workspaceId } : undefined,
+    });
   }
 
   async observe({ agent, mission, event, window, recent }: ObserveInput): Promise<NewObservation[]> {
