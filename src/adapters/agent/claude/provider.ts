@@ -148,12 +148,18 @@ export class ClaudeAgentProvider implements AgentProvider {
     question,
     observations,
     eventTitles,
+    history,
   }: AnswerInput): Promise<string> {
     const res = await this.client.messages.create({
       model: this.models.answer,
       max_tokens: 1024,
       system: P.answerSystem(agent),
       messages: [
+        // Earlier turns as real conversation, so follow ups resolve naturally.
+        ...history.flatMap((t) => [
+          { role: "user" as const, content: t.question },
+          { role: "assistant" as const, content: t.answer },
+        ]),
         {
           role: "user",
           content: P.answerUser(question, observations, eventTitles),

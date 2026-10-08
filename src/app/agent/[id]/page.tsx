@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { askHistory } from "@/pipeline";
 import { agentHome, ownedAgent } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
@@ -23,7 +24,10 @@ export default async function AgentPage({
     notFound(),
   );
 
-  const rows = await agentHome(d, agent);
+  const [rows, turns] = await Promise.all([
+    agentHome(d, agent),
+    askHistory(d, agent.id),
+  ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
 
@@ -60,7 +64,15 @@ export default async function AgentPage({
         <p className="muted small">
           Answers come only from what {agent.name} heard at events.
         </p>
-        <AskBox agentId={agent.id} name={agent.name} />
+        <AskBox
+          agentId={agent.id}
+          name={agent.name}
+          initial={turns.map(({ id, question, answer }) => ({
+            id,
+            question,
+            answer,
+          }))}
+        />
       </div>
 
       <h2 className="section">Sessions</h2>

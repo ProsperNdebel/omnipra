@@ -2,6 +2,8 @@ import type {
   Agent,
   AgentId,
   AgentMessage,
+  AskTurn,
+  AskTurnId,
   Autonomy,
   HostRequest,
   HostRequestId,
@@ -297,5 +299,24 @@ export const hostRequest = {
     created_at: h.createdAt,
     sent_at: h.sentAt,
     resolved_at: h.resolvedAt,
+  }),
+};
+
+export const askTurn = {
+  from: (r: Row): AskTurn => ({
+    id: r.id as AskTurnId,
+    agentId: r.agent_id as AgentId,
+    question: r.question as string,
+    answer: r.answer as string,
+    basedOn: r.based_on as number,
+    createdAt: r.created_at as string,
+  }),
+  to: (t: AskTurn): Row => ({
+    id: t.id,
+    agent_id: t.agentId,
+    question: t.question,
+    answer: t.answer,
+    based_on: t.basedOn,
+    created_at: t.createdAt,
   }),
 };

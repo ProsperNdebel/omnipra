@@ -14,6 +14,7 @@ import type {
 import type { Manifestation } from "./manifestation";
 import type { Mission } from "./mission";
 import type { Observation, TranscriptSegment } from "./observation";
+import type { AskTurn } from "./ask";
 import type { AgentMessage, HostRequest } from "./presence";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
@@ -141,6 +142,8 @@ export interface AnswerInput {
   observations: Observation[];
   /** Event title per manifestation id, so the answer can say where something was heard. */
   eventTitles: Record<string, string>;
+  /** Earlier turns of this conversation, oldest first. */
+  history: Pick<AskTurn, "question" | "answer">[];
 }
 
 /** Agent memory retrieval. pgvector in Supabase is adapter #1. */
@@ -249,6 +252,12 @@ export interface Repos {
     ): Promise<boolean>;
     /** Oldest first. */
     byManifestation(id: ManifestationId): Promise<HostRequest[]>;
+  };
+  askTurns: {
+    append(t: AskTurn): Promise<void>;
+    /** The latest `limit` turns, oldest first. */
+    recent(agentId: AgentId, limit: number): Promise<AskTurn[]>;
+    clear(agentId: AgentId): Promise<void>;
   };
 }
 

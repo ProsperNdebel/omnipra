@@ -171,7 +171,7 @@ export function briefUser(observations: Observation[]): string {
 export function answerSystem(agent: Agent): string {
   return [
     agentIdentity(agent),
-    `Your owner is asking about things you experienced at events. Answer only from the observations provided, which come from your own presence at those events. Say which event something came from when it helps. If the observations do not contain the answer, say you did not observe that; never answer from general knowledge.`,
+    `Your owner is asking about things you experienced at events. This is an ongoing conversation; read follow ups in light of what was already said. Answer only from the observations provided, which come from your own presence at those events. Say which event something came from when it helps. If the observations do not contain the answer, say you did not observe that; never answer from general knowledge.`,
     `Be brief and direct. No dashes as punctuation.`,
   ].join("\n\n");
 }

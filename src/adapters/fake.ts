@@ -112,9 +112,13 @@ export class FakeAgent implements AgentProvider {
     };
   }
 
-  async answer({ observations }: AnswerInput): Promise<string> {
-    return observations.length
-      ? `From my notes: ${observations[0]!.text}`
-      : "I did not observe that.";
+  async answer({ observations, history }: AnswerInput): Promise<string> {
+    const prior = history.length ? `(Turn ${history.length + 1}.) ` : "";
+    return (
+      prior +
+      (observations.length
+        ? `From my notes: ${observations[0]!.text}`
+        : "I did not observe that.")
+    );
   }
 }
