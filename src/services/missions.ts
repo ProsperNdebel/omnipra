@@ -9,7 +9,7 @@ import {
   type UserId,
 } from "@/core";
 import type { Deps } from "@/pipeline";
-import { ownerAgent } from "./agents";
+import { ownedAgent } from "./agents";
 
 /**
  * "Send my agent." Creates the mission and a manifestation request to one host.
@@ -17,24 +17,44 @@ import { ownerAgent } from "./agents";
  */
 export async function sendAgent(
   d: Deps,
-  input: { ownerId: UserId; eventId: EventId; hostId: UserId; instructions: string; alerts: string[] },
+  input: {
+    ownerId: UserId;
+    agentId: string;
+    eventId: EventId;
+    hostId: UserId;
+    instructions: string;
+    alerts: string[];
+  },
 ): Promise<Manifestation> {
-  const agent = await ownerAgent(d, input.ownerId);
-  if (!agent) throw new DomainError("bad_request", "Create your agent first.");
+  if (!input.agentId)
+    throw new DomainError("bad_request", "Pick which agent to send.");
+  const agent = await ownedAgent(d, input.ownerId, input.agentId);
 
   const event = await d.repos.events.get(input.eventId);
   if (!event) throw new DomainError("not_found", "event not found");
   if (event.capturePolicy === "none") {
-    throw new DomainError("bad_request", "This event doesn't allow recording, so agents can't attend it.");
+    throw new DomainError(
+      "bad_request",
+      "This event doesn't allow recording, so agents can't attend it.",
+    );
   }
 
-  const listing = (await d.repos.events.listings(event.id)).find((l) => l.hostId === input.hostId);
-  if (!listing) throw new DomainError("not_found", "That host isn't listed for this event anymore.");
+  const listing = (await d.repos.events.listings(event.id)).find(
+    (l) => l.hostId === input.hostId,
+  );
+  if (!listing)
+    throw new DomainError(
+      "not_found",
+      "That host isn't listed for this event anymore.",
+    );
 
   const endpoint = await d.repos.endpoints.get(listing.endpointId);
   const requires = ["mic"] as const;
   if (!endpoint || !supports(endpoint, [...requires])) {
-    throw new DomainError("bad_request", "That host's device can't capture audio.");
+    throw new DomainError(
+      "bad_request",
+      "That host's device can't capture audio.",
+    );
   }
 
   const mission: Mission = {

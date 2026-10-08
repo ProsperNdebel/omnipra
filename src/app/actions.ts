@@ -1,9 +1,21 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { DomainError, type CapturePolicy, type EventId, type ManifestationId, type UserId } from "@/core";
+import {
+  DomainError,
+  type CapturePolicy,
+  type EventId,
+  type ManifestationId,
+  type UserId,
+} from "@/core";
 import { applyTransition } from "@/pipeline";
-import { attend, authorizeTransition, createAgent, createEvent, sendAgent } from "@/services";
+import {
+  attend,
+  authorizeTransition,
+  createAgent,
+  createEvent,
+  sendAgent,
+} from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { localInputToIso } from "@/ui/format";
@@ -16,12 +28,16 @@ import { localInputToIso } from "@/ui/format";
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 function fail(path: string, err: unknown): never {
-  if (err instanceof DomainError) redirect(`${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(err.message)}`);
+  if (err instanceof DomainError)
+    redirect(
+      `${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(err.message)}`,
+    );
   throw err;
 }
 
 /** Only allow redirects to our own paths. */
-const safeNext = (v: string) => (v.startsWith("/") && !v.startsWith("//") ? v : "/agent");
+const safeNext = (v: string) =>
+  v.startsWith("/") && !v.startsWith("//") ? v : "/agent";
 
 export async function createEventAction(form: FormData) {
   let id: EventId;
@@ -57,17 +73,20 @@ export async function attendAction(form: FormData) {
 }
 
 export async function createAgentAction(form: FormData) {
-  const next = safeNext(str(form, "next"));
+  // Coming from "send" returns there; otherwise land on the new agent's page.
+  const next = str(form, "next") ? safeNext(str(form, "next")) : null;
+  let id: string;
   try {
-    await createAgent(getDeps(), await viewerId(), {
+    const agent = await createAgent(getDeps(), await viewerId(), {
       name: str(form, "name"),
       profile: str(form, "profile"),
       lookFor: form.getAll("lookFor").map(String),
     });
+    id = agent.id;
   } catch (err) {
-    fail(`/agent/new?next=${encodeURIComponent(next)}`, err);
+    fail(`/agent/new${next ? `?next=${encodeURIComponent(next)}` : ""}`, err);
   }
-  redirect(next);
+  redirect(next ?? `/agent/${id}`);
 }
 
 export async function sendAgentAction(form: FormData) {
@@ -77,6 +96,7 @@ export async function sendAgentAction(form: FormData) {
   try {
     const m = await sendAgent(getDeps(), {
       ownerId: await viewerId(),
+      agentId: str(form, "agentId"),
       eventId,
       hostId,
       instructions: str(form, "instructions"),
@@ -93,7 +113,8 @@ export async function sendAgentAction(form: FormData) {
 export async function decideAction(form: FormData) {
   const id = str(form, "id") as ManifestationId;
   const decision = str(form, "decision");
-  if (decision !== "accept" && decision !== "decline" && decision !== "cancel") throw new Error("bad decision");
+  if (decision !== "accept" && decision !== "decline" && decision !== "cancel")
+    throw new Error("bad decision");
   const back = decision === "cancel" ? `/m/${id}` : "/host";
   try {
     const d = getDeps();

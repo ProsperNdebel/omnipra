@@ -12,7 +12,7 @@ export function Bar({ here }: { here: Where }) {
       </Link>
       <nav aria-label="Main">
         <Link href="/agent" aria-current={cur("agent")}>
-          Your agent
+          Your agents
         </Link>
         <Link href="/host" aria-current={cur("host")}>
           Hosting
@@ -22,8 +22,19 @@ export function Bar({ here }: { here: Where }) {
   );
 }
 
-export function Dot({ on = false, breathe = false }: { on?: boolean; breathe?: boolean }) {
-  return <span className={`dot${on ? " on" : ""}${breathe ? " breathe" : ""}`} aria-hidden="true" />;
+export function Dot({
+  on = false,
+  breathe = false,
+}: {
+  on?: boolean;
+  breathe?: boolean;
+}) {
+  return (
+    <span
+      className={`dot${on ? " on" : ""}${breathe ? " breathe" : ""}`}
+      aria-hidden="true"
+    />
+  );
 }
 
 /** Plain words for each status, from the viewer's side. */
