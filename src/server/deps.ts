@@ -10,10 +10,11 @@ import type { Deps } from "@/pipeline";
  * The one place adapters get chosen. Supabase when its env vars are set,
  * otherwise the in memory store (handy for running without a database).
  */
+// Module scoped, so a hot reload of any adapter rebuilds deps with the new code.
+let deps: Deps | undefined;
+
 export function getDeps(): Deps {
-  const g = globalThis as unknown as { __presenceDeps?: Deps };
-  // Survive Next dev hot reloads so clients and the in memory store aren't rebuilt on every save.
-  return (g.__presenceDeps ??= build());
+  return (deps ??= build());
 }
 
 function build(): Deps {
@@ -34,7 +35,9 @@ function buildStore(): BlobStore & Memory & { repos: Repos } {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (url && secret) return new SupabaseStore(createServerClient(url, secret));
   console.warn("[presence] Supabase env not set; using the in memory store. Data is lost on restart.");
-  return new InMemoryStore();
+  // Only the in memory data needs to survive hot reloads.
+  const g = globalThis as unknown as { __presenceMemoryStore?: InMemoryStore };
+  return (g.__presenceMemoryStore ??= new InMemoryStore());
 }
 
 function required(name: string): string {
