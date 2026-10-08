@@ -1,4 +1,5 @@
 import { ClaudeAgentProvider } from "@/adapters/agent/claude/provider";
+import { LOCAL_EXECUTORS } from "@/adapters/actions/local";
 import { DeepgramTranscriber } from "@/adapters/asr/deepgram";
 import { FakeAgent, FakeTranscriber } from "@/adapters/fake";
 import { InMemoryStore } from "@/adapters/store/in-memory";
@@ -40,6 +41,8 @@ function build(): Deps {
           required("ANTHROPIC_API_KEY"),
           process.env.ANTHROPIC_WORKSPACE_ID || undefined,
         ),
+    // Google executors (Gmail, Calendar) join this list once connected.
+    executors: LOCAL_EXECUTORS,
     now: () => new Date().toISOString(),
     newId: () => crypto.randomUUID(),
   };

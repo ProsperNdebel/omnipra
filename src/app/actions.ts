@@ -12,6 +12,8 @@ import {
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
   actOnSuggestion,
+  decideOnAction,
+  editAction,
   addMemory,
   attend,
   authorizeTransition,
@@ -235,4 +237,38 @@ export async function suggestionAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#next`);
+}
+
+/** Approve a to do, tick one off, or dismiss what the agent prepared. */
+export async function decideActionAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  const op = str(form, "op");
+  try {
+    if (op !== "approve" && op !== "complete" && op !== "dismiss")
+      throw new DomainError("bad_request", "Unknown choice.");
+    await decideOnAction(getDeps(), await viewerId(), str(form, "id"), op);
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#actions`);
+}
+
+/** The owner's corrections to a prepared action. Every field present in the form is applied. */
+export async function editActionAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of form.entries()) {
+    if (!k.startsWith("f:")) continue;
+    const value = String(v);
+    // Times come from datetime-local inputs, in the event time zone.
+    fields[k.slice(2)] = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
+      ? localInputToIso(value)
+      : value;
+  }
+  try {
+    await editAction(getDeps(), await viewerId(), str(form, "id"), fields);
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#actions`);
 }

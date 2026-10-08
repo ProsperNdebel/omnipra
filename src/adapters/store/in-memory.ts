@@ -6,6 +6,8 @@ import type {
   AskTurn,
   MemoryId,
   Suggestion,
+  Action,
+  ActionId,
   SuggestionId,
   HostRequest,
   HostRequestId,
@@ -45,6 +47,7 @@ export class InMemoryStore implements BlobStore, Memory {
   askTurns: AskTurn[] = [];
   readonly memories = new Map<MemoryId, AgentMemory>();
   readonly suggestions = new Map<SuggestionId, Suggestion>();
+  readonly actions = new Map<ActionId, Action>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
   readonly repos: Repos = {
@@ -183,6 +186,15 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    actions: {
+      byAgent: async (agentId) =>
+        [...this.actions.values()]
+          .filter((a) => a.agentId === agentId)
+          .sort(by((a) => a.createdAt))
+          .reverse(),
+      get: async (id) => this.actions.get(id) ?? null,
+      save: async (as) => as.forEach((a) => this.actions.set(a.id, a)),
     },
     suggestions: {
       byAgent: async (agentId) =>

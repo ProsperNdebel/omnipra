@@ -1,3 +1,4 @@
+import { cleanPayload } from "@/core";
 import type {
   AgentProvider,
   AnswerInput,
@@ -5,7 +6,9 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
-  DraftInput,
+  ActRequest,
+  PrepareInput,
+  PreparedAction,
   NewSuggestion,
   ReflectInput,
   AudioInput,
@@ -109,6 +112,7 @@ export class FakeAgent implements AgentProvider {
         ? requests.filter((r) => r.status === "proposed").map((r) => r.id)
         : [],
       learn: learnFrom(message),
+      act: actFrom(message),
     };
   }
 
@@ -150,7 +154,11 @@ export class FakeAgent implements AgentProvider {
       : observations.length
         ? `From my notes: ${observations[0]!.text}`
         : "I did not observe that.";
-    return { answer: prior + answer, learn: learnFrom(question) };
+    return {
+      answer: prior + answer,
+      learn: learnFrom(question),
+      act: actFrom(question),
+    };
   }
 
   async plan({ memories }: PlanInput): Promise<NewPlanItem[]> {
@@ -194,8 +202,39 @@ export class FakeAgent implements AgentProvider {
     ];
   }
 
-  async draft({ suggestion, notes }: DraftInput): Promise<string> {
-    return `Hi ${suggestion.target ?? "there"}, I heard about your talk at ${notes[0]?.eventTitle ?? "the event"}. Would love to compare notes.\n\n[Your name]`;
+  async prepare({
+    kind,
+    instruction,
+    target,
+    notes,
+  }: PrepareInput): Promise<PreparedAction> {
+    const where = notes[0]?.eventTitle ?? "the event";
+    const raw: Record<string, unknown> = {
+      email: {
+        to: "",
+        subject: `Following up from ${where}`,
+        body: `Hi ${target ?? "there"}, I heard about your talk at ${where}. Would love to compare notes.\n\n[Your name]`,
+      },
+      event: {
+        title: `Call with ${target ?? "them"}`,
+        start: "",
+        durationMin: 30,
+        details: instruction,
+      },
+      contact: {
+        name: target ?? "Unknown",
+        company: "",
+        role: "",
+        email: "",
+        notes: `Heard at ${where}.`,
+      },
+      task: { text: instruction, due: "" },
+      note: {
+        title: instruction.slice(0, 60),
+        body: notes.map((n) => n.note.text).join("\n") || instruction,
+      },
+    }[kind] as Record<string, unknown>;
+    return { payload: cleanPayload(kind, raw), why: "You asked for it." };
   }
 }
 
@@ -205,4 +244,16 @@ function learnFrom(message: string): LearnedFromOwner[] {
   if (goal) return [{ kind: "goal", text: goal.trim() }];
   const fact = message.match(/remember (?:that )?(.+)/i)?.[1];
   return fact ? [{ kind: "owner", text: fact.trim() }] : [];
+}
+
+/** Canned acting: "email ..." prepares an email, "remind me to ..." a to do. */
+function actFrom(message: string): ActRequest[] {
+  const email = message.match(/^email (\w+)/i)?.[1];
+  if (email) return [{ kind: "email", instruction: message, target: email }];
+  const contact = message.match(/save (\w+) as a contact/i)?.[1];
+  if (contact) return [{ kind: "contact", instruction: message, target: contact }];
+  const call = message.match(/schedule a call with (\w+)/i)?.[1];
+  if (call) return [{ kind: "event", instruction: message, target: call }];
+  const task = message.match(/remind me to (.+)/i)?.[1];
+  return task ? [{ kind: "task", instruction: task.trim(), target: null }] : [];
 }

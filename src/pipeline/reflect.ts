@@ -2,13 +2,13 @@ import {
   checkSuggestion,
   sameMemory,
   type ManifestationId,
-  type NoteInContext,
-  type Observation,
   type Suggestion,
   type SuggestionId,
 } from "@/core";
 import { loadContext, type Deps } from "./deps";
+import { recentActions } from "./act";
 import { recallMemory } from "./memory";
+import { withTitles } from "./notes";
 
 /** How much from earlier events the agent looks back over. */
 const EARLIER_NOTES = 20;
@@ -27,10 +27,11 @@ export async function reflect(
   if (notes.length === 0) return [];
 
   const query = notes.map((n) => n.text).join(" ");
-  const [memories, recalled, existing] = await Promise.all([
+  const [memories, recalled, existing, done] = await Promise.all([
     recallMemory(d, ctx.agent.id, query),
     d.memory.recall(ctx.agent.id, query, EARLIER_NOTES * 2),
     d.repos.suggestions.byAgent(ctx.agent.id),
+    recentActions(d, ctx.agent.id),
   ]);
   const earlier = await withTitles(
     d,
@@ -45,6 +46,7 @@ export async function reflect(
     notes,
     earlier,
     open,
+    recentActions: done,
   });
 
   const sessionOf = new Map(
@@ -73,34 +75,4 @@ export async function reflect(
   }
   await d.repos.suggestions.save(fresh);
   return fresh;
-}
-
-/** Write the intro or message a suggestion offered, from the notes behind it. */
-export async function draftFor(d: Deps, s: Suggestion): Promise<string> {
-  const agent = await d.repos.agents.get(s.agentId);
-  if (!agent) throw new Error("agent not found");
-  const notes = await withTitles(
-    d,
-    await d.repos.observations.byIds(s.evidence),
-  );
-  const memories = await recallMemory(d, agent.id, s.text);
-  return d.agent.draft({ agent, memories, suggestion: s, notes });
-}
-
-/** Attach the event each note was heard at. One query. */
-export async function withTitles(
-  d: Deps,
-  notes: Observation[],
-): Promise<NoteInContext[]> {
-  const ids = [...new Set(notes.map((n) => n.manifestationId))];
-  const contexts = ids.length
-    ? await d.repos.manifestations.contexts({ ids })
-    : [];
-  const title = new Map(
-    contexts.map((c) => [c.manifestation.id, c.event.title]),
-  );
-  return notes.map((note) => ({
-    note,
-    eventTitle: title.get(note.manifestationId) ?? "an event",
-  }));
 }

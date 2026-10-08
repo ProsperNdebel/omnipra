@@ -1,5 +1,6 @@
 import {
   DomainError,
+  type ActionExecutor,
   type AgentProvider,
   type BlobStore,
   type ManifestationId,
@@ -16,6 +17,8 @@ export interface Deps {
   memory: Memory;
   asr: TranscriptionProvider;
   agent: AgentProvider;
+  /** Ways to carry out approved actions, in the order they're offered. */
+  executors: ActionExecutor[];
   now(): string;
   newId(): string;
 }

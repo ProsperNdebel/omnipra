@@ -6,3 +6,4 @@ export * from "./views";
 export * from "./memory";
 export * from "./plans";
 export * from "./suggestions";
+export * from "./actions";

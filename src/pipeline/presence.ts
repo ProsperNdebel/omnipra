@@ -1,4 +1,5 @@
 import {
+  describeAction,
   DomainError,
   REQUEST_ROLE,
   transitionRequest,
@@ -13,6 +14,7 @@ import {
   type RelatedNote,
 } from "@/core";
 import type { Deps, ManifestationContext } from "./deps";
+import { prepareActions, recentActions } from "./act";
 import { proposeLearned, recallMemory } from "./memory";
 
 /** How much of the session the agent sees each time it thinks. */
@@ -33,7 +35,7 @@ export async function presenceInput(
   query: string,
 ): Promise<PresenceInput> {
   const id = ctx.manifestation.id;
-  const [notes, messages, requests, listings, related, memories] =
+  const [notes, messages, requests, listings, related, memories, done] =
     await Promise.all([
       d.repos.observations.byManifestation(id),
       d.repos.messages.byManifestation(id),
@@ -41,11 +43,13 @@ export async function presenceInput(
       d.repos.events.listingsFor([ctx.event.id]),
       relatedNotes(d, ctx, query),
       recallMemory(d, ctx.agent.id, query),
+      recentActions(d, ctx.agent.id),
     ]);
   const listing = listings.find((l) => l.hostId === ctx.endpoint.hostId);
   return {
     agent: ctx.agent,
     memories,
+    recentActions: done,
     mission: ctx.mission,
     event: ctx.event,
     recent: notes.slice(-RECENT_NOTES),
@@ -264,6 +268,23 @@ export async function converse(
           from: "agent",
           kind: "update",
           text: `I'd like to remember: ${sentence(m.text)} Keep or correct it on my page.`,
+        }),
+      ),
+    );
+  }
+
+  const prepared = await prepareActions(d, ctx.agent.id, out.act, {
+    type: "owner",
+    quote: said,
+    manifestationId: ctx.manifestation.id,
+  });
+  if (prepared.length) {
+    await d.repos.messages.append(
+      prepared.map((a) =>
+        message(d, ctx, {
+          from: "agent",
+          kind: "update",
+          text: `Ready for you to review on my page: ${sentence(describeAction(a.payload))}`,
         }),
       ),
     );

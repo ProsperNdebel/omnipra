@@ -9,6 +9,7 @@ import type {
   HostRequestId,
   MemoryId,
   SuggestionId,
+  ActionId,
   ObservationId,
   SegmentId,
   UserId,
@@ -24,6 +25,7 @@ import type {
 } from "./memory";
 import type { AgentMessage, HostRequest } from "./presence";
 import type { Suggestion } from "./suggestion";
+import type { Action, ActionKind, ActionPayload } from "./action";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -61,8 +63,29 @@ export interface AgentProvider {
   plan(input: PlanInput): Promise<NewPlanItem[]>;
   /** After an event: what its owner should do, looking across everything heard so far. */
   reflect(input: ReflectInput): Promise<NewSuggestion[]>;
-  /** Write the intro or message a suggestion offered. */
-  draft(input: DraftInput): Promise<string>;
+  /** Prepare an action for the owner to approve: an email, invite, contact, to do or note. */
+  prepare(input: PrepareInput): Promise<PreparedAction>;
+}
+
+/** The owner (or a suggestion) asked for an action; the agent fills in the details. */
+export interface ActRequest {
+  kind: ActionKind;
+  /** What to do, in words: the owner's request, or the suggestion it follows. */
+  instruction: string;
+  /** Who it's for, as named, if anyone. */
+  target: string | null;
+}
+
+export interface PrepareInput extends ActRequest {
+  agent: Agent;
+  memories: AgentMemory[];
+  notes: NoteInContext[];
+  recentActions: Action[];
+}
+
+export interface PreparedAction {
+  payload: ActionPayload;
+  why: string;
 }
 
 /** A note with where it was heard, for reasoning across events. */
@@ -82,19 +105,14 @@ export interface ReflectInput {
   earlier: NoteInContext[];
   /** Suggestions still open, so it doesn't repeat itself. */
   open: Pick<Suggestion, "text">[];
+  /** What it has already done for its owner, so it doesn't suggest it again. */
+  recentActions: Action[];
 }
 
 export type NewSuggestion = Pick<
   Suggestion,
   "kind" | "text" | "why" | "offer" | "target" | "evidence"
 >;
-
-export interface DraftInput {
-  agent: Agent;
-  memories: AgentMemory[];
-  suggestion: Suggestion;
-  notes: NoteInContext[];
-}
 
 export interface PlanInput {
   agent: Agent;
@@ -130,6 +148,8 @@ export interface PresenceInput {
   hostTakesRequests: boolean;
   /** What it knows from elsewhere: its memory and its other live sessions. */
   related: RelatedNote[];
+  /** What it has done or prepared for its owner lately. */
+  recentActions: Action[];
 }
 
 export interface ObserveInput extends PresenceInput {
@@ -177,6 +197,8 @@ export interface ConverseResult {
   approve: HostRequestId[];
   /** Durable things the owner just said about themselves, their goals, or how the agent should behave. */
   learn: LearnedFromOwner[];
+  /** Actions the owner asked for ("email Sarah about..."). Prepared, then approved by them. */
+  act: ActRequest[];
 }
 
 export interface BriefInput {
@@ -204,11 +226,13 @@ export interface BriefResult extends Briefing {
 export interface AnswerResult {
   answer: string;
   learn: LearnedFromOwner[];
+  act: ActRequest[];
 }
 
 export interface AnswerInput {
   agent: Agent;
   memories: AgentMemory[];
+  recentActions: Action[];
   question: string;
   /** Retrieved by the memory port, already scoped to this agent. */
   observations: Observation[];
@@ -334,6 +358,13 @@ export interface Repos {
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
   };
+  actions: {
+    /** Newest first. */
+    byAgent(agentId: AgentId): Promise<Action[]>;
+    get(id: ActionId): Promise<Action | null>;
+    /** Upsert. */
+    save(a: Action[]): Promise<void>;
+  };
   suggestions: {
     /** Newest first. */
     byAgent(agentId: AgentId): Promise<Suggestion[]>;
@@ -368,4 +399,30 @@ export interface SessionFilter {
 export interface StoredBriefing extends Briefing {
   manifestationId: ManifestationId;
   createdAt: string;
+}
+
+/**
+ * One way of carrying out an approved action. The local ones need no account
+ * (your mail app, a calendar file, a contact card); connected ones (Gmail, Google
+ * Calendar) plug in here later without touching anything else.
+ */
+export interface ActionExecutor {
+  /** Stable id, used in URLs: "mail-app", "ics", "vcard". */
+  id: string;
+  /** What the button says: "Open in your mail app". */
+  label: string;
+  handles(kind: ActionKind): boolean;
+  run(action: Action): Promise<Execution>;
+}
+
+/** What running an action produced, for the browser to finish (open a link, save a file). */
+export interface Execution {
+  /** How it was carried out, in words. Becomes the agent's record of it. */
+  how: string;
+  /** A link to open, such as mailto:. */
+  open?: string;
+  /** A file to save. */
+  file?: { name: string; mime: string; body: string };
+  /** Text to put on the clipboard. */
+  copy?: string;
 }

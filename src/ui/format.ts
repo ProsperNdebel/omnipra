@@ -55,3 +55,22 @@ export function localInputToIso(value: string): string {
   const zoned = Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!, +parts.hour!, +parts.minute!);
   return new Date(asUtc.getTime() - (zoned - asUtc.getTime())).toISOString();
 }
+
+/** The reverse of localInputToIso: an ISO time as a datetime-local value in EVENT_TZ. */
+export function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: EVENT_TZ,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}

@@ -8,7 +8,7 @@ import {
   type SuggestionId,
   type UserId,
 } from "@/core";
-import { draftFor, withTitles, type Deps } from "@/pipeline";
+import { prepareActions, withTitles, type Deps } from "@/pipeline";
 import { ownedAgent } from "./agents";
 import { addMemory } from "./memory";
 
@@ -24,19 +24,13 @@ export interface SuggestionView extends Suggestion {
   sources: SuggestionSource[];
 }
 
-/** Drafts stay on the page for a while after they're written, to copy. */
-const RECENT_DRAFTS = 3;
-
 export async function agentSuggestions(
   d: Deps,
   agent: Agent,
-): Promise<{ open: SuggestionView[]; drafted: SuggestionView[] }> {
+): Promise<SuggestionView[]> {
   const all = await d.repos.suggestions.byAgent(agent.id);
   const open = all.filter((s) => s.status === "open");
-  const drafted = all
-    .filter((s) => s.status === "accepted" && s.draft)
-    .slice(0, RECENT_DRAFTS);
-  const shown = [...open, ...drafted];
+  const shown = open;
   const notes = await withTitles(
     d,
     await d.repos.observations.byIds([
@@ -60,12 +54,21 @@ export async function agentSuggestions(
         : [];
     }),
   });
-  return { open: open.map(view), drafted: drafted.map(view) };
+  return open.map(view);
 }
 
+/** What each offer turns into when the owner takes it. */
+const OFFER_ACTION = {
+  intro: "email",
+  message: "email",
+  contact: "contact",
+  task: "task",
+} as const;
+
 /**
- * The owner takes the agent up on a suggestion, or waves it off. Taking an intro or
- * message writes the draft; taking "watch" turns it into a standing goal.
+ * The owner takes the agent up on a suggestion, or waves it off. Taking an intro,
+ * message, contact or to do prepares that action for approval; taking "watch"
+ * turns it into a standing goal.
  */
 export async function actOnSuggestion(
   d: Deps,
@@ -77,14 +80,29 @@ export async function actOnSuggestion(
   if (!s) throw new DomainError("not_found", "That suggestion is gone.");
   const agent = await ownedAgent(d, ownerId, s.agentId);
 
-  let draft: string | null = null;
-  if (op === "accept" && (s.offer === "intro" || s.offer === "message")) {
-    draft = await draftFor(d, s);
+  if (op === "accept" && s.offer && s.offer !== "watch") {
+    const kind = OFFER_ACTION[s.offer];
+    await prepareActions(
+      d,
+      agent.id,
+      [
+        {
+          kind,
+          instruction:
+            s.offer === "intro"
+              ? `Draft an introduction: ${s.text} ${s.why}`
+              : `${s.text} ${s.why}`,
+          target: s.target,
+        },
+      ],
+      { type: "suggestion", suggestionId: s.id },
+      s.evidence,
+    );
   }
   if (op === "accept" && s.offer === "watch") {
     await addMemory(d, ownerId, agent.id, { kind: "goal", text: s.text });
   }
-  const next = resolveSuggestion(s, op, d.now(), draft);
+  const next = resolveSuggestion(s, op, d.now());
   await d.repos.suggestions.save([next]);
   return next;
 }

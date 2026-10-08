@@ -9,6 +9,8 @@ export interface AskTurnView {
   answer: string;
   /** What the agent proposed remembering from this question, if anything. */
   learned?: string[];
+  /** Actions it prepared because of this question. */
+  prepared?: string[];
 }
 
 /**
@@ -54,7 +56,8 @@ export function AskBox({
         throw new Error(body.message ?? `${name} couldn't answer. Try again.`);
       setTurns((t) => [...t, body as AskTurnView]);
       // New proposals live in the server rendered memory section below.
-      if ((body as AskTurnView).learned?.length) router.refresh();
+      const t = body as AskTurnView;
+      if (t.learned?.length || t.prepared?.length) router.refresh();
     } catch (err) {
       setQuestion(q);
       setError(err instanceof Error ? err.message : String(err));
@@ -79,6 +82,7 @@ export function AskBox({
               question={t.question}
               answer={t.answer}
               learned={t.learned}
+              prepared={t.prepared}
               name={name}
             />
           ))}
@@ -132,11 +136,13 @@ function Turn({
   question,
   answer,
   learned,
+  prepared,
   name,
 }: {
   question: string;
   answer: string | null;
   learned?: string[];
+  prepared?: string[];
   name: string;
 }) {
   return (
@@ -154,6 +160,11 @@ function Turn({
       {learned?.map((l) => (
         <li key={l} className="talk-update">
           Wants to remember: {l} <a href="#memory">Review</a>
+        </li>
+      ))}
+      {prepared?.map((p) => (
+        <li key={p} className="talk-update">
+          Ready for you: {p} <a href="#actions">Review</a>
         </li>
       ))}
     </>

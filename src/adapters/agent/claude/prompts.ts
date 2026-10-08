@@ -1,7 +1,10 @@
+import { describeAction } from "@/core";
 import type {
   Agent,
   AgentMemory,
-  DraftInput,
+  Action,
+  ActionKind,
+  PrepareInput,
   NoteInContext,
   ReflectInput,
   PlanInput,
@@ -155,6 +158,7 @@ function context(input: PresenceInput): string {
     `<conversation_with_owner>\n${talk}\n</conversation_with_owner>`,
     `<asks_for_host>\n${asks}\n</asks_for_host>`,
     `<from_other_sessions>\n${related}\n</from_other_sessions>`,
+    `<done_for_owner>\n${actionsText(input.recentActions)}\n</done_for_owner>`,
   ].join("\n\n");
 }
 
@@ -169,6 +173,7 @@ export function converseSystem(input: ConverseInput): string {
     `If they change what you should focus on, add it as a standing order in their words. If they tell you to ask something in the room and your host takes requests, create an ask for the host. If they approve one of your proposed asks (for example "yes, ask them"), approve it by its ref, and fold any extra instruction into a new ask rather than editing the old one.`,
     `If your host does not take requests and they want something asked, tell them plainly that this host can't do that.`,
     LEARN_RULES,
+    ACT_RULES,
     `No dashes as punctuation.`,
   ].join("\n\n");
 }
@@ -227,6 +232,7 @@ export function answerSystem(agent: Agent, memories: AgentMemory[]): string {
     EVIDENCE_RULES,
     `Be brief and direct. No dashes as punctuation.`,
     LEARN_RULES,
+    ACT_RULES,
   ].join("\n\n");
 }
 
@@ -234,13 +240,14 @@ export function answerUser(
   question: string,
   observations: Observation[],
   eventTitles: Record<string, string>,
+  recentActions: Action[] = [],
 ): string {
   const obs = observations.length
     ? observations
         .map((o) => fmtObservation(o, eventTitles[o.manifestationId]))
         .join("\n")
     : "(none relevant)";
-  return `<observations>\n${obs}\n</observations>\n\nQuestion: ${question}`;
+  return `<observations>\n${obs}\n</observations>\n\n<done_for_owner>\n${actionsText(recentActions)}\n</done_for_owner>\n\nQuestion: ${question}`;
 }
 
 function fmtObservation(o: Observation, eventTitle?: string): string {
@@ -311,7 +318,7 @@ export function reflectSystem(input: ReflectInput): string {
 - connection: a pattern across events that matters to their goals, like two companies with the same unmet need. It must cite notes from at least two different events.
 - follow_up: someone worth contacting, and why.
 - question: something still unanswered that is worth chasing at the next event.`,
-    `You may offer to help with each: intro (draft an introduction, between your owner and someone, or between two people you heard), message (draft a follow up message to someone), or watch (keep watching for it at future events). For intro and message, name the target as they were named in the notes. Use no offer when none fits.`,
+    `You may offer to help with each: intro (draft an introduction email, between your owner and someone, or between two people you heard), message (draft a follow up email to someone), contact (save someone as a contact), task (add a to do for your owner), or watch (keep watching for it at future events). For intro, message and contact, name the target as they were named in the notes. Use no offer when none fits. Never suggest something already in what you have done for your owner.`,
     EVIDENCE_RULES,
     `Every suggestion cites the refs of the notes it rests on (like n3). Do not repeat a suggestion that is still open. Address your owner directly in one or two short sentences, and say why it matters to them in "why". No dashes as punctuation.`,
   ].join("\n\n");
@@ -328,29 +335,46 @@ export function reflectUser(input: ReflectInput): string {
   return [
     `<notes>\n${lines.join("\n") || "(no notes)"}\n</notes>`,
     `<open_suggestions>\n${open}\n</open_suggestions>`,
+    `<done_for_owner>\n${actionsText(input.recentActions)}\n</done_for_owner>`,
   ].join("\n\n");
 }
 
-export function draftSystem(input: DraftInput): string {
-  const what =
-    input.suggestion.offer === "intro"
-      ? "an introduction"
-      : "a follow up message";
+/** What the agent has done or prepared for its owner, newest first. Its record of acting. */
+export function actionsText(actions: Action[]): string {
+  if (actions.length === 0) return "(nothing yet)";
+  return actions
+    .map(
+      (a) =>
+        `- ${a.createdAt.slice(0, 10)} ${describeAction(a.payload)} [${a.status}${a.how ? `, ${a.how}` : ""}]`,
+    )
+    .join("\n");
+}
+
+/** Shared by live talk and Ask: the owner can ask for things to be done. */
+const ACT_RULES = `If your owner asks you to do something you can prepare (an email, a calendar invite, a contact, a to do, or a note), add it to act: the kind, their request in their words, and who it is for if anyone. You prepare it and they approve it before anything happens, so never say it is done; say it is ready for them to review on your page.`;
+
+export function prepareSystem(input: PrepareInput): string {
+  const how: Record<ActionKind, string> = {
+    email: `Write the email in your owner's voice, first person, ready to send: short, specific, warm without gushing. Your owner was not in the room themselves; you attended for them, so never claim they met or spoke with anyone in person; say they heard about or followed the talk. Fill "to" only with an email address you actually know from the notes or memory, otherwise leave it empty. End the body with "[Your name]".`,
+    event: `Prepare a calendar invite: a clear title, and details saying what it is for and the context from the notes. Fill start (ISO 8601 with a UTC offset) only if a time was stated or asked for; otherwise leave it empty for your owner to pick. durationMin defaults to 30.`,
+    contact: `Fill in the contact from the notes: name, company, role, and email only if it was stated. In notes, say where you heard them and what they said that matters to your owner.`,
+    task: `Write one clear to do, starting with a verb. Fill due (ISO 8601) only if a date was stated.`,
+    note: `Write a concise note with a title and a body. Markdown is fine.`,
+  };
   return [
     agentIdentity(input.agent, input.memories),
-    `Your owner asked you to draft ${what}${input.suggestion.target ? ` involving ${input.suggestion.target}` : ""}. Write it in your owner's voice, first person, ready to send: short, specific, warm without gushing.`,
-    `Use only facts from the notes below and what you know about your owner. Your owner was not in the room themselves; you attended for them. Never claim they met or spoke with anyone in person; say they heard about or followed the talk. Attribute claims to who made them.`,
-    `Plain text, no subject line, end with "[Your name]". No dashes as punctuation.`,
+    `Your owner wants this done: "${input.instruction}"${input.target ? `, for ${input.target}` : ""}. Prepare it as a ${input.kind}. They will review and approve it before anything happens.`,
+    how[input.kind],
+    `Use only facts from the notes below and what you know about your owner; attribute claims to who made them. Fill only the fields for a ${input.kind}; leave the rest empty. In why, say in one sentence why this matters to your owner. No dashes as punctuation.`,
   ].join("\n\n");
 }
 
-export function draftUser(input: DraftInput): string {
-  const s = input.suggestion;
-  const notes = input.notes
-    .map((n) => fmtObservation(n.note, n.eventTitle))
-    .join("\n");
+export function prepareUser(input: PrepareInput): string {
+  const notes = input.notes.length
+    ? input.notes.map((n) => fmtObservation(n.note, n.eventTitle)).join("\n")
+    : "(no notes)";
   return [
-    `<suggestion>\n${s.text}\nWhy: ${s.why}${s.target ? `\nFor: ${s.target}` : ""}\n</suggestion>`,
     `<notes>\n${notes}\n</notes>`,
+    `<done_for_owner>\n${actionsText(input.recentActions)}\n</done_for_owner>`,
   ].join("\n\n");
 }

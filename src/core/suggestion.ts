@@ -19,10 +19,19 @@ export type SuggestionKind = "connection" | "follow_up" | "question";
 
 /**
  * What the agent offers to do about it.
- * intro: draft an introduction. message: draft a follow up message.
+ * intro: draft an introduction email. message: draft a follow up email.
+ * contact: save someone as a contact. task: add a to do.
  * watch: keep watching for it at future events (becomes a goal).
  */
-export type SuggestionOffer = "intro" | "message" | "watch";
+export type SuggestionOffer =
+  "intro" | "message" | "contact" | "task" | "watch";
+export const SUGGESTION_OFFERS: readonly SuggestionOffer[] = [
+  "intro",
+  "message",
+  "contact",
+  "task",
+  "watch",
+];
 
 export type SuggestionStatus = "open" | "accepted" | "dismissed";
 

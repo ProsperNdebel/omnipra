@@ -10,7 +10,9 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
-  DraftInput,
+  ActRequest,
+  PrepareInput,
+  PreparedAction,
   NewSuggestion,
   ReflectInput,
   NewAsk,
@@ -21,7 +23,12 @@ import type {
   ObserveResult,
   SegmentId,
 } from "@/core";
-import { OBSERVATION_BASES } from "@/core";
+import {
+  ACTION_KINDS,
+  cleanPayload,
+  OBSERVATION_BASES,
+  SUGGESTION_OFFERS,
+} from "@/core";
 import * as P from "./prompts";
 
 /**
@@ -96,6 +103,7 @@ export class ClaudeAgentProvider implements AgentProvider {
       asks?: unknown;
       approve?: unknown;
       learn?: unknown;
+      act?: unknown;
     };
     const byRef = new Map(
       input.requests.map((r, i) => [P.requestRef(i), r] as const),
@@ -112,6 +120,7 @@ export class ClaudeAgentProvider implements AgentProvider {
         return r && r.status === "proposed" ? [r.id] : [];
       }),
       learn: parseLearn(out.learn),
+      act: parseAct(out.act),
     };
   }
 
@@ -170,6 +179,7 @@ export class ClaudeAgentProvider implements AgentProvider {
     observations,
     eventTitles,
     history,
+    recentActions,
   }: AnswerInput): Promise<AnswerResult> {
     const out = (await this.json(this.models.answer, 1536, {
       system: P.answerSystem(agent, memories),
@@ -178,12 +188,13 @@ export class ClaudeAgentProvider implements AgentProvider {
         { role: "user" as const, content: t.question },
         { role: "assistant" as const, content: t.answer },
       ]),
-      user: P.answerUser(question, observations, eventTitles),
+      user: P.answerUser(question, observations, eventTitles, recentActions),
       schema: ANSWER_SCHEMA,
-    })) as { answer?: unknown; learn?: unknown };
+    })) as { answer?: unknown; learn?: unknown; act?: unknown };
     return {
       answer: typeof out.answer === "string" ? out.answer.trim() : "",
       learn: parseLearn(out.learn),
+      act: parseAct(out.act),
     };
   }
 
@@ -249,14 +260,16 @@ export class ClaudeAgentProvider implements AgentProvider {
       .slice(0, 3);
   }
 
-  async draft(input: DraftInput): Promise<string> {
-    const res = await this.client.messages.create({
-      model: this.models.answer,
-      max_tokens: 1024,
-      system: P.draftSystem(input),
-      messages: [{ role: "user", content: P.draftUser(input) }],
-    });
-    return textOf(res).trim();
+  async prepare(input: PrepareInput): Promise<PreparedAction> {
+    const out = (await this.json(this.models.answer, 2048, {
+      system: P.prepareSystem(input),
+      user: P.prepareUser(input),
+      schema: PREPARE_SCHEMA,
+    })) as Record<string, unknown>;
+    return {
+      payload: cleanPayload(input.kind, out),
+      why: typeof out.why === "string" ? out.why.trim() : "",
+    };
   }
 
   private async json(
@@ -456,7 +469,7 @@ const PLAN_SCHEMA = {
 };
 
 const SUGGESTION_KINDS = ["connection", "follow_up", "question"] as const;
-const OFFERS = ["intro", "message", "watch"] as const;
+const OFFERS = SUGGESTION_OFFERS;
 
 const REFLECT_SCHEMA = {
   type: "object",
@@ -490,10 +503,64 @@ const REFLECT_SCHEMA = {
   },
 };
 
+const ACT = {
+  type: "array",
+  description: "Actions your owner just asked you to prepare. Usually empty.",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["kind", "instruction", "target"],
+    properties: {
+      kind: { type: "string", enum: ACTION_KINDS },
+      instruction: { type: "string" },
+      target: { type: "string", description: "Who it is for, or empty." },
+    },
+  },
+};
+
+const PREPARE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "why",
+    "to",
+    "subject",
+    "body",
+    "title",
+    "start",
+    "durationMin",
+    "details",
+    "name",
+    "company",
+    "role",
+    "email",
+    "notes",
+    "text",
+    "due",
+  ],
+  properties: {
+    why: { type: "string" },
+    to: { type: "string" },
+    subject: { type: "string" },
+    body: { type: "string" },
+    title: { type: "string" },
+    start: { type: "string" },
+    durationMin: { type: "integer" },
+    details: { type: "string" },
+    name: { type: "string" },
+    company: { type: "string" },
+    role: { type: "string" },
+    email: { type: "string" },
+    notes: { type: "string" },
+    text: { type: "string" },
+    due: { type: "string" },
+  },
+};
+
 const CONVERSE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["reply", "addOrders", "asks", "approve"],
+  required: ["reply", "addOrders", "asks", "approve", "learn", "act"],
   properties: {
     reply: { type: "string", description: "Your reply to your owner." },
     addOrders: {
@@ -509,16 +576,18 @@ const CONVERSE_SCHEMA = {
       description: "Refs (like r2) of proposed asks the owner just approved.",
     },
     learn: LEARN,
+    act: ACT,
   },
 };
 
 const ANSWER_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["answer", "learn"],
+  required: ["answer", "learn", "act"],
   properties: {
     answer: { type: "string", description: "Your answer to your owner." },
     learn: LEARN,
+    act: ACT,
   },
 };
 
@@ -620,6 +689,24 @@ function strings(v: unknown): string[] {
 }
 
 const LEARN_KINDS = new Set(["owner", "goal", "identity"]);
+
+function parseAct(raw: unknown): ActRequest[] {
+  return (Array.isArray(raw) ? raw : []).flatMap((a) => {
+    const kind = ACTION_KINDS.find((k) => k === a?.kind);
+    if (!kind || typeof a.instruction !== "string" || !a.instruction.trim())
+      return [];
+    return [
+      {
+        kind,
+        instruction: a.instruction.trim(),
+        target:
+          typeof a.target === "string" && a.target.trim()
+            ? a.target.trim()
+            : null,
+      },
+    ];
+  });
+}
 
 function parseLearn(raw: unknown): LearnedFromOwner[] {
   return (Array.isArray(raw) ? raw : []).flatMap((l) =>
