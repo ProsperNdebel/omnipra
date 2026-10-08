@@ -12,6 +12,7 @@ import {
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
   actOnSuggestion,
+  answerIntroduction,
   bookOuting,
   dismissOuting,
   scout,
@@ -95,6 +96,7 @@ export async function createAgentAction(form: FormData) {
       name: str(form, "name"),
       profile: str(form, "profile"),
       style: str(form, "style"),
+      card: cardFrom(form),
       lookFor: form.getAll("lookFor").map(String),
     });
     id = agent.id;
@@ -111,6 +113,7 @@ export async function updateAgentAction(form: FormData) {
       name: str(form, "name"),
       profile: str(form, "profile"),
       style: str(form, "style"),
+      card: cardFrom(form),
       lookFor: form.getAll("lookFor").map(String),
     });
   } catch (err) {
@@ -313,4 +316,31 @@ export async function outingAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#outings`);
+}
+
+/** The agent card fields. Unticked means the agent doesn't meet other agents. */
+function cardFrom(form: FormData) {
+  if (form.get("cardOpen") !== "on") return null;
+  return {
+    name: str(form, "cardName"),
+    about: str(form, "cardAbout"),
+    contact: str(form, "cardContact"),
+  };
+}
+
+/** Yes or no to an introduction another agent's meeting proposed. */
+export async function introductionAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  try {
+    await answerIntroduction(
+      getDeps(),
+      await viewerId(),
+      agentId,
+      str(form, "id"),
+      str(form, "answer") === "yes" ? "yes" : "no",
+    );
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#met`);
 }

@@ -1,4 +1,4 @@
-import type { Agent } from "./agent";
+import type { Agent, AgentCard } from "./agent";
 import type { Endpoint } from "./endpoint";
 import type { HostListing, PresenceEvent } from "./event";
 import type {
@@ -11,6 +11,7 @@ import type {
   SuggestionId,
   ActionId,
   OutingId,
+  EncounterId,
   ObservationId,
   SegmentId,
   UserId,
@@ -29,6 +30,7 @@ import type { Suggestion } from "./suggestion";
 import type { Action, ActionKind, ActionPayload } from "./action";
 import type { AgentAttention } from "./attention";
 import type { Outing } from "./outing";
+import type { Encounter } from "./encounter";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -72,6 +74,15 @@ export interface AgentProvider {
   orchestrate(input: OrchestrateInput): Promise<Orchestration>;
   /** Decide where to be: rank what's on against the owner's goals, pick hosts, write missions. */
   scout(input: ScoutInput): Promise<ScoutResult>;
+  /** Another agent at the same event: should this agent's owner know its owner? Sees only their card. */
+  assess(input: AssessInput): Promise<{ relevant: boolean; why: string }>;
+}
+
+export interface AssessInput {
+  agent: Agent;
+  memories: AgentMemory[];
+  event: PresenceEvent;
+  other: Pick<AgentCard, "name" | "about">;
 }
 
 export interface ScoutCandidate {
@@ -411,6 +422,14 @@ export interface Repos {
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
   };
+  encounters: {
+    /** Encounters this agent is on either side of. Newest first. */
+    byAgent(agentId: AgentId): Promise<Encounter[]>;
+    get(id: EncounterId): Promise<Encounter | null>;
+    /** Whether these two agents have already met at this event. */
+    exists(eventId: EventId, a: AgentId, b: AgentId): Promise<boolean>;
+    save(e: Encounter): Promise<void>;
+  };
   outings: {
     /** Newest first. */
     byAgent(agentId: AgentId): Promise<Outing[]>;
@@ -461,6 +480,7 @@ export interface SessionFilter {
   ids?: ManifestationId[];
   agentIds?: AgentId[];
   endpointIds?: Endpoint["id"][];
+  eventIds?: EventId[];
   status?: Manifestation["status"];
 }
 

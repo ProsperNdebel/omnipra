@@ -206,7 +206,11 @@ export class SupabaseStore implements BlobStore, Memory {
       },
 
       contexts: async (f) => {
-        if ([f.ids, f.agentIds, f.endpointIds].some((x) => x && x.length === 0))
+        if (
+          [f.ids, f.agentIds, f.endpointIds, f.eventIds].some(
+            (x) => x && x.length === 0,
+          )
+        )
           return [];
         let q = this.db
           .from("manifestations")
@@ -215,6 +219,7 @@ export class SupabaseStore implements BlobStore, Memory {
         if (f.ids) q = q.in("id", f.ids);
         if (f.agentIds) q = q.in("missions.agent_id", f.agentIds);
         if (f.endpointIds) q = q.in("endpoint_id", f.endpointIds);
+        if (f.eventIds) q = q.in("missions.event_id", f.eventIds);
         if (f.status) q = q.eq("status", f.status);
         const rows = must(await q, "manifestations.contexts") as Row[];
         return rows.map((r): SessionContext => {
@@ -433,6 +438,51 @@ export class SupabaseStore implements BlobStore, Memory {
         must(
           await this.db.from("agent_memories").delete().eq("id", id),
           "memories.remove",
+        );
+      },
+    },
+
+    encounters: {
+      byAgent: async (agentId) => {
+        const rows = must(
+          await this.db
+            .from("agent_encounters")
+            .select()
+            .or(`agent_a.eq.${agentId},agent_b.eq.${agentId}`)
+            .order("created_at", { ascending: false }),
+          "encounters.byAgent",
+        );
+        return rows.map(R.encounter.from);
+      },
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("agent_encounters")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
+          "encounters.get",
+        );
+        return row ? R.encounter.from(row) : null;
+      },
+      exists: async (eventId, a, b) => {
+        const rows = must(
+          await this.db
+            .from("agent_encounters")
+            .select("id")
+            .eq("event_id", eventId)
+            .or(
+              `and(agent_a.eq.${a},agent_b.eq.${b}),and(agent_a.eq.${b},agent_b.eq.${a})`,
+            )
+            .limit(1),
+          "encounters.exists",
+        );
+        return rows.length > 0;
+      },
+      save: async (e) => {
+        must(
+          await this.db.from("agent_encounters").upsert(R.encounter.to(e)),
+          "encounters.save",
         );
       },
     },

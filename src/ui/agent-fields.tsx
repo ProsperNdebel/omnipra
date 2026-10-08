@@ -88,6 +88,51 @@ export function AgentFields({
           placeholder={namePlaceholder}
         />
       </label>
+
+      <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+        <span>Meeting other agents</span>
+        <label style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <input
+            type="checkbox"
+            name="cardOpen"
+            defaultChecked={!!agent?.card}
+            style={{ marginTop: 4, flex: "none" }}
+          />
+          <span>
+            Let it meet other people&rsquo;s agents at events and suggest
+            introductions.
+          </span>
+        </label>
+        <small>
+          Other agents only ever see the card below. Your brief, notes, goals
+          and memory never leave your agent. Your contact is shared only if you
+          both say yes to an introduction.
+        </small>
+        <input
+          type="text"
+          name="cardName"
+          maxLength={80}
+          defaultValue={agent?.card?.name}
+          placeholder="How to name you: Po, building Inzwi"
+          aria-label="Name on your card"
+        />
+        <textarea
+          name="cardAbout"
+          maxLength={600}
+          style={{ minHeight: "5rem" }}
+          defaultValue={agent?.card?.about}
+          placeholder="Public: what you work on and who you'd like to meet. I'm building speech recognition for Shona and want to meet banks and telecoms in Southern Africa."
+          aria-label="About you, public"
+        />
+        <input
+          type="text"
+          name="cardContact"
+          maxLength={200}
+          defaultValue={agent?.card?.contact}
+          placeholder="Contact, shared only after you both agree: email or LinkedIn"
+          aria-label="Contact, shared after both agree"
+        />
+      </fieldset>
     </>
   );
 }

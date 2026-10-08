@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import type { ManifestationEvent, ManifestationId } from "@/core";
-import { applyTransition, brief } from "@/pipeline";
+import { applyTransition, brief, meetOthers } from "@/pipeline";
 import { authorizeTransition } from "@/services";
 import { getDeps } from "@/server/deps";
 import { badRequest, errorResponse } from "@/server/http";
@@ -47,6 +47,14 @@ export async function POST(
       },
     );
 
+    if (action === "start") {
+      // Arriving somewhere: meet the other agents already in the room.
+      after(() =>
+        meetOthers(d, manifestationId).catch((e) =>
+          console.error("meet failed", e),
+        ),
+      );
+    }
     if (action === "end") {
       after(() =>
         brief(d, manifestationId).catch((e) =>

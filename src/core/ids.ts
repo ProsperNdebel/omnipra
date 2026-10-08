@@ -16,6 +16,7 @@ export type MemoryId = Id<"Memory">;
 export type SuggestionId = Id<"Suggestion">;
 export type ActionId = Id<"Action">;
 export type OutingId = Id<"Outing">;
+export type EncounterId = Id<"Encounter">;
 
 export type ISODate = string;
 

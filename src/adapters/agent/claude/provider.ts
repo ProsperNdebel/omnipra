@@ -10,6 +10,7 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  AssessInput,
   OrchestrateInput,
   ScoutInput,
   ScoutResult,
@@ -381,6 +382,20 @@ export class ClaudeAgentProvider implements AgentProvider {
     };
   }
 
+  async assess(
+    input: AssessInput,
+  ): Promise<{ relevant: boolean; why: string }> {
+    const out = (await this.json(this.models.observe, 512, {
+      system: P.assessSystem(input),
+      user: P.assessUser(input),
+      schema: ASSESS_SCHEMA,
+    })) as { relevant?: unknown; why?: unknown };
+    return {
+      relevant: out.relevant === true,
+      why: typeof out.why === "string" ? out.why.trim() : "",
+    };
+  }
+
   private async json(
     model: string,
     maxTokens: number,
@@ -732,6 +747,16 @@ const SCOUT_SCHEMA = {
         },
       },
     },
+  },
+};
+
+const ASSESS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["relevant", "why"],
+  properties: {
+    relevant: { type: "boolean" },
+    why: { type: "string" },
   },
 };
 

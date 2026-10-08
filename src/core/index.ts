@@ -12,4 +12,5 @@ export * from "./suggestion";
 export * from "./action";
 export * from "./attention";
 export * from "./outing";
+export * from "./encounter";
 export * from "./ports";

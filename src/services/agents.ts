@@ -31,10 +31,24 @@ export interface AgentInput {
   profile: string;
   style: string;
   lookFor: string[];
+  /** Null: doesn't meet other agents. */
+  card?: { name: string; about: string; contact: string } | null;
 }
 
 /** Below this, an agent has too little to go on and notes come out generic. */
 const MIN_PROFILE = 60;
+
+function cleanCard(card: AgentInput["card"]): Agent["card"] {
+  if (!card) return null;
+  const name = card.name.trim().slice(0, 80);
+  const about = card.about.trim().slice(0, 600);
+  if (!name || !about)
+    throw new DomainError(
+      "bad_request",
+      "To meet other agents, give a name and a few public sentences about what you work on.",
+    );
+  return { name, about, contact: card.contact.trim().slice(0, 200) };
+}
 
 function clean(
   input: AgentInput,
@@ -68,6 +82,7 @@ export async function createAgent(
     ownerId,
     ...clean(input),
     provider: "native",
+    card: cleanCard(input.card),
     createdAt: d.now(),
   };
   await d.repos.agents.save(agent);
@@ -85,7 +100,12 @@ export async function updateAgent(
   input: AgentInput,
 ): Promise<Agent> {
   const agent = await ownedAgent(d, ownerId, agentId);
-  const updated: Agent = { ...agent, ...clean(input) };
+  const updated: Agent = {
+    ...agent,
+    ...clean(input),
+    // Leaving the card fields out of a form keeps the card as it was.
+    card: input.card === undefined ? agent.card : cleanCard(input.card),
+  };
   await d.repos.agents.save(updated);
   return updated;
 }

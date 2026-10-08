@@ -9,6 +9,8 @@ import type {
   Action,
   AgentAttention,
   Outing,
+  Encounter,
+  EncounterId,
   OutingId,
   ActionId,
   SuggestionId,
@@ -53,6 +55,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly actions = new Map<ActionId, Action>();
   readonly attention = new Map<AgentId, AgentAttention>();
   readonly outings = new Map<OutingId, Outing>();
+  readonly encounters = new Map<EncounterId, Encounter>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -116,7 +119,11 @@ export class InMemoryStore implements BlobStore, Memory {
         return true;
       },
       contexts: async (f) => {
-        if ([f.ids, f.agentIds, f.endpointIds].some((x) => x && x.length === 0))
+        if (
+          [f.ids, f.agentIds, f.endpointIds, f.eventIds].some(
+            (x) => x && x.length === 0,
+          )
+        )
           return [];
         const out: SessionContext[] = [];
         for (const manifestation of this.manifestations.values()) {
@@ -128,6 +135,7 @@ export class InMemoryStore implements BlobStore, Memory {
           if (f.ids && !f.ids.includes(manifestation.id)) continue;
           if (f.agentIds && !f.agentIds.includes(agent.id)) continue;
           if (f.endpointIds && !f.endpointIds.includes(endpoint.id)) continue;
+          if (f.eventIds && !f.eventIds.includes(event.id)) continue;
           if (f.status && manifestation.status !== f.status) continue;
           out.push({ manifestation, mission, agent, event, endpoint });
         }
@@ -192,6 +200,22 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    encounters: {
+      byAgent: async (agentId) =>
+        [...this.encounters.values()]
+          .filter((e) => e.sides.some((s) => s.agentId === agentId))
+          .sort(by((e) => e.createdAt))
+          .reverse(),
+      get: async (id) => this.encounters.get(id) ?? null,
+      exists: async (eventId, a, b) =>
+        [...this.encounters.values()].some(
+          (e) =>
+            e.eventId === eventId &&
+            e.sides.some((s) => s.agentId === a) &&
+            e.sides.some((s) => s.agentId === b),
+        ),
+      save: async (e) => void this.encounters.set(e.id, e),
     },
     outings: {
       byAgent: async (agentId) =>

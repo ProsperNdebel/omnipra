@@ -6,6 +6,7 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  AssessInput,
   OrchestrateInput,
   ScoutInput,
   ScoutResult,
@@ -282,6 +283,18 @@ export class FakeAgent implements AgentProvider {
           : [];
       }),
       skipped: [],
+    };
+  }
+
+  async assess({
+    other,
+  }: AssessInput): Promise<{ relevant: boolean; why: string }> {
+    const relevant = /speech|voice|language/i.test(other.about);
+    return {
+      relevant,
+      why: relevant
+        ? `${other.name} works on something close to what you're building.`
+        : `${other.name}'s work doesn't touch your goals.`,
     };
   }
 }

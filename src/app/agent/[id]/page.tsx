@@ -4,6 +4,7 @@ import { askHistory } from "@/pipeline";
 import {
   agentActions,
   agentAttention,
+  agentEncounters,
   agentHome,
   agentMemory,
   agentOutings,
@@ -16,6 +17,7 @@ import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
+import { EncountersPanel } from "@/ui/encounters-panel";
 import { MemoryPanel } from "@/ui/memory-panel";
 import { MultiPresence } from "@/ui/multi-presence";
 import { OutingsPanel } from "@/ui/outings-panel";
@@ -47,6 +49,7 @@ export default async function AgentPage({
     actions,
     attention,
     outings,
+    met,
   ] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
@@ -56,6 +59,7 @@ export default async function AgentPage({
     agentActions(d, agent),
     agentAttention(d, agent),
     agentOutings(d, agent.id),
+    agentEncounters(d, agent),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -85,6 +89,7 @@ export default async function AgentPage({
       )}
 
       <SuggestionsPanel agentId={agent.id} open={suggestions} />
+      <EncountersPanel agentId={agent.id} name={agent.name} met={met} />
       <ActionsPanel agentId={agent.id} name={agent.name} {...actions} />
 
       {live.length > 1 ? (
