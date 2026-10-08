@@ -35,7 +35,9 @@ export function LiveFeed({
   useEffect(() => {
     if (DONE.has(f.status)) return;
     const t = setInterval(async () => {
-      const res = await fetch(`/api/manifestations/${id}/feed`).catch(() => null);
+      const res = await fetch(`/api/manifestations/${id}/feed`).catch(
+        () => null,
+      );
       if (res?.ok) setF(await res.json());
     }, POLL_MS);
     return () => clearInterval(t);
@@ -57,7 +59,8 @@ export function LiveFeed({
       {f.status === "requested" && (
         <>
           <p className="muted">
-            {hostName} hasn&rsquo;t answered yet. {agentName} starts once they accept and open the session at the event.
+            {hostName} hasn&rsquo;t answered yet. {agentName} starts once they
+            accept and open the session at the event.
           </p>
           <form action={decideAction} style={{ marginTop: 20 }}>
             <input type="hidden" name="id" value={id} />
@@ -67,11 +70,15 @@ export function LiveFeed({
         </>
       )}
       {f.status === "accepted" && (
-        <p className="muted">{hostName} accepted. {agentName} goes live when they start the session in the room.</p>
+        <p className="muted">
+          {hostName} accepted. {agentName} goes live when they start the session
+          in the room.
+        </p>
       )}
       {live && obs.length === 0 && (
         <p className="muted">
-          {agentName} is listening. Notes appear about a minute behind the room, once there&rsquo;s enough to work with.
+          {agentName} is listening. Notes appear about a minute behind the room,
+          once there&rsquo;s enough to work with.
         </p>
       )}
 
@@ -96,7 +103,9 @@ export function LiveFeed({
       )}
       {rest.length > 0 && (
         <section className="narrow">
-          <h2 className="section">{f.briefing ? "Everything else it noted" : "Notes"}</h2>
+          <h2 className="section">
+            {f.briefing ? "Everything else it noted" : "Notes"}
+          </h2>
           <Observations list={rest} />
         </section>
       )}
@@ -108,23 +117,45 @@ export function LiveFeed({
  * The briefing is written automatically after End. If that failed (provider down, bad key),
  * the session would sit here forever, so the owner can ask for it again.
  */
-function RetryBriefing({ id, agentName, onDone }: { id: string; agentName: string; onDone: () => Promise<void> }) {
+function RetryBriefing({
+  id,
+  agentName,
+  onDone,
+}: {
+  id: string;
+  agentName: string;
+  onDone: () => Promise<void>;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function retry() {
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/manifestations/${id}/brief`, { method: "POST" }).catch(() => null);
+    const res = await fetch(`/api/manifestations/${id}/brief`, {
+      method: "POST",
+    }).catch(() => null);
     if (res?.ok) await onDone();
-    else setError((await res?.json().catch(() => null))?.message ?? `${agentName} couldn't write the briefing. Try again in a moment.`);
+    else
+      setError(
+        (await res?.json().catch(() => null))?.message ??
+          `${agentName} couldn't write the briefing. Try again in a moment.`,
+      );
     setBusy(false);
   }
 
   return (
     <div style={{ marginTop: 20 }}>
-      <p className="muted">This usually takes under a minute. If it&rsquo;s been longer, ask for it again.</p>
-      <button className="button quiet" onClick={retry} disabled={busy} style={{ marginTop: 16 }}>
+      <p className="muted">
+        This usually takes under a minute. If it&rsquo;s been longer, ask for it
+        again.
+      </p>
+      <button
+        className="button quiet"
+        onClick={retry}
+        disabled={busy}
+        style={{ marginTop: 16 }}
+      >
         {busy ? "Writing the briefing" : "Write the briefing now"}
       </button>
       {error && (
