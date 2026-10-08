@@ -176,7 +176,7 @@ function byWhenSaid(a: Observation, b: Observation): number {
 /** "4:12 in" from the start of the session; older notes show the clock time they were processed. */
 function when(o: Observation): string {
   return o.atSec !== null
-    ? `${clock(o.atSec)} in`
+    ? `${clock(o.atSec).replace(/^0(?=\d:)/, "")} in`
     : `at ${fmtTime(o.createdAt)}`;
 }
 
