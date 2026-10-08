@@ -75,6 +75,17 @@ export function LiveFeed({
         </p>
       )}
 
+      {f.status === "ended" && (
+        <RetryBriefing
+          id={id}
+          agentName={agentName}
+          onDone={async () => {
+            const res = await fetch(`/api/manifestations/${id}/feed`);
+            if (res.ok) setF(await res.json());
+          }}
+        />
+      )}
+
       {f.briefing && <Briefing b={f.briefing} />}
 
       {important.length > 0 && (
@@ -90,6 +101,38 @@ export function LiveFeed({
         </section>
       )}
     </>
+  );
+}
+
+/**
+ * The briefing is written automatically after End. If that failed (provider down, bad key),
+ * the session would sit here forever, so the owner can ask for it again.
+ */
+function RetryBriefing({ id, agentName, onDone }: { id: string; agentName: string; onDone: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function retry() {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/manifestations/${id}/brief`, { method: "POST" }).catch(() => null);
+    if (res?.ok) await onDone();
+    else setError((await res?.json().catch(() => null))?.message ?? `${agentName} couldn't write the briefing. Try again in a moment.`);
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p className="muted">This usually takes under a minute. If it&rsquo;s been longer, ask for it again.</p>
+      <button className="button quiet" onClick={retry} disabled={busy} style={{ marginTop: 16 }}>
+        {busy ? "Writing the briefing" : "Write the briefing now"}
+      </button>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
