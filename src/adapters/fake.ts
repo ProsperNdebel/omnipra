@@ -4,8 +4,10 @@ import type {
   AudioInput,
   BriefInput,
   Briefing,
-  NewObservation,
+  ConverseInput,
+  ConverseResult,
   ObserveInput,
+  ObserveResult,
   TranscriptionProvider,
   TranscriptSegment,
 } from "@/core";
@@ -38,15 +40,61 @@ export class FakeTranscriber implements TranscriptionProvider {
 }
 
 export class FakeAgent implements AgentProvider {
-  async observe({ window }: ObserveInput): Promise<NewObservation[]> {
-    return window.map((s) => ({
-      kind: "number",
-      text: `Heard: ${s.text}`,
-      importance: 2,
-      alert: null,
-      entities: [],
-      evidence: [s.id],
-    }));
+  async observe({
+    window,
+    conversation,
+    requests,
+    hostTakesRequests,
+  }: ObserveInput): Promise<ObserveResult> {
+    const launch = window.find((s) => /launched/i.test(s.text));
+    const nudged = conversation.some((m) => m.kind === "nudge");
+    return {
+      observations: window.map((s) => ({
+        kind: "number",
+        text: `Heard: ${s.text}`,
+        importance: 2,
+        alert: null,
+        entities: [],
+        evidence: [s.id],
+      })),
+      nudges:
+        launch && !nudged
+          ? [
+              {
+                text: "They have paying customers weeks after launch. Worth knowing for your own go to market.",
+                evidence: [launch.id],
+              },
+            ]
+          : [],
+      asks:
+        hostTakesRequests && requests.length === 0
+          ? [
+              {
+                ask: "Could you ask what the four contracts are worth?",
+                why: "They gave counts but no revenue.",
+              },
+            ]
+          : [],
+    };
+  }
+
+  async converse({
+    message,
+    requests,
+  }: ConverseInput): Promise<ConverseResult> {
+    const m = message.toLowerCase();
+    const yes = m.startsWith("yes");
+    return {
+      reply: yes ? "Sending it to the host." : "Understood.",
+      addOrders: m.startsWith("focus") ? [message] : [],
+      asks:
+        !yes && m.includes("ask")
+          ? [{ ask: message, why: "You asked me to." }]
+          : [],
+      approve: yes
+        ? requests.filter((r) => r.status === "proposed").map((r) => r.id)
+        : [],
+    };
   }
 
   async brief({ observations }: BriefInput): Promise<Briefing> {

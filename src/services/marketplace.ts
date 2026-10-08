@@ -92,6 +92,7 @@ export async function attend(
     hostId: UserId;
     displayName: string;
     priceCents: number;
+    openToRequests: boolean;
   },
 ): Promise<HostListing> {
   const event = await d.repos.events.get(input.eventId);
@@ -110,6 +111,7 @@ export async function attend(
     displayName,
     endpointId: endpoint.id,
     offers: ["mic"],
+    openToRequests: input.openToRequests,
     priceCents: input.priceCents,
     createdAt: d.now(),
   };

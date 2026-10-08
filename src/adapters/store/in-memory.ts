@@ -1,6 +1,9 @@
 import type {
   Agent,
   AgentId,
+  AgentMessage,
+  HostRequest,
+  HostRequestId,
   BlobStore,
   Endpoint,
   EventId,
@@ -32,6 +35,8 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly segments = new Map<string, TranscriptSegment>();
   readonly observations: Observation[] = [];
   readonly briefings = new Map<ManifestationId, StoredBriefing>();
+  readonly messages: AgentMessage[] = [];
+  readonly hostRequests = new Map<HostRequestId, HostRequest>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
   readonly repos: Repos = {
@@ -140,6 +145,26 @@ export class InMemoryStore implements BlobStore, Memory {
         this.observations.filter((o) => o.manifestationId === id),
       byManifestations: async (ids) =>
         this.observations.filter((o) => ids.includes(o.manifestationId)),
+    },
+    messages: {
+      append: async (m) => void this.messages.push(...m),
+      byManifestation: async (id) =>
+        this.messages.filter((m) => m.manifestationId === id),
+      byManifestations: async (ids) =>
+        this.messages.filter((m) => ids.includes(m.manifestationId)),
+    },
+    hostRequests: {
+      get: async (id) => this.hostRequests.get(id) ?? null,
+      save: async (r, expected) => {
+        const current = this.hostRequests.get(r.id);
+        if ((current?.status ?? null) !== expected) return false;
+        this.hostRequests.set(r.id, r);
+        return true;
+      },
+      byManifestation: async (id) =>
+        [...this.hostRequests.values()]
+          .filter((r) => r.manifestationId === id)
+          .sort(by((r) => r.createdAt)),
     },
     briefings: {
       get: async (id) => this.briefings.get(id) ?? null,

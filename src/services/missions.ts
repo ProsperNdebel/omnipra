@@ -7,6 +7,7 @@ import {
   type Mission,
   type MissionId,
   type UserId,
+  type Autonomy,
 } from "@/core";
 import type { Deps } from "@/pipeline";
 import { ownedAgent } from "./agents";
@@ -24,6 +25,8 @@ export async function sendAgent(
     hostId: UserId;
     instructions: string;
     alerts: string[];
+    /** Only "act" if the host takes requests; otherwise the agent can't reach them anyway. */
+    autonomy: Autonomy;
   },
 ): Promise<Manifestation> {
   if (!input.agentId)
@@ -65,6 +68,8 @@ export async function sendAgent(
     alerts: input.alerts.map((a) => a.trim()).filter(Boolean),
     context: ["memory"],
     requires: [...requires],
+    autonomy: listing.openToRequests ? input.autonomy : "ask_first",
+    orders: [],
     createdAt: d.now(),
   };
   await d.repos.missions.save(mission);

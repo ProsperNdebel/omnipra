@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { CaptureSession, type CaptureState } from "@/capture";
 import { HttpChunkTransport } from "@/client/http-chunk-transport";
 import type { CapturePolicy, ManifestationStatus } from "@/core";
+import type { HostRequestView } from "@/services/views";
 import { Dot } from "./bar";
 import { clock, plural } from "./format";
 
@@ -63,17 +64,33 @@ export function HostSession({
     };
   }, [id, startedAt]);
 
-  // Show the host that the agent is working, without showing them what it found.
+  // Show the host that the agent is working, without showing them what it found,
+  // and pick up anything the agent asks them to do in the room.
+  const [requests, setRequests] = useState<HostRequestView[]>([]);
+  const refresh = async () => {
+    const res = await fetch(`/api/manifestations/${id}/feed`).catch(() => null);
+    if (!res?.ok) return;
+    const f = await res.json();
+    setObservations(f.observationCount);
+    setRequests(f.requests);
+  };
   useEffect(() => {
     if (status !== "live") return;
-    const t = setInterval(async () => {
-      const res = await fetch(`/api/manifestations/${id}/feed`).catch(
-        () => null,
-      );
-      if (res?.ok) setObservations((await res.json()).observationCount);
-    }, 10_000);
+    void refresh();
+    const t = setInterval(refresh, 5_000);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, status]);
+
+  // A new ask buzzes the phone where the browser allows it (Android; iOS ignores this).
+  const open = requests.filter((r) => r.status === "sent");
+  const seenOpen = useRef(0);
+  useEffect(() => {
+    if (open.length > seenOpen.current && "vibrate" in navigator) {
+      navigator.vibrate([120, 80, 120]);
+    }
+    seenOpen.current = open.length;
+  }, [open.length]);
 
   async function start() {
     setError(null);
@@ -161,6 +178,19 @@ export function HostSession({
       </div>
 
       <div className="center">
+        {capturing && open.length > 0 && (
+          <ul className="rows" style={{ marginTop: 0, marginBottom: 32 }}>
+            {open.map((r) => (
+              <HostAsk
+                key={r.id}
+                sessionId={id}
+                agentName={agentName}
+                r={r}
+                onDone={refresh}
+              />
+            ))}
+          </ul>
+        )}
         {capturing ? (
           <>
             <p className="clock">{clock(cap?.elapsedSec ?? 0)}</p>
@@ -248,5 +278,79 @@ export function HostSession({
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * Something the agent asks the host to do in the room. The host can add what they
+ * heard, then mark it done or say they couldn't. Either way the owner sees it.
+ */
+function HostAsk({
+  sessionId,
+  agentName,
+  r,
+  onDone,
+}: {
+  sessionId: string;
+  agentName: string;
+  r: HostRequestView;
+  onDone: () => Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<"done" | "decline" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function act(event: "done" | "decline") {
+    setBusy(event);
+    setError(null);
+    const res = await fetch(
+      `/api/manifestations/${sessionId}/requests/${r.id}/${event}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hostNote: note }),
+      },
+    ).catch(() => null);
+    if (res?.ok) await onDone();
+    else setError("That didn't go through. Try again.");
+    setBusy(null);
+  }
+
+  return (
+    <li className="proposal" style={{ display: "block" }}>
+      <div className="small muted">{agentName} asks you</div>
+      <div style={{ marginTop: 4, fontSize: "var(--t-md)", fontWeight: 600 }}>
+        {r.ask}
+      </div>
+      <input
+        type="text"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={500}
+        placeholder="What did you find out? (optional)"
+        style={{ marginTop: 12 }}
+      />
+      <div className="actions" style={{ marginTop: 12 }}>
+        <button
+          className="button"
+          onClick={() => act("done")}
+          disabled={!!busy}
+        >
+          {busy === "done" ? "Saving" : "Done"}
+        </button>
+        <button
+          className="button quiet"
+          onClick={() => act("decline")}
+          disabled={!!busy}
+        >
+          {busy === "decline" ? "Saving" : "Couldn't"}
+        </button>
+      </div>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
   );
 }

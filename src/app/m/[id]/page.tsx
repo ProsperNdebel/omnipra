@@ -21,7 +21,7 @@ export default async function ManifestationPage({
   );
   if (!a.isOwner) notFound();
   const [initial, name] = await Promise.all([
-    feed(d, a.manifestation.id, true),
+    feed(d, a, true),
     hostNameFor(d, a),
   ]);
   const hostName = name ?? "the host";

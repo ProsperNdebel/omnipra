@@ -1,6 +1,10 @@
 import { LevelMeter } from "./level-meter";
 import { ChunkQueue } from "./queue";
-import { pickMimeType, SegmentedRecorder, type RecordedChunk } from "./recorder";
+import {
+  pickMimeType,
+  SegmentedRecorder,
+  type RecordedChunk,
+} from "./recorder";
 import { Uploader, type ChunkTransport } from "./uploader";
 import { ScreenWakeLock } from "./wake-lock";
 
@@ -9,7 +13,8 @@ import { ScreenWakeLock } from "./wake-lock";
  * subscribes to state and calls start() from a tap (browsers require a user gesture for the mic).
  */
 
-export type CaptureStatus = "idle" | "starting" | "live" | "stopping" | "stopped" | "error";
+export type CaptureStatus =
+  "idle" | "starting" | "live" | "stopping" | "stopped" | "error";
 
 export interface CaptureState {
   status: CaptureStatus;
@@ -58,7 +63,9 @@ export class CaptureSession {
   private startedAt = 0;
   private quietSince: number | null = null;
   private readonly onVisibility = () =>
-    this.set({ warning: document.visibilityState === "hidden" ? "page_hidden" : null });
+    this.set({
+      warning: document.visibilityState === "hidden" ? "page_hidden" : null,
+    });
 
   constructor(private readonly opts: CaptureOptions) {
     this.uploader = new Uploader(this.queue, opts.transport, {
@@ -90,16 +97,22 @@ export class CaptureSession {
         },
       });
     } catch (err) {
-      this.fail(err instanceof Error && err.name === "NotAllowedError" ? "Microphone access was denied" : String(err));
+      this.fail(
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Microphone access was denied"
+          : String(err),
+      );
       return;
     }
 
     for (const track of this.stream.getAudioTracks()) {
-      track.onended = () => this.fail("The microphone was disconnected or taken by another app");
+      track.onended = () =>
+        this.fail("The microphone was disconnected or taken by another app");
     }
 
     this.recorder = new SegmentedRecorder(this.stream, {
-      chunkSec: this.opts.chunkSec ?? 20,
+      // 10s chunks keep the agent about half a minute behind the room.
+      chunkSec: this.opts.chunkSec ?? 10,
       mimeType: pickMimeType(),
       anchorMs: this.opts.anchorMs,
       onChunk: (c) => void this.enqueue(c),
@@ -112,7 +125,13 @@ export class CaptureSession {
     this.meter.start(this.stream, (rms) => this.onLevel(rms));
 
     this.startedAt = Date.now();
-    this.clock = setInterval(() => this.set({ elapsedSec: Math.floor((Date.now() - this.startedAt) / 1000) }), 1000);
+    this.clock = setInterval(
+      () =>
+        this.set({
+          elapsedSec: Math.floor((Date.now() - this.startedAt) / 1000),
+        }),
+      1000,
+    );
     this.recorder.start();
     this.set({ status: "live" });
   }
@@ -151,7 +170,13 @@ export class CaptureSession {
 
     const quiet = this.quietSince !== null && now - this.quietSince > windowMs;
     const warning =
-      this.state.warning === "page_hidden" ? "page_hidden" : quiet ? "low_audio" : this.state.warning === "low_audio" ? null : this.state.warning;
+      this.state.warning === "page_hidden"
+        ? "page_hidden"
+        : quiet
+          ? "low_audio"
+          : this.state.warning === "low_audio"
+            ? null
+            : this.state.warning;
     this.set({ level: rms, warning });
   }
 

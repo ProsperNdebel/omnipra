@@ -6,6 +6,7 @@ import type {
   EventId,
   ManifestationId,
   MissionId,
+  HostRequestId,
   ObservationId,
   SegmentId,
   UserId,
@@ -13,6 +14,7 @@ import type {
 import type { Manifestation } from "./manifestation";
 import type { Mission } from "./mission";
 import type { Observation, TranscriptSegment } from "./observation";
+import type { AgentMessage, HostRequest } from "./presence";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -35,8 +37,13 @@ export interface AudioInput {
  * implements the same three calls. Providers never touch storage directly.
  */
 export interface AgentProvider {
-  /** New transcript in, typed observations out. Called on a rolling window during a live session. */
-  observe(input: ObserveInput): Promise<NewObservation[]>;
+  /**
+   * New transcript in; notes, interruptions for the owner, and asks for the host out.
+   * Called on a rolling window during a live session.
+   */
+  observe(input: ObserveInput): Promise<ObserveResult>;
+  /** The owner says something to the agent mid-session. It replies and may change course. */
+  converse(input: ConverseInput): Promise<ConverseResult>;
   /** End of manifestation: turn observations into the owner's briefing. */
   brief(input: BriefInput): Promise<Briefing>;
   /** Owner asks a question; answer only from what the agent experienced. */
@@ -49,13 +56,66 @@ export type NewObservation = Omit<
   "id" | "agentId" | "manifestationId" | "atSec" | "createdAt"
 >;
 
-export interface ObserveInput {
+/** Everything the agent knows about where it is right now. */
+export interface PresenceInput {
   agent: Agent;
   mission: Mission;
   event: PresenceEvent;
-  window: TranscriptSegment[];
   /** Recent observations from this manifestation, so the agent doesn't repeat itself. */
   recent: Observation[];
+  /** Recent conversation with the owner in this session, oldest first. */
+  conversation: AgentMessage[];
+  /** Requests already proposed or with the host, so it doesn't ask twice. */
+  requests: HostRequest[];
+  /** Whether this host has agreed to take requests at all. */
+  hostTakesRequests: boolean;
+  /** What it knows from elsewhere: its memory and its other live sessions. */
+  related: RelatedNote[];
+}
+
+export interface ObserveInput extends PresenceInput {
+  window: TranscriptSegment[];
+}
+
+/** A note from another session, so one agent can connect what it hears across rooms. */
+export interface RelatedNote {
+  text: string;
+  eventTitle: string;
+  /** True when that session is happening right now. */
+  live: boolean;
+}
+
+/** The agent interrupting its owner. Must rest on transcript, like a note. */
+export interface NewNudge {
+  text: string;
+  evidence: SegmentId[];
+}
+
+/** Something the agent wants done in the room. `ask` is written to the host. */
+export interface NewAsk {
+  ask: string;
+  why: string;
+}
+
+export interface ObserveResult {
+  observations: NewObservation[];
+  nudges: NewNudge[];
+  asks: NewAsk[];
+}
+
+export interface ConverseInput extends PresenceInput {
+  message: string;
+}
+
+export interface ConverseResult {
+  /** What the agent says back. */
+  reply: string;
+  /** New standing orders to add, if the owner changed what it should focus on. */
+  addOrders: string[];
+  /** New asks for the host, if the owner told it to ask something. */
+  asks: NewAsk[];
+  /** Proposed requests the owner just approved in words ("yes, ask them"). */
+  approve: HostRequestId[];
 }
 
 export interface BriefInput {
@@ -172,6 +232,23 @@ export interface Repos {
   briefings: {
     get(id: ManifestationId): Promise<StoredBriefing | null>;
     save(b: StoredBriefing): Promise<void>;
+  };
+  messages: {
+    append(m: AgentMessage[]): Promise<void>;
+    /** Oldest first. */
+    byManifestation(id: ManifestationId): Promise<AgentMessage[]>;
+    /** For many sessions at once, oldest first. */
+    byManifestations(ids: ManifestationId[]): Promise<AgentMessage[]>;
+  };
+  hostRequests: {
+    get(id: HostRequestId): Promise<HostRequest | null>;
+    /** Optimistic like manifestations: null expected = insert; false when someone moved it first. */
+    save(
+      r: HostRequest,
+      expected: HostRequest["status"] | null,
+    ): Promise<boolean>;
+    /** Oldest first. */
+    byManifestation(id: ManifestationId): Promise<HostRequest[]>;
   };
 }
 

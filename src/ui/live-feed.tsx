@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { decideAction } from "@/app/actions";
-import type { Observation, ObservationId, ObservationKind } from "@/core";
+import type {
+  HostRequest,
+  Observation,
+  ObservationId,
+  ObservationKind,
+} from "@/core";
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
+import { AlertsPrompt, PresencePanel } from "./presence-panel";
 import { SubmitButton } from "./submit-button";
 
+/** Poll fast while the agent is in the room, so nudges feel live; slower otherwise. */
+const POLL_LIVE_MS = 4_000;
 const POLL_MS = 8_000;
 const DONE = new Set(["briefed", "declined", "cancelled"]);
 
@@ -33,15 +41,19 @@ export function LiveFeed({
 }) {
   const [f, setF] = useState(initial);
 
+  const refresh = async () => {
+    const res = await fetch(`/api/manifestations/${id}/feed`).catch(() => null);
+    if (res?.ok) setF(await res.json());
+  };
+
   useEffect(() => {
     if (DONE.has(f.status)) return;
-    const t = setInterval(async () => {
-      const res = await fetch(`/api/manifestations/${id}/feed`).catch(
-        () => null,
-      );
-      if (res?.ok) setF(await res.json());
-    }, POLL_MS);
+    const t = setInterval(
+      refresh,
+      f.status === "live" ? POLL_LIVE_MS : POLL_MS,
+    );
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, f.status]);
 
   const obs = f.observations ?? [];
@@ -85,15 +97,23 @@ export function LiveFeed({
         </p>
       )}
 
+      <PresencePanel
+        id={id}
+        agentName={agentName}
+        hostName={hostName}
+        active={f.status === "accepted" || f.status === "live"}
+        messages={f.messages ?? []}
+        requests={f.requests as HostRequest[]}
+        autonomy={f.autonomy}
+        hostTakesRequests={f.hostTakesRequests}
+        onChange={refresh}
+      />
+      {(f.status === "accepted" || f.status === "live") && (
+        <AlertsPrompt agentName={agentName} />
+      )}
+
       {f.status === "ended" && (
-        <RetryBriefing
-          id={id}
-          agentName={agentName}
-          onDone={async () => {
-            const res = await fetch(`/api/manifestations/${id}/feed`);
-            if (res.ok) setF(await res.json());
-          }}
-        />
+        <RetryBriefing id={id} agentName={agentName} onDone={refresh} />
       )}
 
       {f.briefing && <Briefing b={f.briefing} notes={obs} />}

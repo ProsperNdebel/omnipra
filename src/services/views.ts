@@ -1,8 +1,10 @@
 import type {
   Agent,
   AgentId,
+  AgentMessage,
+  Autonomy,
+  HostRequest,
   Manifestation,
-  ManifestationId,
   Observation,
   PresenceEvent,
   SessionContext,
@@ -91,7 +93,17 @@ export interface OwnerOverview {
   live: ManifestationRow[];
   /** Per agent: sessions live now and sessions in total. */
   counts: Map<string, { live: number; total: number }>;
+  /** Latest interruptions from every room at once, newest first. */
+  nudges: {
+    message: AgentMessage;
+    eventTitle: string;
+    agentName: string;
+    sessionId: string;
+  }[];
 }
+
+/** How many recent nudges the combined stream shows. */
+const STREAM = 8;
 
 /** Everything the agents page needs, for all agents at once. */
 export async function ownerOverview(
@@ -112,13 +124,34 @@ export async function ownerOverview(
   const liveContexts = contexts.filter(
     (c) => c.manifestation.status === "live",
   );
-  const live = (await rows(d, liveContexts, { withContent: true })).sort(
-    (a, b) =>
-      (a.manifestation.startedAt ?? "").localeCompare(
-        b.manifestation.startedAt ?? "",
-      ),
+  const [liveRows, liveMessages] = await Promise.all([
+    rows(d, liveContexts, { withContent: true }),
+    d.repos.messages.byManifestations(
+      liveContexts.map((c) => c.manifestation.id),
+    ),
+  ]);
+  const live = liveRows.sort((a, b) =>
+    (a.manifestation.startedAt ?? "").localeCompare(
+      b.manifestation.startedAt ?? "",
+    ),
   );
-  return { live, counts };
+  const byId = new Map(
+    liveContexts.map((c) => [c.manifestation.id as string, c]),
+  );
+  const nudges = liveMessages
+    .filter((m) => m.kind === "nudge")
+    .slice(-STREAM)
+    .reverse()
+    .map((message) => {
+      const c = byId.get(message.manifestationId)!;
+      return {
+        message,
+        eventTitle: c.event.title,
+        agentName: c.agent.name,
+        sessionId: c.manifestation.id,
+      };
+    });
+  return { live, counts, nudges };
 }
 
 export async function hostInbox(
@@ -143,6 +176,15 @@ export async function hostNameFor(
   );
 }
 
+/** A request as the host sees it: what to do, never why the owner wants it. */
+export interface HostRequestView {
+  id: string;
+  ask: string;
+  status: HostRequest["status"];
+  hostNote: string | null;
+}
+
+/** What a live view polls. Hosts get counts and their requests; the intelligence belongs to the owner. */
 export interface Feed {
   status: Manifestation["status"];
   startedAt: string | null;
@@ -150,24 +192,50 @@ export interface Feed {
   observationCount: number;
   observations: Observation[] | null;
   briefing: StoredBriefing | null;
+  /** Owner only: nudges, chat and updates, oldest first. */
+  messages: AgentMessage[] | null;
+  /** Owner: every request with its why. Host: only ones sent to them, without the why. */
+  requests: HostRequest[] | HostRequestView[];
+  autonomy: Autonomy;
+  hostTakesRequests: boolean;
 }
 
 export async function feed(
   d: Deps,
-  id: ManifestationId,
+  ctx: SessionContext,
   asOwner: boolean,
 ): Promise<Feed> {
-  const [m, observations, briefing] = await Promise.all([
-    d.repos.manifestations.get(id),
-    d.repos.observations.byManifestation(id),
-    d.repos.briefings.get(id),
-  ]);
+  const id = ctx.manifestation.id;
+  const [observations, briefing, messages, requests, listings] =
+    await Promise.all([
+      d.repos.observations.byManifestation(id),
+      asOwner ? d.repos.briefings.get(id) : null,
+      asOwner ? d.repos.messages.byManifestation(id) : null,
+      d.repos.hostRequests.byManifestation(id),
+      d.repos.events.listingsFor([ctx.event.id]),
+    ]);
+  const m = ctx.manifestation;
   return {
-    status: m!.status,
-    startedAt: m!.startedAt,
-    endedAt: m!.endedAt,
+    status: m.status,
+    startedAt: m.startedAt,
+    endedAt: m.endedAt,
     observationCount: observations.length,
     observations: asOwner ? observations : null,
-    briefing: asOwner ? briefing : null,
+    briefing,
+    messages,
+    requests: asOwner
+      ? requests
+      : requests
+          .filter((r) => r.status !== "proposed" && r.status !== "dismissed")
+          .map((r) => ({
+            id: r.id,
+            ask: r.ask,
+            status: r.status,
+            hostNote: r.hostNote,
+          })),
+    autonomy: ctx.mission.autonomy,
+    hostTakesRequests:
+      listings.find((l) => l.hostId === ctx.endpoint.hostId)?.openToRequests ??
+      false,
   };
 }

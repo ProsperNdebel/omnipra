@@ -9,11 +9,16 @@ export type EndpointId = Id<"Endpoint">;
 export type ManifestationId = Id<"Manifestation">;
 export type SegmentId = Id<"Segment">;
 export type ObservationId = Id<"Observation">;
+export type MessageId = Id<"Message">;
+export type HostRequestId = Id<"HostRequest">;
 
 export type ISODate = string;
 
 export class DomainError extends Error {
-  constructor(public readonly code: string, message: string) {
+  constructor(
+    public readonly code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "DomainError";
   }

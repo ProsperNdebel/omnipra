@@ -5,4 +5,5 @@ export * from "./event";
 export * from "./mission";
 export * from "./manifestation";
 export * from "./observation";
+export * from "./presence";
 export * from "./ports";

@@ -4,10 +4,14 @@ import type {
   AnswerInput,
   BriefInput,
   Briefing,
+  ConverseInput,
+  ConverseResult,
+  NewAsk,
   NewObservation,
   ObservationId,
   ObservationKind,
   ObserveInput,
+  ObserveResult,
   SegmentId,
 } from "@/core";
 import * as P from "./prompts";
@@ -38,22 +42,63 @@ export class ClaudeAgentProvider implements AgentProvider {
     });
   }
 
-  async observe({
-    agent,
-    mission,
-    event,
-    window,
-    recent,
-  }: ObserveInput): Promise<NewObservation[]> {
-    const out = (await this.json(this.models.observe, 2048, {
-      system: P.observeSystem(agent, mission, event),
-      user: P.observeUser(window, recent),
-      schema: OBSERVATIONS_SCHEMA,
-    })) as { observations?: unknown[] };
-    return (out.observations ?? []).flatMap((o) => {
-      const parsed = parseObservation(o);
-      return parsed ? [parsed] : [];
-    });
+  async observe(input: ObserveInput): Promise<ObserveResult> {
+    const out = (await this.json(this.models.observe, 3072, {
+      system: P.observeSystem(input),
+      user: P.observeUser(input),
+      schema: OBSERVE_SCHEMA,
+    })) as {
+      observations?: unknown[];
+      nudges?: unknown[];
+      asks?: unknown[];
+    };
+    return {
+      observations: (out.observations ?? []).flatMap((o) => {
+        const parsed = parseObservation(o);
+        return parsed ? [parsed] : [];
+      }),
+      nudges: (out.nudges ?? []).flatMap((n) => {
+        const r = n as Record<string, unknown>;
+        return typeof r?.text === "string" && r.text.trim()
+          ? [
+              {
+                text: r.text.trim(),
+                evidence: strings(r.evidence) as SegmentId[],
+              },
+            ]
+          : [];
+      }),
+      // Asks only make sense when the host takes them; drop any the model produced anyway.
+      asks: input.hostTakesRequests ? parseAsks(out.asks) : [],
+    };
+  }
+
+  async converse(input: ConverseInput): Promise<ConverseResult> {
+    const out = (await this.json(this.models.observe, 1536, {
+      system: P.converseSystem(input),
+      user: P.converseUser(input),
+      schema: CONVERSE_SCHEMA,
+    })) as {
+      reply?: unknown;
+      addOrders?: unknown;
+      asks?: unknown;
+      approve?: unknown;
+    };
+    const byRef = new Map(
+      input.requests.map((r, i) => [P.requestRef(i), r] as const),
+    );
+    return {
+      reply: typeof out.reply === "string" ? out.reply.trim() : "",
+      addOrders: strings(out.addOrders)
+        .map((o) => o.trim())
+        .filter(Boolean),
+      asks: input.hostTakesRequests ? parseAsks(out.asks) : [],
+      // Only proposals can be approved; anything else the model names is ignored.
+      approve: strings(out.approve).flatMap((ref) => {
+        const r = byRef.get(ref.trim().toLowerCase());
+        return r && r.status === "proposed" ? [r.id] : [];
+      }),
+    };
   }
 
   async brief({
@@ -156,11 +201,53 @@ const KINDS: ObservationKind[] = [
 
 // Structured outputs need additionalProperties: false on every object and all fields required.
 // "No alert" is an empty string rather than null to keep the schema to plain types.
-const OBSERVATIONS_SCHEMA = {
+const ASKS = {
+  type: "array",
+  description:
+    "Asks for the host. Empty unless one question or action in the room is clearly worth it.",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["ask", "why"],
+    properties: {
+      ask: {
+        type: "string",
+        description: "Written to the host: short, polite, doable in a minute.",
+      },
+      why: {
+        type: "string",
+        description: "Written to the owner: why this is worth asking.",
+      },
+    },
+  },
+};
+
+const OBSERVE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["observations"],
+  required: ["observations", "nudges", "asks"],
   properties: {
+    nudges: {
+      type: "array",
+      description: "Interruptions for the owner. Usually empty; at most one.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["text", "evidence"],
+        properties: {
+          text: {
+            type: "string",
+            description: "To the owner, why this matters to them right now.",
+          },
+          evidence: {
+            type: "array",
+            items: { type: "string" },
+            description: "Transcript line ids.",
+          },
+        },
+      },
+    },
+    asks: ASKS,
     observations: {
       type: "array",
       description:
@@ -212,6 +299,27 @@ const CITES = {
   type: "array",
   items: { type: "string" },
   description: "Refs of the observations this rests on, like n3.",
+};
+
+const CONVERSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "addOrders", "asks", "approve"],
+  properties: {
+    reply: { type: "string", description: "Your reply to your owner." },
+    addOrders: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "New standing orders, in the owner's words. Empty if nothing changed.",
+    },
+    asks: ASKS,
+    approve: {
+      type: "array",
+      items: { type: "string" },
+      description: "Refs (like r2) of proposed asks the owner just approved.",
+    },
+  },
 };
 
 const BRIEFING_SCHEMA = {
@@ -266,6 +374,16 @@ function parseObservation(o: unknown): NewObservation | null {
     entities: strings(r.entities),
     evidence: strings(r.evidence) as SegmentId[],
   };
+}
+
+function parseAsks(v: unknown): NewAsk[] {
+  return (Array.isArray(v) ? v : []).flatMap((a) => {
+    const r = a as Record<string, unknown>;
+    const ask = typeof r?.ask === "string" ? r.ask.trim() : "";
+    return ask
+      ? [{ ask, why: typeof r.why === "string" ? r.why.trim() : "" }]
+      : [];
+  });
 }
 
 function strings(v: unknown): string[] {

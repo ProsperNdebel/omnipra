@@ -1,6 +1,7 @@
 import type { ContextScope } from "./agent";
 import type { Capability } from "./endpoint";
 import type { AgentId, EventId, ISODate, MissionId } from "./ids";
+import type { Autonomy } from "./presence";
 
 /**
  * What the agent should do at one event. The agent's profile is permanent;
@@ -16,5 +17,9 @@ export interface Mission {
   alerts: string[];
   context: ContextScope[];
   requires: Capability[];
+  /** Whether the agent's asks go to the host directly or wait for the owner. */
+  autonomy: Autonomy;
+  /** What the owner told the agent during the session. Added to the mission, newest last. */
+  orders: string[];
   createdAt: ISODate;
 }

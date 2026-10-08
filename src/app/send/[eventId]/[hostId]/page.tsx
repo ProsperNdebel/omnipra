@@ -121,6 +121,37 @@ export default async function Send({
             />
             <small>One per line. Optional.</small>
           </label>
+          {listing.openToRequests ? (
+            <fieldset
+              className="field"
+              style={{ border: 0, padding: 0, margin: 0 }}
+            >
+              <span>When {it} wants something asked in the room</span>
+              <label
+                style={{ display: "flex", gap: 12, alignItems: "baseline" }}
+              >
+                <input
+                  type="radio"
+                  name="autonomy"
+                  value="ask_first"
+                  defaultChecked
+                />
+                <span>Check with me first</span>
+              </label>
+              <label
+                style={{ display: "flex", gap: 12, alignItems: "baseline" }}
+              >
+                <input type="radio" name="autonomy" value="act" />
+                <span>Let it ask {listing.displayName} directly</span>
+              </label>
+              <small>
+                {listing.displayName} takes quick requests, like putting a
+                question to a speaker. You can change this during the session.
+              </small>
+            </fieldset>
+          ) : (
+            <input type="hidden" name="autonomy" value="ask_first" />
+          )}
           <SubmitButton pending="Sending">
             Send {only ? only.name : "agent"} for {money(listing.priceCents)}
           </SubmitButton>

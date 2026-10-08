@@ -311,6 +311,84 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    messages: {
+      append: async (m) => {
+        if (m.length === 0) return;
+        must(
+          await this.db.from("agent_messages").insert(m.map(R.message.to)),
+          "messages.append",
+        );
+      },
+      byManifestation: async (id) => {
+        const rows = must(
+          await this.db
+            .from("agent_messages")
+            .select()
+            .eq("manifestation_id", id)
+            .order("created_at"),
+          "messages.byManifestation",
+        );
+        return rows.map(R.message.from);
+      },
+      byManifestations: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db
+            .from("agent_messages")
+            .select()
+            .in("manifestation_id", ids)
+            .order("created_at"),
+          "messages.byManifestations",
+        );
+        return rows.map(R.message.from);
+      },
+    },
+
+    hostRequests: {
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("host_requests")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
+          "hostRequests.get",
+        );
+        return row ? R.hostRequest.from(row) : null;
+      },
+      save: async (r, expected) => {
+        if (expected === null) {
+          const res = await this.db
+            .from("host_requests")
+            .insert(R.hostRequest.to(r));
+          if (res.error?.code === "23505") return false;
+          must(res, "hostRequests.insert");
+          return true;
+        }
+        const rows = must(
+          await this.db
+            .from("host_requests")
+            .update(R.hostRequest.to(r))
+            .eq("id", r.id)
+            .eq("status", expected)
+            .select("id"),
+          "hostRequests.save",
+        );
+        return rows.length === 1;
+      },
+      byManifestation: async (id) => {
+        const rows = must(
+          await this.db
+            .from("host_requests")
+            .select()
+            .eq("manifestation_id", id)
+            .order("created_at"),
+          "hostRequests.byManifestation",
+        );
+        return rows.map(R.hostRequest.from);
+      },
+    },
+
     briefings: {
       get: async (id) => {
         const row = must(

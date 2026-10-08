@@ -530,3 +530,43 @@ input[type="checkbox"] {
   padding-left: var(--gutter);
   padding-right: var(--gutter);
 }
+
+/* Presence: the conversation with the agent ------------------------------------- */
+
+.talk {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.talk > li {
+  max-width: 60ch;
+}
+
+/* The agent interrupting: set off with a solid rule, the one loud thing here. */
+.talk > li.talk-nudge {
+  border-left: 3px solid var(--ink);
+  padding-left: 14px;
+  font-weight: 500;
+}
+
+/* Status lines (asked, done, dropped) stay quiet. */
+.talk > li.talk-update {
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+/* What you said, aligned away from the agent's voice. */
+.talk > li.talk-from-owner {
+  justify-self: end;
+  text-align: right;
+}
+
+/* A proposal waiting on the owner: outlined, because it needs a decision. */
+.rows > li.proposal {
+  border: 1px solid var(--ink);
+  padding: 16px;
+  margin-top: 12px;
+}

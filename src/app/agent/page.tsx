@@ -16,7 +16,7 @@ export default async function Agents() {
   if (agents.length === 0) redirect("/agent/new");
 
   // One joined query for every agent's sessions, plus notes and hosts for the live ones.
-  const { live, counts } = await ownerOverview(d, agents);
+  const { live, counts, nudges } = await ownerOverview(d, agents);
   const rows = agents.map((agent) => ({ agent, ...counts.get(agent.id)! }));
   const places = new Set(live.map((r) => r.event.id)).size;
 
@@ -59,6 +59,25 @@ export default async function Agents() {
                   {plural(r.observations, "note")}
                   {r.important > 0 && `, ${r.important} worth acting on`}
                 </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {nudges.length > 0 && (
+        <section className="narrow">
+          <h2 className="section">Flagged across {plural(places, "place")}</h2>
+          <ol className="talk">
+            {nudges.map((n) => (
+              <li key={n.message.id} className="talk-nudge">
+                <div className="small muted">
+                  {n.agentName} at{" "}
+                  <Link href={`/m/${n.sessionId}`}>{n.eventTitle}</Link>
+                  {", "}
+                  {fmtTime(n.message.createdAt)}
+                </div>
+                <div>{n.message.text}</div>
               </li>
             ))}
           </ol>

@@ -68,7 +68,11 @@ export default async function EventPage({
                   <li key={l.hostId}>
                     <div>
                       <div>{l.displayName}</div>
-                      <div className="small muted">Microphone</div>
+                      <div className="small muted">
+                        {l.openToRequests
+                          ? "Microphone, takes requests in the room"
+                          : "Microphone"}
+                      </div>
                     </div>
                     <div className="actions" style={{ alignItems: "baseline" }}>
                       <span>{money(l.priceCents)}</span>
@@ -124,6 +128,24 @@ export default async function EventPage({
                   inputMode="numeric"
                   defaultValue={mine ? mine.priceCents / 100 : 20}
                 />
+              </label>
+              <label
+                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+              >
+                <input
+                  type="checkbox"
+                  name="openToRequests"
+                  defaultChecked={mine?.openToRequests ?? true}
+                  style={{ marginTop: 4, flex: "none" }}
+                />
+                <span>
+                  I&rsquo;ll take quick requests from the agent
+                  <span className="small muted" style={{ display: "block" }}>
+                    Like putting a question to a speaker during Q&amp;A. They
+                    show up on your screen, and you can always say you
+                    couldn&rsquo;t.
+                  </span>
+                </span>
               </label>
               <div className="actions">
                 <SubmitButton pending={mine ? "Updating" : "Listing you"}>

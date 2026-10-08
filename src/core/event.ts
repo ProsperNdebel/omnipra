@@ -27,6 +27,8 @@ export interface HostListing {
   displayName: string;
   endpointId: EndpointId;
   offers: Capability[];
+  /** Willing to do small things in the room when an agent asks, like put a question to a speaker. */
+  openToRequests: boolean;
   priceCents: number;
   createdAt: ISODate;
 }

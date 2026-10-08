@@ -66,6 +66,7 @@ export async function attendAction(form: FormData) {
       hostId: await viewerId(),
       displayName: str(form, "displayName"),
       priceCents: Math.round(Number(str(form, "price")) * 100),
+      openToRequests: form.get("openToRequests") === "on",
     });
   } catch (err) {
     fail(`/events/${eventId}`, err);
@@ -116,6 +117,7 @@ export async function sendAgentAction(form: FormData) {
       hostId,
       instructions: str(form, "instructions"),
       alerts: str(form, "alerts").split("\n"),
+      autonomy: str(form, "autonomy") === "act" ? "act" : "ask_first",
     });
     id = m.id;
   } catch (err) {
