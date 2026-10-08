@@ -1,4 +1,10 @@
-import type { AgentId, ISODate, ManifestationId, ObservationId, SegmentId } from "./ids";
+import type {
+  AgentId,
+  ISODate,
+  ManifestationId,
+  ObservationId,
+  SegmentId,
+} from "./ids";
 
 /** Raw speech from one manifestation. Input to the agent, never shown as the product. */
 export interface TranscriptSegment {
@@ -29,7 +35,10 @@ export interface Observation {
   entities: string[];
   /** Transcript the observation rests on, so every claim can be traced. */
   evidence: SegmentId[];
+  /** Seconds into the session where the cited transcript starts. Null for notes made before this existed. */
+  atSec: number | null;
   createdAt: ISODate;
 }
 
-export type ObservationKind = "insight" | "person" | "company" | "opportunity" | "question" | "number";
+export type ObservationKind =
+  "insight" | "person" | "company" | "opportunity" | "question" | "number";

@@ -1,7 +1,13 @@
 import type { Agent } from "./agent";
 import type { Endpoint } from "./endpoint";
 import type { HostListing, PresenceEvent } from "./event";
-import type { AgentId, EventId, ManifestationId, MissionId, UserId } from "./ids";
+import type {
+  AgentId,
+  EventId,
+  ManifestationId,
+  MissionId,
+  UserId,
+} from "./ids";
 import type { Manifestation } from "./manifestation";
 import type { Mission } from "./mission";
 import type { Observation, TranscriptSegment } from "./observation";
@@ -10,7 +16,9 @@ import type { Observation, TranscriptSegment } from "./observation";
 
 /** Speech to text. Deepgram is adapter #1. */
 export interface TranscriptionProvider {
-  transcribe(input: AudioInput): Promise<Omit<TranscriptSegment, "id" | "manifestationId">[]>;
+  transcribe(
+    input: AudioInput,
+  ): Promise<Omit<TranscriptSegment, "id" | "manifestationId">[]>;
 }
 
 export interface AudioInput {
@@ -33,7 +41,11 @@ export interface AgentProvider {
   answer(input: AnswerInput): Promise<string>;
 }
 
-export type NewObservation = Omit<Observation, "id" | "agentId" | "manifestationId" | "createdAt">;
+/** What a provider returns. Ids, timing and ownership are filled in by the pipeline, not the model. */
+export type NewObservation = Omit<
+  Observation,
+  "id" | "agentId" | "manifestationId" | "atSec" | "createdAt"
+>;
 
 export interface ObserveInput {
   agent: Agent;
@@ -70,7 +82,11 @@ export interface AnswerInput {
 /** Agent memory retrieval. pgvector in Supabase is adapter #1. */
 export interface Memory {
   index(observations: Observation[]): Promise<void>;
-  recall(agentId: AgentId, query: string, limit: number): Promise<Observation[]>;
+  recall(
+    agentId: AgentId,
+    query: string,
+    limit: number,
+  ): Promise<Observation[]>;
 }
 
 /** Raw audio chunks. */
@@ -104,16 +120,26 @@ export interface Repos {
   };
   manifestations: {
     get(id: ManifestationId): Promise<Manifestation | null>;
-    byAgent(id: AgentId, status?: Manifestation["status"]): Promise<Manifestation[]>;
+    byAgent(
+      id: AgentId,
+      status?: Manifestation["status"],
+    ): Promise<Manifestation[]>;
     /** Newest first. */
     byEndpoints(ids: Endpoint["id"][]): Promise<Manifestation[]>;
     /**
      * Optimistic: only writes if the stored status still equals `expected` (null = insert).
      * Returns false when someone else changed it first.
      */
-    save(m: Manifestation, expected: Manifestation["status"] | null): Promise<boolean>;
+    save(
+      m: Manifestation,
+      expected: Manifestation["status"] | null,
+    ): Promise<boolean>;
     /** Compare and set on observedThroughSec. Returns false if `from` is stale, so only one worker owns a window. */
-    advanceCursor(id: ManifestationId, from: number, to: number): Promise<boolean>;
+    advanceCursor(
+      id: ManifestationId,
+      from: number,
+      to: number,
+    ): Promise<boolean>;
   };
   segments: {
     /** Upsert by id. Segment ids are deterministic, so a retried chunk never duplicates transcript. */

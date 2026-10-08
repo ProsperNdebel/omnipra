@@ -12,12 +12,19 @@ export class SupabaseStore implements BlobStore, Memory {
   readonly repos: Repos = {
     agents: {
       get: async (id) => {
-        const row = must(await this.db.from("agents").select().eq("id", id).maybeSingle(), "agents.get");
+        const row = must(
+          await this.db.from("agents").select().eq("id", id).maybeSingle(),
+          "agents.get",
+        );
         return row ? R.agent.from(row) : null;
       },
       byOwner: async (ownerId) => {
         const rows = must(
-          await this.db.from("agents").select().eq("owner_id", ownerId).order("created_at"),
+          await this.db
+            .from("agents")
+            .select()
+            .eq("owner_id", ownerId)
+            .order("created_at"),
           "agents.byOwner",
         );
         return rows.map(R.agent.from);
@@ -29,7 +36,10 @@ export class SupabaseStore implements BlobStore, Memory {
 
     events: {
       get: async (id) => {
-        const row = must(await this.db.from("events").select().eq("id", id).maybeSingle(), "events.get");
+        const row = must(
+          await this.db.from("events").select().eq("id", id).maybeSingle(),
+          "events.get",
+        );
         return row ? R.event.from(row) : null;
       },
       save: async (e) => {
@@ -37,51 +47,82 @@ export class SupabaseStore implements BlobStore, Memory {
       },
       list: async ({ from, to }) => {
         const rows = must(
-          await this.db.from("events").select().gte("ends_at", from).lte("starts_at", to).order("starts_at"),
+          await this.db
+            .from("events")
+            .select()
+            .gte("ends_at", from)
+            .lte("starts_at", to)
+            .order("starts_at"),
           "events.list",
         );
         return rows.map(R.event.from);
       },
       listings: async (id) => {
         const rows = must(
-          await this.db.from("host_listings").select().eq("event_id", id).order("price_cents"),
+          await this.db
+            .from("host_listings")
+            .select()
+            .eq("event_id", id)
+            .order("price_cents"),
           "events.listings",
         );
         return rows.map(R.listing.from);
       },
       saveListing: async (l) => {
-        must(await this.db.from("host_listings").upsert(R.listing.to(l)), "events.saveListing");
+        must(
+          await this.db.from("host_listings").upsert(R.listing.to(l)),
+          "events.saveListing",
+        );
       },
     },
 
     endpoints: {
       get: async (id) => {
-        const row = must(await this.db.from("endpoints").select().eq("id", id).maybeSingle(), "endpoints.get");
+        const row = must(
+          await this.db.from("endpoints").select().eq("id", id).maybeSingle(),
+          "endpoints.get",
+        );
         return row ? R.endpoint.from(row) : null;
       },
       byHost: async (hostId) => {
-        const rows = must(await this.db.from("endpoints").select().eq("host_id", hostId), "endpoints.byHost");
+        const rows = must(
+          await this.db.from("endpoints").select().eq("host_id", hostId),
+          "endpoints.byHost",
+        );
         return rows.map(R.endpoint.from);
       },
       save: async (e) => {
-        must(await this.db.from("endpoints").upsert(R.endpoint.to(e)), "endpoints.save");
+        must(
+          await this.db.from("endpoints").upsert(R.endpoint.to(e)),
+          "endpoints.save",
+        );
       },
     },
 
     missions: {
       get: async (id) => {
-        const row = must(await this.db.from("missions").select().eq("id", id).maybeSingle(), "missions.get");
+        const row = must(
+          await this.db.from("missions").select().eq("id", id).maybeSingle(),
+          "missions.get",
+        );
         return row ? R.mission.from(row) : null;
       },
       save: async (m) => {
-        must(await this.db.from("missions").upsert(R.mission.to(m)), "missions.save");
+        must(
+          await this.db.from("missions").upsert(R.mission.to(m)),
+          "missions.save",
+        );
       },
     },
 
     manifestations: {
       get: async (id) => {
         const row = must(
-          await this.db.from("manifestations").select().eq("id", id).maybeSingle(),
+          await this.db
+            .from("manifestations")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
           "manifestations.get",
         );
         return row ? R.manifestation.from(row) : null;
@@ -94,7 +135,9 @@ export class SupabaseStore implements BlobStore, Memory {
           .eq("missions.agent_id", agentId)
           .order("created_at", { ascending: false });
         if (status) q = q.eq("status", status);
-        return must(await q, "manifestations.byAgent").map(R.manifestation.from);
+        return must(await q, "manifestations.byAgent").map(
+          R.manifestation.from,
+        );
       },
 
       byEndpoints: async (ids) => {
@@ -113,7 +156,9 @@ export class SupabaseStore implements BlobStore, Memory {
       save: async (m, expected) => {
         if (expected === null) {
           // Insert only. A duplicate id means someone else created it first.
-          const res = await this.db.from("manifestations").insert(R.manifestation.to(m));
+          const res = await this.db
+            .from("manifestations")
+            .insert(R.manifestation.to(m));
           if (res.error?.code === "23505") return false;
           must(res, "manifestations.insert");
           return true;
@@ -148,7 +193,10 @@ export class SupabaseStore implements BlobStore, Memory {
     segments: {
       append: async (s) => {
         if (s.length === 0) return;
-        must(await this.db.from("transcript_segments").upsert(s.map(R.segment.to)), "segments.append");
+        must(
+          await this.db.from("transcript_segments").upsert(s.map(R.segment.to)),
+          "segments.append",
+        );
       },
       since: async (id, afterSec) => {
         const rows = must(
@@ -167,13 +215,18 @@ export class SupabaseStore implements BlobStore, Memory {
     observations: {
       append: async (o) => {
         if (o.length === 0) return;
-        must(await this.db.from("observations").insert(o.map(R.observation.to)), "observations.append");
+        must(
+          await this.db.from("observations").insert(o.map(R.observation.to)),
+          "observations.append",
+        );
       },
       byManifestation: async (id) => {
         const rows = must(
           await this.db
             .from("observations")
-            .select("id, agent_id, manifestation_id, kind, text, importance, alert, entities, evidence, created_at")
+            .select(
+              "id, agent_id, manifestation_id, kind, text, importance, alert, entities, evidence, at_sec, created_at",
+            )
             .eq("manifestation_id", id)
             .order("created_at"),
           "observations.byManifestation",
@@ -185,13 +238,20 @@ export class SupabaseStore implements BlobStore, Memory {
     briefings: {
       get: async (id) => {
         const row = must(
-          await this.db.from("briefings").select().eq("manifestation_id", id).maybeSingle(),
+          await this.db
+            .from("briefings")
+            .select()
+            .eq("manifestation_id", id)
+            .maybeSingle(),
           "briefings.get",
         );
         return row ? R.briefing.from(row) : null;
       },
       save: async (b) => {
-        must(await this.db.from("briefings").upsert(R.briefing.to(b)), "briefings.save");
+        must(
+          await this.db.from("briefings").upsert(R.briefing.to(b)),
+          "briefings.save",
+        );
       },
     },
   };
@@ -206,8 +266,11 @@ export class SupabaseStore implements BlobStore, Memory {
   }
 
   async get(key: string): Promise<Uint8Array> {
-    const { data, error } = await this.db.storage.from(AUDIO_BUCKET).download(key);
-    if (error || !data) throw new Error(`blobs.get ${key}: ${error?.message ?? "no data"}`);
+    const { data, error } = await this.db.storage
+      .from(AUDIO_BUCKET)
+      .download(key);
+    if (error || !data)
+      throw new Error(`blobs.get ${key}: ${error?.message ?? "no data"}`);
     return new Uint8Array(await data.arrayBuffer());
   }
 
@@ -215,9 +278,17 @@ export class SupabaseStore implements BlobStore, Memory {
 
   async index(): Promise<void> {}
 
-  async recall(agentId: AgentId, query: string, limit: number): Promise<Observation[]> {
+  async recall(
+    agentId: AgentId,
+    query: string,
+    limit: number,
+  ): Promise<Observation[]> {
     const rows = must(
-      await this.db.rpc("recall_observations", { p_agent: agentId, p_query: query, p_limit: limit }),
+      await this.db.rpc("recall_observations", {
+        p_agent: agentId,
+        p_query: query,
+        p_limit: limit,
+      }),
       "memory.recall",
     ) as Record<string, unknown>[];
     return rows.map(R.observation.from);

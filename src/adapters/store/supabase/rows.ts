@@ -191,6 +191,7 @@ export const observation = {
     alert: (r.alert as string | null) ?? null,
     entities: r.entities as string[],
     evidence: r.evidence as SegmentId[],
+    atSec: (r.at_sec as number | null) ?? null,
     createdAt: r.created_at as string,
   }),
   to: (o: Observation): Row => ({
@@ -203,6 +204,7 @@ export const observation = {
     alert: o.alert,
     entities: o.entities,
     evidence: o.evidence,
+    at_sec: o.atSec,
     created_at: o.createdAt,
   }),
 };

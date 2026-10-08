@@ -11,7 +11,11 @@ const RECENT_LIMIT = 20;
  * the cursor compare and set means exactly one caller owns each window, and the
  * rest return immediately. `force` processes a short tail (used at end of session).
  */
-export async function observe(d: Deps, id: ManifestationId, opts: { force?: boolean } = {}): Promise<Observation[]> {
+export async function observe(
+  d: Deps,
+  id: ManifestationId,
+  opts: { force?: boolean } = {},
+): Promise<Observation[]> {
   const ctx = await loadContext(d, id);
   const from = ctx.manifestation.observedThroughSec;
   const window = await d.repos.segments.since(id, from);
@@ -23,7 +27,9 @@ export async function observe(d: Deps, id: ManifestationId, opts: { force?: bool
 
   let found;
   try {
-    const recent = (await d.repos.observations.byManifestation(id)).slice(-RECENT_LIMIT);
+    const recent = (await d.repos.observations.byManifestation(id)).slice(
+      -RECENT_LIMIT,
+    );
     found = await d.agent.observe({ ...ctx, window, recent });
   } catch (err) {
     // Hand the window back so the next call retries it instead of silently skipping audio.
@@ -32,7 +38,8 @@ export async function observe(d: Deps, id: ManifestationId, opts: { force?: bool
   }
 
   // The agent may only cite transcript it was shown. Anything uncited is dropped.
-  const shown = new Set(window.map((s) => s.id));
+  const startOf = new Map(window.map((s) => [s.id, s.startSec]));
+  const shown = new Set(startOf.keys());
   const createdAt = d.now();
   const observations: Observation[] = found
     .map((o) => ({ ...o, evidence: o.evidence.filter((e) => shown.has(e)) }))
@@ -42,6 +49,8 @@ export async function observe(d: Deps, id: ManifestationId, opts: { force?: bool
       id: d.newId() as ObservationId,
       agentId: ctx.agent.id,
       manifestationId: id,
+      // When it was said in the room, not when the model got to it.
+      atSec: Math.min(...o.evidence.map((e) => startOf.get(e)!)),
       createdAt,
     }));
 

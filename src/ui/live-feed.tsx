@@ -5,7 +5,7 @@ import { decideAction } from "@/app/actions";
 import type { Observation, ObservationKind } from "@/core";
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
-import { fmtTime, plural } from "./format";
+import { clock, fmtTime, plural } from "./format";
 
 const POLL_MS = 8_000;
 const DONE = new Set(["briefed", "declined", "cancelled"]);
@@ -167,14 +167,27 @@ function RetryBriefing({
   );
 }
 
+/** Latest first, by when it was said in the room. Older notes without atSec fall back to processing time. */
+function byWhenSaid(a: Observation, b: Observation): number {
+  if (a.atSec !== null && b.atSec !== null) return b.atSec - a.atSec;
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
+/** "4:12 in" from the start of the session; older notes show the clock time they were processed. */
+function when(o: Observation): string {
+  return o.atSec !== null
+    ? `${clock(o.atSec)} in`
+    : `at ${fmtTime(o.createdAt)}`;
+}
+
 function Observations({ list }: { list: Observation[] }) {
   return (
     <ul className="rows">
-      {[...list].reverse().map((o) => (
+      {[...list].sort(byWhenSaid).map((o) => (
         <li key={o.id}>
           <div className="full">
             <div className="small muted">
-              {KIND[o.kind]} at {fmtTime(o.createdAt)}
+              {KIND[o.kind]}, {when(o)}
               {o.alert && `, matched "${o.alert}"`}
             </div>
             <div style={{ marginTop: 4 }}>{o.text}</div>
