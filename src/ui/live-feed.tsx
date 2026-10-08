@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { decideAction } from "@/app/actions";
-import type { Observation, ObservationKind } from "@/core";
+import type { Observation, ObservationId, ObservationKind } from "@/core";
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
@@ -93,12 +93,12 @@ export function LiveFeed({
         />
       )}
 
-      {f.briefing && <Briefing b={f.briefing} />}
+      {f.briefing && <Briefing b={f.briefing} notes={obs} />}
 
       {important.length > 0 && (
         <section className="narrow">
           <h2 className="section">Worth acting on</h2>
-          <Observations list={important} />
+          <Observations list={important} sessionId={id} />
         </section>
       )}
       {rest.length > 0 && (
@@ -106,7 +106,7 @@ export function LiveFeed({
           <h2 className="section">
             {f.briefing ? "Everything else it noted" : "Notes"}
           </h2>
-          <Observations list={rest} />
+          <Observations list={rest} sessionId={id} />
         </section>
       )}
     </>
@@ -173,24 +173,36 @@ function byWhenSaid(a: Observation, b: Observation): number {
   return b.createdAt.localeCompare(a.createdAt);
 }
 
+/** Talk time without a leading zero: "1:34". */
+const talkTime = (sec: number) => clock(sec).replace(/^0(?=\d:)/, "");
+
 /** "4:12 in" from the start of the session; older notes show the clock time they were processed. */
 function when(o: Observation): string {
   return o.atSec !== null
-    ? `${clock(o.atSec).replace(/^0(?=\d:)/, "")} in`
+    ? `${talkTime(o.atSec)} in`
     : `at ${fmtTime(o.createdAt)}`;
 }
 
-function Observations({ list }: { list: Observation[] }) {
+const noteAnchor = (id: string) => `note-${id}`;
+
+function Observations({
+  list,
+  sessionId,
+}: {
+  list: Observation[];
+  sessionId: string;
+}) {
   return (
     <ul className="rows">
       {[...list].sort(byWhenSaid).map((o) => (
-        <li key={o.id}>
+        <li key={o.id} id={noteAnchor(o.id)}>
           <div className="full">
             <div className="small muted">
               {KIND[o.kind]}, {when(o)}
               {o.alert && `, matched "${o.alert}"`}
             </div>
             <div style={{ marginTop: 4 }}>{o.text}</div>
+            <Source note={o} sessionId={sessionId} />
           </div>
         </li>
       ))}
@@ -198,14 +210,122 @@ function Observations({ list }: { list: Observation[] }) {
   );
 }
 
-function Briefing({ b }: { b: NonNullable<Feed["briefing"]> }) {
+interface Line {
+  id: string;
+  startSec: number;
+  speaker: string | null;
+  text: string;
+}
+
+/**
+ * The exact transcript a note rests on, loaded when opened. Opens by itself when a
+ * briefing citation links to this note, so a claim is two clicks from the audio.
+ */
+function Source({ note, sessionId }: { note: Observation; sessionId: string }) {
+  const [open, setOpen] = useState(false);
+  const [lines, setLines] = useState<Line[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      if (window.location.hash === `#${noteAnchor(note.id)}`) setOpen(true);
+    };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [note.id]);
+
+  useEffect(() => {
+    if (!open || lines || note.evidence.length === 0) return;
+    const ids = note.evidence.map(encodeURIComponent).join(",");
+    fetch(`/api/manifestations/${sessionId}/sources?ids=${ids}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((b: { lines: Line[] }) => setLines(b.lines))
+      .catch(() => setError(true));
+  }, [open, lines, note.evidence, sessionId]);
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        className="linkish small"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? "Hide source" : "Source"}
+      </button>
+      {open && (
+        <div className="source">
+          {error ? (
+            <p className="small">
+              Couldn&rsquo;t load the transcript. Try again.
+            </p>
+          ) : !lines ? (
+            <p className="small muted">Loading</p>
+          ) : lines.length === 0 ? (
+            <p className="small muted">
+              The transcript for this note is no longer available.
+            </p>
+          ) : (
+            lines.map((l) => (
+              <p key={l.id} className="small">
+                <span className="muted">{talkTime(l.startSec)}</span> &ldquo;
+                {l.text}&rdquo;
+              </p>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "Based on 1:34, 0:48": each time jumps to the note and opens its transcript. */
+function Cites({
+  ids,
+  notes,
+}: {
+  ids: ObservationId[] | undefined;
+  notes: Map<string, Observation>;
+}) {
+  const cited = (ids ?? [])
+    .map((id) => notes.get(id))
+    .filter((o): o is Observation => !!o)
+    .sort((a, b) => (a.atSec ?? 0) - (b.atSec ?? 0));
+  if (cited.length === 0) return null;
+  return (
+    <span className="small muted" style={{ display: "block", marginTop: 2 }}>
+      Based on{" "}
+      {cited.map((o, i) => (
+        <span key={o.id}>
+          {i > 0 && ", "}
+          <a href={`#${noteAnchor(o.id)}`}>
+            {o.atSec !== null ? talkTime(o.atSec) : fmtTime(o.createdAt)}
+          </a>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Briefing({
+  b,
+  notes,
+}: {
+  b: NonNullable<Feed["briefing"]>;
+  notes: Observation[];
+}) {
+  const byId = new Map(notes.map((o) => [o.id as string, o]));
   return (
     <section className="briefing narrow">
       <h2 className="section">Briefing</h2>
       {b.headline.length > 0 && (
         <ol>
           {b.headline.map((h, i) => (
-            <li key={i}>{h}</li>
+            <li key={i}>
+              {h}
+              <Cites ids={b.cites?.headline[i]} notes={byId} />
+            </li>
           ))}
         </ol>
       )}
@@ -218,6 +338,7 @@ function Briefing({ b }: { b: NonNullable<Feed["briefing"]> }) {
                 <div className="full">
                   <div style={{ fontWeight: 600 }}>{p.name}</div>
                   <div>{p.why}</div>
+                  <Cites ids={b.cites?.followUps[i]} notes={byId} />
                 </div>
               </li>
             ))}

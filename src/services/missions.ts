@@ -76,6 +76,7 @@ export async function sendAgent(
     priceCents: listing.priceCents,
     status: "requested",
     observedThroughSec: 0,
+    captureConfirmedAt: null,
     startedAt: null,
     endedAt: null,
     createdAt: d.now(),

@@ -144,6 +144,7 @@ export const manifestation = {
     priceCents: r.price_cents as number,
     status: r.status as ManifestationStatus,
     observedThroughSec: r.observed_through_sec as number,
+    captureConfirmedAt: (r.capture_confirmed_at as string | null) ?? null,
     startedAt: (r.started_at as string | null) ?? null,
     endedAt: (r.ended_at as string | null) ?? null,
     createdAt: r.created_at as string,
@@ -155,6 +156,7 @@ export const manifestation = {
     endpoint_id: m.endpointId,
     price_cents: m.priceCents,
     status: m.status,
+    capture_confirmed_at: m.captureConfirmedAt,
     started_at: m.startedAt,
     ended_at: m.endedAt,
     created_at: m.createdAt,
@@ -216,6 +218,11 @@ export const briefing = {
     followUps: r.follow_ups as { name: string; why: string }[],
     openQuestions: r.open_questions as string[],
     markdown: r.markdown as string,
+    // Briefings written before citations existed have none.
+    cites: (r.cites as StoredBriefing["cites"] | null) ?? {
+      headline: [],
+      followUps: [],
+    },
     createdAt: r.created_at as string,
   }),
   to: (b: StoredBriefing): Row => ({
@@ -224,6 +231,7 @@ export const briefing = {
     follow_ups: b.followUps,
     open_questions: b.openQuestions,
     markdown: b.markdown,
+    cites: b.cites,
     created_at: b.createdAt,
   }),
 };

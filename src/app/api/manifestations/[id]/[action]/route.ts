@@ -8,21 +8,51 @@ import { viewerId } from "@/server/viewer";
 
 export const runtime = "nodejs";
 
-const ACTIONS: ManifestationEvent[] = ["accept", "decline", "cancel", "start", "end"];
+const ACTIONS: ManifestationEvent[] = [
+  "accept",
+  "decline",
+  "cancel",
+  "start",
+  "end",
+];
 
 /** POST /api/manifestations/:id/{accept|decline|cancel|start|end} */
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string; action: string }> }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string; action: string }> },
+) {
   try {
     const { id, action } = await params;
-    if (!ACTIONS.includes(action as ManifestationEvent)) badRequest(`unknown action ${action}`);
+    if (!ACTIONS.includes(action as ManifestationEvent))
+      badRequest(`unknown action ${action}`);
 
     const d = getDeps();
     const manifestationId = id as ManifestationId;
-    await authorizeTransition(d, manifestationId, await viewerId(), action as ManifestationEvent);
-    const manifestation = await applyTransition(d, manifestationId, action as ManifestationEvent);
+    await authorizeTransition(
+      d,
+      manifestationId,
+      await viewerId(),
+      action as ManifestationEvent,
+    );
+    // Starting carries the host's confirmation that recording is allowed where they are.
+    const body = (await req.json().catch(() => null)) as {
+      captureConfirmed?: unknown;
+    } | null;
+    const manifestation = await applyTransition(
+      d,
+      manifestationId,
+      action as ManifestationEvent,
+      {
+        captureConfirmed: body?.captureConfirmed === true,
+      },
+    );
 
     if (action === "end") {
-      after(() => brief(d, manifestationId).catch((e) => console.error("brief failed", e)));
+      after(() =>
+        brief(d, manifestationId).catch((e) =>
+          console.error("brief failed", e),
+        ),
+      );
     }
     return Response.json({ manifestation });
   } catch (err) {

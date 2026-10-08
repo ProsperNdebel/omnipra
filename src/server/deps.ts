@@ -1,5 +1,6 @@
 import { ClaudeAgentProvider } from "@/adapters/agent/claude/provider";
 import { DeepgramTranscriber } from "@/adapters/asr/deepgram";
+import { FakeAgent, FakeTranscriber } from "@/adapters/fake";
 import { InMemoryStore } from "@/adapters/store/in-memory";
 import { createServerClient } from "@/adapters/store/supabase/client";
 import { SupabaseStore } from "@/adapters/store/supabase/store";
@@ -20,15 +21,25 @@ export function getDeps(): Deps {
 
 function build(): Deps {
   const store = buildStore();
+  // Canned speech and agent: click through everything without keys or credits.
+  const fake = process.env.PRESENCE_FAKE_AI === "1";
+  if (fake)
+    console.warn(
+      "[presence] PRESENCE_FAKE_AI=1: using canned transcripts and notes.",
+    );
   return {
     repos: store.repos,
     blobs: store,
     memory: store,
-    asr: new DeepgramTranscriber(required("DEEPGRAM_API_KEY")),
-    agent: new ClaudeAgentProvider(
-      required("ANTHROPIC_API_KEY"),
-      process.env.ANTHROPIC_WORKSPACE_ID || undefined,
-    ),
+    asr: fake
+      ? new FakeTranscriber()
+      : new DeepgramTranscriber(required("DEEPGRAM_API_KEY")),
+    agent: fake
+      ? new FakeAgent()
+      : new ClaudeAgentProvider(
+          required("ANTHROPIC_API_KEY"),
+          process.env.ANTHROPIC_WORKSPACE_ID || undefined,
+        ),
     now: () => new Date().toISOString(),
     newId: () => crypto.randomUUID(),
   };

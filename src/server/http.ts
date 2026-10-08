@@ -8,6 +8,7 @@ const STATUS: Record<string, number> = {
   not_found: 404,
   not_capturing: 410,
   not_started: 425,
+  capture_not_confirmed: 400,
   forbidden: 403,
   invalid_transition: 409,
   conflict: 409,
@@ -16,7 +17,10 @@ const STATUS: Record<string, number> = {
 
 export function errorResponse(err: unknown): Response {
   if (err instanceof DomainError) {
-    return Response.json({ error: err.code, message: err.message }, { status: STATUS[err.code] ?? 400 });
+    return Response.json(
+      { error: err.code, message: err.message },
+      { status: STATUS[err.code] ?? 400 },
+    );
   }
   console.error(err);
   return Response.json({ error: "internal" }, { status: 500 });

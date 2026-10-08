@@ -15,6 +15,7 @@ import {
   createAgent,
   createEvent,
   sendAgent,
+  updateAgent,
 } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
@@ -87,6 +88,20 @@ export async function createAgentAction(form: FormData) {
     fail(`/agent/new${next ? `?next=${encodeURIComponent(next)}` : ""}`, err);
   }
   redirect(next ?? `/agent/${id}`);
+}
+
+export async function updateAgentAction(form: FormData) {
+  const id = str(form, "id");
+  try {
+    await updateAgent(getDeps(), await viewerId(), id, {
+      name: str(form, "name"),
+      profile: str(form, "profile"),
+      lookFor: form.getAll("lookFor").map(String),
+    });
+  } catch (err) {
+    fail(`/agent/${id}/edit`, err);
+  }
+  redirect(`/agent/${id}?saved=1`);
 }
 
 export async function sendAgentAction(form: FormData) {

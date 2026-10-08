@@ -5,6 +5,7 @@ import type {
   BriefInput,
   Briefing,
   NewObservation,
+  ObservationId,
   ObservationKind,
   ObserveInput,
   SegmentId,
@@ -65,16 +66,35 @@ export class ClaudeAgentProvider implements AgentProvider {
       system: P.briefSystem(agent, mission, event),
       user: P.briefUser(observations),
       schema: BRIEFING_SCHEMA,
-    })) as Partial<Briefing>;
+    })) as RawBriefing;
+
+    // Map the model's short refs back to note ids. Refs that don't exist are dropped.
+    const byRef = new Map(observations.map((o, i) => [P.noteRef(i), o.id]));
+    const resolve = (cites: unknown): ObservationId[] =>
+      [...new Set(strings(cites))].flatMap((r) => {
+        const id = byRef.get(r.trim().toLowerCase());
+        return id ? [id] : [];
+      });
+
+    const headline = (Array.isArray(out.headline) ? out.headline : []).filter(
+      (h) => typeof h?.text === "string",
+    );
+    const followUps = (
+      Array.isArray(out.followUps) ? out.followUps : []
+    ).filter((f) => typeof f?.name === "string");
+
     return {
-      headline: strings(out.headline),
-      followUps: Array.isArray(out.followUps)
-        ? out.followUps
-            .filter((f) => typeof f?.name === "string")
-            .map((f) => ({ name: f.name, why: String(f.why ?? "") }))
-        : [],
+      headline: headline.map((h) => h.text),
+      followUps: followUps.map((f) => ({
+        name: f.name,
+        why: String(f.why ?? ""),
+      })),
       openQuestions: strings(out.openQuestions),
       markdown: typeof out.markdown === "string" ? out.markdown : "",
+      cites: {
+        headline: headline.map((h) => resolve(h.cites)),
+        followUps: followUps.map((f) => resolve(f.cites)),
+      },
     };
   }
 
@@ -180,6 +200,20 @@ const OBSERVATIONS_SCHEMA = {
   },
 };
 
+/** Shape the model returns; cites are short refs like "n3". */
+interface RawBriefing {
+  headline?: { text: string; cites?: unknown }[];
+  followUps?: { name: string; why?: string; cites?: unknown }[];
+  openQuestions?: unknown;
+  markdown?: unknown;
+}
+
+const CITES = {
+  type: "array",
+  items: { type: "string" },
+  description: "Refs of the observations this rests on, like n3.",
+};
+
 const BRIEFING_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -187,16 +221,25 @@ const BRIEFING_SCHEMA = {
   properties: {
     headline: {
       type: "array",
-      items: { type: "string" },
       description: "Up to three things the owner must know.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["text", "cites"],
+        properties: { text: { type: "string" }, cites: CITES },
+      },
     },
     followUps: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "why"],
-        properties: { name: { type: "string" }, why: { type: "string" } },
+        required: ["name", "why", "cites"],
+        properties: {
+          name: { type: "string" },
+          why: { type: "string" },
+          cites: CITES,
+        },
       },
     },
     openQuestions: { type: "array", items: { type: "string" } },

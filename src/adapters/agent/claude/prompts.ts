@@ -1,4 +1,10 @@
-import type { Agent, Mission, Observation, PresenceEvent, TranscriptSegment } from "@/core";
+import type {
+  Agent,
+  Mission,
+  Observation,
+  PresenceEvent,
+  TranscriptSegment,
+} from "@/core";
 
 /**
  * Prompt text lives here, apart from the provider plumbing, so we can iterate on
@@ -14,7 +20,11 @@ export function agentIdentity(agent: Agent): string {
   ].join("\n\n");
 }
 
-export function observeSystem(agent: Agent, mission: Mission, event: PresenceEvent): string {
+export function observeSystem(
+  agent: Agent,
+  mission: Mission,
+  event: PresenceEvent,
+): string {
   return [
     agentIdentity(agent),
     `Right now you are present at "${event.title}" through someone else's phone microphone. You hear the room as a rolling transcript. Speaker labels like S0 and S1 are per chunk and unreliable; never treat them as identities.`,
@@ -38,24 +48,43 @@ const OBSERVE_RULES = `How to record observations:
 - entities: the people and companies named in that observation, as written.
 - It is fine to record nothing. Most minutes of most talks are not relevant.`;
 
-export function observeUser(window: TranscriptSegment[], recent: Observation[]): string {
-  const lines = window.map((s) => `[${s.id}] ${clock(s.startSec)} ${s.speaker ?? "?"}: ${s.text}`).join("\n");
-  const already = recent.length ? recent.map((o) => `- (${o.kind}) ${o.text}`).join("\n") : "(nothing yet)";
+export function observeUser(
+  window: TranscriptSegment[],
+  recent: Observation[],
+): string {
+  const lines = window
+    .map((s) => `[${s.id}] ${clock(s.startSec)} ${s.speaker ?? "?"}: ${s.text}`)
+    .join("\n");
+  const already = recent.length
+    ? recent.map((o) => `- (${o.kind}) ${o.text}`).join("\n")
+    : "(nothing yet)";
   return `<already_recorded>\n${already}\n</already_recorded>\n\n<transcript>\n${lines}\n</transcript>\n\nRecord observations from this transcript window.`;
 }
 
-export function briefSystem(agent: Agent, mission: Mission, event: PresenceEvent): string {
+export function briefSystem(
+  agent: Agent,
+  mission: Mission,
+  event: PresenceEvent,
+): string {
   return [
     agentIdentity(agent),
     `You just finished attending "${event.title}" for your owner. Your mission was:\n<mission>\n${mission.instructions}\n</mission>`,
     `Write the briefing your owner reads afterward. They are busy: lead with what matters to them specifically, not a summary of the event. Use only your observations; do not add facts. If the session yielded little of value, say so plainly in one line rather than padding it.`,
+    `Every headline point and follow up must cite the refs of the observations it rests on (like n3). Your owner can open each one to see exactly what was said, so never cite a note that does not support the claim.`,
     `Write in plain, direct sentences. No dashes as punctuation, no filler, no hype.`,
   ].join("\n\n");
 }
 
+/** Short refs (n1, n2, ...) instead of uuids: easier for the model to cite exactly. */
+export const noteRef = (i: number) => `n${i + 1}`;
+
 export function briefUser(observations: Observation[]): string {
-  if (observations.length === 0) return "You recorded no observations during this session.";
-  return `<observations>\n${observations.map((o) => fmtObservation(o)).join("\n")}\n</observations>`;
+  if (observations.length === 0)
+    return "You recorded no observations during this session.";
+  const lines = observations.map(
+    (o, i) => `${noteRef(i)} ${fmtObservation(o).slice(2)}`,
+  );
+  return `<observations>\n${lines.join("\n")}\n</observations>`;
 }
 
 export function answerSystem(agent: Agent): string {
@@ -66,9 +95,15 @@ export function answerSystem(agent: Agent): string {
   ].join("\n\n");
 }
 
-export function answerUser(question: string, observations: Observation[], eventTitles: Record<string, string>): string {
+export function answerUser(
+  question: string,
+  observations: Observation[],
+  eventTitles: Record<string, string>,
+): string {
   const obs = observations.length
-    ? observations.map((o) => fmtObservation(o, eventTitles[o.manifestationId])).join("\n")
+    ? observations
+        .map((o) => fmtObservation(o, eventTitles[o.manifestationId]))
+        .join("\n")
     : "(none relevant)";
   return `<observations>\n${obs}\n</observations>\n\nQuestion: ${question}`;
 }

@@ -37,24 +37,31 @@ export class InMemoryStore implements BlobStore, Memory {
     agents: {
       get: async (id) => this.agents.get(id) ?? null,
       byOwner: async (ownerId) =>
-        [...this.agents.values()].filter((a) => a.ownerId === ownerId).sort(by((a) => a.createdAt)),
+        [...this.agents.values()]
+          .filter((a) => a.ownerId === ownerId)
+          .sort(by((a) => a.createdAt)),
       save: async (a) => void this.agents.set(a.id, a),
     },
     events: {
       get: async (id) => this.events.get(id) ?? null,
       save: async (e) => void this.events.set(e.id, e),
       list: async ({ from, to }) =>
-        [...this.events.values()].filter((e) => e.endsAt >= from && e.startsAt <= to).sort(by((e) => e.startsAt)),
+        [...this.events.values()]
+          .filter((e) => e.endsAt >= from && e.startsAt <= to)
+          .sort(by((e) => e.startsAt)),
       listings: async (id) => this.listings.filter((l) => l.eventId === id),
       saveListing: async (l) => {
-        const i = this.listings.findIndex((x) => x.eventId === l.eventId && x.hostId === l.hostId);
+        const i = this.listings.findIndex(
+          (x) => x.eventId === l.eventId && x.hostId === l.hostId,
+        );
         if (i >= 0) this.listings[i] = l;
         else this.listings.push(l);
       },
     },
     endpoints: {
       get: async (id) => this.endpoints.get(id) ?? null,
-      byHost: async (hostId) => [...this.endpoints.values()].filter((e) => e.hostId === hostId),
+      byHost: async (hostId) =>
+        [...this.endpoints.values()].filter((e) => e.hostId === hostId),
       save: async (e) => void this.endpoints.set(e.id, e),
     },
     missions: {
@@ -64,9 +71,14 @@ export class InMemoryStore implements BlobStore, Memory {
     manifestations: {
       get: async (id) => this.manifestations.get(id) ?? null,
       byAgent: async (agentId, status) =>
-        [...this.manifestations.values()].filter(
-          (m) => this.missions.get(m.missionId)?.agentId === agentId && (!status || m.status === status),
-        ).sort(by((m) => m.createdAt)).reverse(),
+        [...this.manifestations.values()]
+          .filter(
+            (m) =>
+              this.missions.get(m.missionId)?.agentId === agentId &&
+              (!status || m.status === status),
+          )
+          .sort(by((m) => m.createdAt))
+          .reverse(),
       byEndpoints: async (ids) =>
         [...this.manifestations.values()]
           .filter((m) => ids.includes(m.endpointId))
@@ -87,6 +99,13 @@ export class InMemoryStore implements BlobStore, Memory {
     },
     segments: {
       append: async (s) => s.forEach((x) => this.segments.set(x.id, x)),
+      byIds: async (id, ids) =>
+        ids
+          .map((i) => this.segments.get(i))
+          .filter(
+            (s): s is TranscriptSegment => !!s && s.manifestationId === id,
+          )
+          .sort(by((s) => s.startSec)),
       since: async (id, afterSec) =>
         [...this.segments.values()]
           .filter((s) => s.manifestationId === id && s.endSec > afterSec)
@@ -94,7 +113,8 @@ export class InMemoryStore implements BlobStore, Memory {
     },
     observations: {
       append: async (o) => void this.observations.push(...o),
-      byManifestation: async (id) => this.observations.filter((o) => o.manifestationId === id),
+      byManifestation: async (id) =>
+        this.observations.filter((o) => o.manifestationId === id),
     },
     briefings: {
       get: async (id) => this.briefings.get(id) ?? null,
@@ -114,7 +134,11 @@ export class InMemoryStore implements BlobStore, Memory {
 
   // Memory: index is a no op; recall scores keyword overlap plus importance. pgvector replaces this in step 4.
   async index(): Promise<void> {}
-  async recall(agentId: AgentId, query: string, limit: number): Promise<Observation[]> {
+  async recall(
+    agentId: AgentId,
+    query: string,
+    limit: number,
+  ): Promise<Observation[]> {
     const terms = tokenize(query);
     return this.observations
       .filter((o) => o.agentId === agentId)
@@ -123,14 +147,22 @@ export class InMemoryStore implements BlobStore, Memory {
         const overlap = [...terms].filter((t) => words.has(t)).length;
         return { o, score: overlap * 2 + o.importance };
       })
-      .sort((a, b) => b.score - a.score || b.o.createdAt.localeCompare(a.o.createdAt))
+      .sort(
+        (a, b) =>
+          b.score - a.score || b.o.createdAt.localeCompare(a.o.createdAt),
+      )
       .slice(0, limit)
       .map((x) => x.o);
   }
 }
 
 function tokenize(s: string): Set<string> {
-  return new Set(s.toLowerCase().split(/[^a-z0-9$.]+/).filter((w) => w.length > 2));
+  return new Set(
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9$.]+/)
+      .filter((w) => w.length > 2),
+  );
 }
 
 function by<T>(key: (t: T) => string | number) {

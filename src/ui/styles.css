@@ -442,3 +442,43 @@ input[type="checkbox"] {
   white-space: pre-wrap;
   max-width: 68ch;
 }
+
+/* Citations ---------------------------------------------------------------- */
+
+/* A button that reads as a text link: for in-place toggles like "Source". */
+.linkish {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.linkish.small {
+  font-size: var(--t-sm);
+}
+
+/* Transcript behind a note: set off by a rule, like a quotation. */
+.source {
+  border-left: 2px solid var(--ink);
+  padding: 2px 0 2px 14px;
+  margin-top: 10px;
+}
+
+.source p:first-child {
+  margin-top: 0;
+}
+
+/* The note a briefing citation jumped to. */
+.rows > li:target {
+  box-shadow: inset 3px 0 0 var(--ink);
+  padding-left: 14px;
+}
+
+.rows > li {
+  scroll-margin-top: 24px;
+}

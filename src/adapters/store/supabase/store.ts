@@ -198,6 +198,19 @@ export class SupabaseStore implements BlobStore, Memory {
           "segments.append",
         );
       },
+      byIds: async (id, ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db
+            .from("transcript_segments")
+            .select()
+            .eq("manifestation_id", id)
+            .in("id", ids)
+            .order("start_sec"),
+          "segments.byIds",
+        );
+        return rows.map(R.segment.from);
+      },
       since: async (id, afterSec) => {
         const rows = must(
           await this.db

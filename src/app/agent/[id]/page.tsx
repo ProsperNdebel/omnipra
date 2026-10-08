@@ -12,10 +12,12 @@ export const dynamic = "force-dynamic";
 /** One agent: where it is now, what it remembers, and every session it has had. */
 export default async function AgentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { saved }] = await Promise.all([params, searchParams]);
   const d = getDeps();
   const agent = await ownedAgent(d, await viewerId(), id).catch(() =>
     notFound(),
@@ -41,7 +43,17 @@ export default async function AgentPage({
           ? "Not at any event right now."
           : `Present at ${plural(live.length, "event")} right now.`}
       </p>
-      <p className="muted narrow">{agent.profile}</p>
+      {saved && <p>Saved. {agent.name} uses this from its next note.</p>}
+
+      <div className="narrow">
+        <h2 className="section">What {agent.name} knows about you</h2>
+        <p className="prose muted">{agent.profile}</p>
+        <p style={{ marginTop: 16 }}>
+          <Link className="button quiet" href={`/agent/${agent.id}/edit`}>
+            Edit {agent.name}
+          </Link>
+        </p>
+      </div>
 
       {live.length > 0 && <Sessions rows={live} />}
 

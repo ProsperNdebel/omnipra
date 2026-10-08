@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CaptureSession, type CaptureState } from "@/capture";
 import { HttpChunkTransport } from "@/client/http-chunk-transport";
-import type { ManifestationStatus } from "@/core";
+import type { CapturePolicy, ManifestationStatus } from "@/core";
 import { Dot } from "./bar";
 import { clock, plural } from "./format";
 
@@ -12,9 +12,18 @@ interface Props {
   id: string;
   agentName: string;
   eventTitle: string;
+  capturePolicy: CapturePolicy;
   initialStatus: ManifestationStatus;
   startedAt: string | null;
 }
+
+/** What the event allows, in the host's words, so they know what they're confirming. */
+const POLICY: Record<CapturePolicy, string> = {
+  organizer: "The organizer has approved agents at this event.",
+  public_talk:
+    "Talks on stage may be recorded here. Point your phone at the stage, not at private conversations.",
+  none: "This event doesn't allow recording. Don't start.",
+};
 
 const WARNINGS: Record<string, string> = {
   page_hidden:
@@ -27,9 +36,11 @@ export function HostSession({
   id,
   agentName,
   eventTitle,
+  capturePolicy,
   initialStatus,
   startedAt,
 }: Props) {
+  const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState(initialStatus);
   const [cap, setCap] = useState<CaptureState | null>(null);
   const [observations, setObservations] = useState(0);
@@ -73,6 +84,8 @@ export function HostSession({
     if (status === "accepted") {
       const res = await fetch(`/api/manifestations/${id}/start`, {
         method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ captureConfirmed: confirmed }),
       });
       if (!res.ok) {
         setError(
@@ -175,10 +188,31 @@ export function HostSession({
               {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
             </h1>
             <p>
-              Only start where recording is allowed. Your microphone is used
-              while this screen is open, and nothing else on your phone is
-              touched.
+              Your microphone is used while this screen is open, and nothing
+              else on your phone is touched.
             </p>
+            <p className="small muted">{POLICY[capturePolicy]}</p>
+            {status === "accepted" && (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  marginTop: 20,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  style={{ marginTop: 4, flex: "none" }}
+                />
+                <span>
+                  Recording is allowed where I am, and people speaking near me
+                  know an AI note taker is listening.
+                </span>
+              </label>
+            )}
             <p className="small muted">
               Keep the screen on and this page in front for the whole session.
             </p>
@@ -204,7 +238,10 @@ export function HostSession({
           <button
             className="button huge"
             onClick={start}
-            disabled={cap?.status === "starting"}
+            disabled={
+              cap?.status === "starting" ||
+              (status === "accepted" && !confirmed)
+            }
           >
             {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
           </button>

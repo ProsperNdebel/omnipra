@@ -6,6 +6,8 @@ import type {
   EventId,
   ManifestationId,
   MissionId,
+  ObservationId,
+  SegmentId,
   UserId,
 } from "./ids";
 import type { Manifestation } from "./manifestation";
@@ -68,6 +70,8 @@ export interface Briefing {
   followUps: { name: string; why: string }[];
   openQuestions: string[];
   markdown: string;
+  /** Notes behind each headline point and follow up, index aligned, so every claim traces to audio. */
+  cites: { headline: ObservationId[][]; followUps: ObservationId[][] };
 }
 
 export interface AnswerInput {
@@ -146,6 +150,11 @@ export interface Repos {
     append(s: TranscriptSegment[]): Promise<void>;
     /** Segments ending after `afterSec`, ordered by start. */
     since(id: ManifestationId, afterSec: number): Promise<TranscriptSegment[]>;
+    /** Specific lines, for showing the source of a note. */
+    byIds(
+      manifestationId: ManifestationId,
+      ids: SegmentId[],
+    ): Promise<TranscriptSegment[]>;
   };
   observations: {
     append(o: Observation[]): Promise<void>;

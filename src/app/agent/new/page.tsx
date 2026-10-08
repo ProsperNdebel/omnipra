@@ -2,16 +2,8 @@ import { createAgentAction } from "@/app/actions";
 import { ownerAgents } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
+import { AgentFields } from "@/ui/agent-fields";
 import { Bar } from "@/ui/bar";
-
-const LOOK_FOR: [string, string][] = [
-  ["ideas", "Ideas worth knowing"],
-  ["people", "People worth meeting"],
-  ["companies", "Companies"],
-  ["opportunities", "Opportunities"],
-  ["technical_details", "Technical details and numbers"],
-  ["open_questions", "Questions left unanswered"],
-];
 
 export default async function NewAgent({
   searchParams,
@@ -41,48 +33,10 @@ export default async function NewAgent({
 
         <form action={createAgentAction} className="stack">
           {next && <input type="hidden" name="next" value={next} />}
-          <label className="field">
-            <span>What should it care about?</span>
-            <textarea
-              name="profile"
-              required
-              placeholder="I'm building speech AI for African languages. I care about inference costs, datasets, on device models and potential customers. Skip generic AI talk."
-            />
-            <small>
-              Write it like you&rsquo;d brief a sharp colleague. It reads this
-              before every event.
-            </small>
-          </label>
-          <fieldset
-            className="field"
-            style={{ border: 0, padding: 0, margin: 0 }}
-          >
-            <span>What it listens for by default</span>
-            <div className="checks">
-              {LOOK_FOR.map(([value, label]) => (
-                <label key={value}>
-                  <input
-                    type="checkbox"
-                    name="lookFor"
-                    value={value}
-                    defaultChecked
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="field">
-            <span>Name</span>
-            <input
-              type="text"
-              name="name"
-              required
-              maxLength={60}
-              defaultValue={first ? "Scout" : undefined}
-              placeholder={first ? undefined : "Fundraising scout"}
-            />
-          </label>
+          <AgentFields
+            defaultName={first ? "Scout" : undefined}
+            namePlaceholder={first ? undefined : "Fundraising scout"}
+          />
           <button className="button" type="submit">
             Make agent
           </button>
