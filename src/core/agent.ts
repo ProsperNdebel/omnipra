@@ -10,6 +10,8 @@ export interface Agent {
   name: string;
   /** Who the owner is and what they care about, in their own words. */
   profile: string;
+  /** How the agent carries itself and talks to its owner. Empty means its default voice. */
+  style: string;
   /** Standing things to look for on every mission. */
   lookFor: LookFor[];
   provider: AgentProviderKind;

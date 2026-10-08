@@ -43,6 +43,21 @@ export function AgentFields({
         </small>
       </label>
 
+      <label className="field">
+        <span>How it talks to you (optional)</span>
+        <textarea
+          name="style"
+          maxLength={1000}
+          style={{ minHeight: "5rem" }}
+          defaultValue={agent?.style}
+          placeholder="Concise. Lead with the number, then why it matters to me. Skip pleasantries."
+        />
+        <small>
+          Its voice in nudges, replies and briefings. Leave empty for short and
+          direct.
+        </small>
+      </label>
+
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
         <span>What it listens for</span>
         <div className="checks">

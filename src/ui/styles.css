@@ -570,3 +570,41 @@ input[type="checkbox"] {
   padding: 16px;
   margin-top: 12px;
 }
+
+/* Memory ------------------------------------------------------------------- */
+
+h3.group {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  margin: 40px 0 0;
+}
+
+h3.group + .rows {
+  margin-top: 8px;
+}
+
+/* One line in, one button: adding or correcting a memory. */
+.memory-add {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.memory-add input[type="text"] {
+  flex: 1;
+}
+
+details.change {
+  margin-top: 8px;
+}
+
+details.change > summary {
+  list-style: none;
+  display: inline;
+  color: var(--muted);
+}
+
+details.change > summary::-webkit-details-marker {
+  display: none;
+}

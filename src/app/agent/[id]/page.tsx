@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { askHistory } from "@/pipeline";
-import { agentHome, ownedAgent } from "@/services";
+import { agentHome, agentMemory, ownedAgent } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
+import { MemoryPanel } from "@/ui/memory-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -16,17 +17,18 @@ export default async function AgentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
-  const [{ id }, { saved }] = await Promise.all([params, searchParams]);
+  const [{ id }, { saved, error }] = await Promise.all([params, searchParams]);
   const d = getDeps();
   const agent = await ownedAgent(d, await viewerId(), id).catch(() =>
     notFound(),
   );
 
-  const [rows, turns] = await Promise.all([
+  const [rows, turns, memory] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
+    agentMemory(d, agent),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -46,23 +48,22 @@ export default async function AgentPage({
           : `Present at ${plural(live.length, "event")} right now.`}
       </p>
       {saved && <p>Saved. {agent.name} uses this from its next note.</p>}
-
-      <div className="narrow">
-        <h2 className="section">What {agent.name} knows about you</h2>
-        <p className="prose muted">{agent.profile}</p>
-        <p style={{ marginTop: 16 }}>
-          <Link className="button quiet" href={`/agent/${agent.id}/edit`}>
-            Edit {agent.name}
-          </Link>
+      {memory.proposed.length > 0 && (
+        <p>
+          <a href="#memory">
+            {plural(memory.proposed.length, "thing")} {agent.name} wants to
+            remember
+          </a>
         </p>
-      </div>
+      )}
 
       {live.length > 0 && <Sessions rows={live} />}
 
       <div className="narrow">
         <h2 className="section">Ask {agent.name}</h2>
         <p className="muted small">
-          Answers come only from what {agent.name} heard at events.
+          Answers come from what {agent.name} heard at events and what it knows
+          about you below.
         </p>
         <AskBox
           agentId={agent.id}
@@ -74,6 +75,8 @@ export default async function AgentPage({
           }))}
         />
       </div>
+
+      <MemoryPanel agent={agent} memory={memory} error={error} />
 
       <h2 className="section">Sessions</h2>
       {rest.length === 0 && live.length === 0 ? (

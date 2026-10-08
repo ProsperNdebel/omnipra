@@ -7,6 +7,7 @@ import type {
   ManifestationId,
   MissionId,
   HostRequestId,
+  MemoryId,
   ObservationId,
   SegmentId,
   UserId,
@@ -15,6 +16,11 @@ import type { Manifestation } from "./manifestation";
 import type { Mission } from "./mission";
 import type { Observation, TranscriptSegment } from "./observation";
 import type { AskTurn } from "./ask";
+import type {
+  AgentMemory,
+  HeardWorthRemembering,
+  LearnedFromOwner,
+} from "./memory";
 import type { AgentMessage, HostRequest } from "./presence";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
@@ -46,9 +52,9 @@ export interface AgentProvider {
   /** The owner says something to the agent mid-session. It replies and may change course. */
   converse(input: ConverseInput): Promise<ConverseResult>;
   /** End of manifestation: turn observations into the owner's briefing. */
-  brief(input: BriefInput): Promise<Briefing>;
+  brief(input: BriefInput): Promise<BriefResult>;
   /** Owner asks a question; answer only from what the agent experienced. */
-  answer(input: AnswerInput): Promise<string>;
+  answer(input: AnswerInput): Promise<AnswerResult>;
 }
 
 /** What a provider returns. Ids, timing and ownership are filled in by the pipeline, not the model. */
@@ -60,6 +66,8 @@ export type NewObservation = Omit<
 /** Everything the agent knows about where it is right now. */
 export interface PresenceInput {
   agent: Agent;
+  /** Its long term memory that bears on this moment. Active memories only. */
+  memories: AgentMemory[];
   mission: Mission;
   event: PresenceEvent;
   /** Recent observations from this manifestation, so the agent doesn't repeat itself. */
@@ -117,10 +125,13 @@ export interface ConverseResult {
   asks: NewAsk[];
   /** Proposed requests the owner just approved in words ("yes, ask them"). */
   approve: HostRequestId[];
+  /** Durable things the owner just said about themselves, their goals, or how the agent should behave. */
+  learn: LearnedFromOwner[];
 }
 
 export interface BriefInput {
   agent: Agent;
+  memories: AgentMemory[];
   mission: Mission;
   event: PresenceEvent;
   observations: Observation[];
@@ -135,8 +146,19 @@ export interface Briefing {
   cites: { headline: ObservationId[][]; followUps: ObservationId[][] };
 }
 
+/** The briefing, plus what from this session the agent would like to remember. */
+export interface BriefResult extends Briefing {
+  remember: HeardWorthRemembering[];
+}
+
+export interface AnswerResult {
+  answer: string;
+  learn: LearnedFromOwner[];
+}
+
 export interface AnswerInput {
   agent: Agent;
+  memories: AgentMemory[];
   question: string;
   /** Retrieved by the memory port, already scoped to this agent. */
   observations: Observation[];
@@ -252,6 +274,14 @@ export interface Repos {
     ): Promise<boolean>;
     /** Oldest first. */
     byManifestation(id: ManifestationId): Promise<HostRequest[]>;
+  };
+  memories: {
+    /** Everything, active and proposed, oldest first. */
+    byAgent(agentId: AgentId): Promise<AgentMemory[]>;
+    get(id: MemoryId): Promise<AgentMemory | null>;
+    /** Upsert. */
+    save(m: AgentMemory[]): Promise<void>;
+    remove(id: MemoryId): Promise<void>;
   };
   askTurns: {
     append(t: AskTurn): Promise<void>;

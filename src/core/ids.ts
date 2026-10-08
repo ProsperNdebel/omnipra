@@ -12,6 +12,7 @@ export type ObservationId = Id<"Observation">;
 export type MessageId = Id<"Message">;
 export type HostRequestId = Id<"HostRequest">;
 export type AskTurnId = Id<"AskTurn">;
+export type MemoryId = Id<"Memory">;
 
 export type ISODate = string;
 

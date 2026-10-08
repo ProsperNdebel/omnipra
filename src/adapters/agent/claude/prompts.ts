@@ -1,5 +1,6 @@
 import type {
   Agent,
+  AgentMemory,
   ConverseInput,
   Mission,
   Observation,
@@ -13,14 +14,40 @@ import type {
  * wording after the first real event without touching code that talks to the API.
  */
 
-export function agentIdentity(agent: Agent): string {
+export function agentIdentity(agent: Agent, memories: AgentMemory[]): string {
+  const of = (kind: AgentMemory["kind"]) =>
+    memories
+      .filter((m) => m.kind === kind)
+      .map((m) => `- ${m.text}`)
+      .join("\n");
+  const you = [agent.style.trim(), of("identity")].filter(Boolean).join("\n");
   return [
     `You are ${agent.name}, a personal agent that belongs to one person and goes to events on their behalf.`,
+    you
+      ? `How your owner wants you to carry yourself and talk to them:\n<you>\n${you}\n</you>`
+      : "",
     `Your owner describes themselves and what they care about like this:`,
     `<owner>\n${agent.profile}\n</owner>`,
+    of("owner")
+      ? `Other things your owner has told you about themselves:\n<owner_facts>\n${of("owner")}\n</owner_facts>`
+      : "",
+    of("goal")
+      ? `Your owner's standing goals. Weigh everything against these; a discovery that clearly advances one is worth interrupting them for:\n<goals>\n${of("goal")}\n</goals>`
+      : "",
+    of("experience")
+      ? `What you remember from earlier events. These are things people said in rooms: claims by speakers, not facts about your owner and not verified. Use them to connect what you hear now:\n<experiences>\n${of("experience")}\n</experiences>`
+      : "",
     `On every mission you look for: ${agent.lookFor.join(", ").replaceAll("_", " ")}.`,
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
+
+/**
+ * Picking up durable things the owner says. Shared by live talk and Ask, so the
+ * agent learns the same way wherever the owner talks to it.
+ */
+const LEARN_RULES = `Separately, notice whether your owner just told you something that should outlast this conversation: a fact or preference about themselves (kind owner), a standing goal (kind goal), or how you should behave or talk to them, including corrections of you (kind identity). Put each in learn as one short statement: about them in the third person ("Prefers numbers over adjectives"), about you in the second person ("Lead with the number"). Instructions only for this session are orders, not memories. Only what your owner said counts; never put anything heard in a room into learn. Skip anything you already know. Usually learn is empty.`;
 
 /** Where the agent is and what it was told, shared by observing and conversing. */
 function situation(input: PresenceInput): string {
@@ -47,9 +74,11 @@ function situation(input: PresenceInput): string {
 }
 
 export function observeSystem(input: ObserveInput): string {
-  return [agentIdentity(input.agent), situation(input), OBSERVE_RULES].join(
-    "\n\n",
-  );
+  return [
+    agentIdentity(input.agent, input.memories),
+    situation(input),
+    OBSERVE_RULES,
+  ].join("\n\n");
 }
 
 const OBSERVE_RULES = `How to record observations:
@@ -124,11 +153,12 @@ export const requestRef = (i: number) => `r${i + 1}`;
 
 export function converseSystem(input: ConverseInput): string {
   return [
-    agentIdentity(input.agent),
+    agentIdentity(input.agent, input.memories),
     situation(input),
     `Your owner just sent you a message while you are in the room. Reply the way a sharp colleague on site would: short, direct, about what is happening here. Answer from what you have observed; if you have not heard something, say so.`,
     `If they change what you should focus on, add it as a standing order in their words. If they tell you to ask something in the room and your host takes requests, create an ask for the host. If they approve one of your proposed asks (for example "yes, ask them"), approve it by its ref, and fold any extra instruction into a new ask rather than editing the old one.`,
     `If your host does not take requests and they want something asked, tell them plainly that this host can't do that.`,
+    LEARN_RULES,
     `No dashes as punctuation.`,
   ].join("\n\n");
 }
@@ -139,17 +169,19 @@ export function converseUser(input: ConverseInput): string {
 
 export function briefSystem(
   agent: Agent,
+  memories: AgentMemory[],
   mission: Mission,
   event: PresenceEvent,
 ): string {
   return [
-    agentIdentity(agent),
+    agentIdentity(agent, memories),
     `You just finished attending "${event.title}" for your owner. Your mission was:\n<mission>\n${mission.instructions}\n</mission>`,
     mission.orders.length
       ? `During the session your owner also told you:\n${mission.orders.map((o) => `- ${o}`).join("\n")}`
       : "",
     `Write the briefing your owner reads afterward. They are busy: lead with what matters to them specifically, not a summary of the event. Use only your observations; do not add facts. If the session yielded little of value, say so plainly in one line rather than padding it.`,
     `Every headline point and follow up must cite the refs of the observations it rests on (like n3). Your owner can open each one to see exactly what was said, so never cite a note that does not support the claim.`,
+    `Finally, pick at most three things from this session worth remembering at future events: durable facts about people, companies or the market that bear on your owner's goals and interests. Write each one self contained, naming who said it and where ("At ${event.title}, the founder of X said they need Shona speech recognition"). Record them as what was said, not as verified truth, and cite the notes each rests on. Skip anything already in your experiences. Often nothing qualifies; then return none.`,
     `Write in plain, direct sentences. No dashes as punctuation, no filler, no hype.`,
   ]
     .filter(Boolean)
@@ -168,11 +200,12 @@ export function briefUser(observations: Observation[]): string {
   return `<observations>\n${lines.join("\n")}\n</observations>`;
 }
 
-export function answerSystem(agent: Agent): string {
+export function answerSystem(agent: Agent, memories: AgentMemory[]): string {
   return [
-    agentIdentity(agent),
-    `Your owner is asking about things you experienced at events. This is an ongoing conversation; read follow ups in light of what was already said. Answer only from the observations provided, which come from your own presence at those events. Say which event something came from when it helps. If the observations do not contain the answer, say you did not observe that; never answer from general knowledge.`,
+    agentIdentity(agent, memories),
+    `Your owner is asking about things you experienced at events. This is an ongoing conversation; read follow ups in light of what was already said. Answer only from the observations provided, which come from your own presence at those events, and from what you know above. Say which event something came from when it helps. If neither contains the answer, say you did not observe that; never answer from general knowledge.`,
     `Be brief and direct. No dashes as punctuation.`,
+    LEARN_RULES,
   ].join("\n\n");
 }
 

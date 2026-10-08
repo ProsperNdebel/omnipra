@@ -13,6 +13,7 @@ import {
   type RelatedNote,
 } from "@/core";
 import type { Deps, ManifestationContext } from "./deps";
+import { proposeLearned, recallMemory } from "./memory";
 
 /** How much of the session the agent sees each time it thinks. */
 const RECENT_NOTES = 20;
@@ -32,16 +33,19 @@ export async function presenceInput(
   query: string,
 ): Promise<PresenceInput> {
   const id = ctx.manifestation.id;
-  const [notes, messages, requests, listings, related] = await Promise.all([
-    d.repos.observations.byManifestation(id),
-    d.repos.messages.byManifestation(id),
-    d.repos.hostRequests.byManifestation(id),
-    d.repos.events.listingsFor([ctx.event.id]),
-    relatedNotes(d, ctx, query),
-  ]);
+  const [notes, messages, requests, listings, related, memories] =
+    await Promise.all([
+      d.repos.observations.byManifestation(id),
+      d.repos.messages.byManifestation(id),
+      d.repos.hostRequests.byManifestation(id),
+      d.repos.events.listingsFor([ctx.event.id]),
+      relatedNotes(d, ctx, query),
+      recallMemory(d, ctx.agent.id, query),
+    ]);
   const listing = listings.find((l) => l.hostId === ctx.endpoint.hostId);
   return {
     agent: ctx.agent,
+    memories,
     mission: ctx.mission,
     event: ctx.event,
     recent: notes.slice(-RECENT_NOTES),
@@ -248,6 +252,22 @@ export async function converse(
   });
   const toSave = added.slice(1).concat(reply);
   await d.repos.messages.append(toSave);
+
+  const learned = await proposeLearned(d, ctx.agent.id, out.learn, {
+    manifestationId: ctx.manifestation.id,
+    quote: said,
+  });
+  if (learned.length) {
+    await d.repos.messages.append(
+      learned.map((m) =>
+        message(d, ctx, {
+          from: "agent",
+          kind: "update",
+          text: `I'd like to remember: ${sentence(m.text)} Keep or correct it on my page.`,
+        }),
+      ),
+    );
+  }
 
   const filed = await fileAsks(d, ctx, out.asks, {
     origin: "owner",

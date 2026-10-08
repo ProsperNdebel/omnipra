@@ -10,12 +10,15 @@ import {
 } from "@/core";
 import { applyTransition } from "@/pipeline";
 import {
+  addMemory,
   attend,
   authorizeTransition,
   createAgent,
   createEvent,
   sendAgent,
+  reviewMemory,
   updateAgent,
+  type MemoryReview,
 } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
@@ -82,6 +85,7 @@ export async function createAgentAction(form: FormData) {
     const agent = await createAgent(getDeps(), await viewerId(), {
       name: str(form, "name"),
       profile: str(form, "profile"),
+      style: str(form, "style"),
       lookFor: form.getAll("lookFor").map(String),
     });
     id = agent.id;
@@ -97,6 +101,7 @@ export async function updateAgentAction(form: FormData) {
     await updateAgent(getDeps(), await viewerId(), id, {
       name: str(form, "name"),
       profile: str(form, "profile"),
+      style: str(form, "style"),
       lookFor: form.getAll("lookFor").map(String),
     });
   } catch (err) {
@@ -141,4 +146,39 @@ export async function decideAction(form: FormData) {
     fail(back, err);
   }
   redirect(decision === "accept" ? `/host/${id}` : back);
+}
+
+/** The owner tells their agent something to remember. */
+export async function addMemoryAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  try {
+    await addMemory(getDeps(), await viewerId(), agentId, {
+      kind: str(form, "kind"),
+      text: str(form, "text"),
+    });
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#memory`);
+}
+
+const REVIEWS: MemoryReview[] = ["keep", "edit", "forget"];
+
+/** Keep, correct or forget one memory. The button pressed is carried in a hidden field. */
+export async function reviewMemoryAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  const op = REVIEWS.find((r) => r === str(form, "op"));
+  try {
+    if (!op) throw new DomainError("bad_request", "Unknown change.");
+    await reviewMemory(
+      getDeps(),
+      await viewerId(),
+      str(form, "id"),
+      op,
+      str(form, "text"),
+    );
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#memory`);
 }

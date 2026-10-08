@@ -1,9 +1,11 @@
 import type {
   AgentProvider,
   AnswerInput,
+  AnswerResult,
+  LearnedFromOwner,
   AudioInput,
   BriefInput,
-  Briefing,
+  BriefResult,
   ConverseInput,
   ConverseResult,
   ObserveInput,
@@ -94,10 +96,11 @@ export class FakeAgent implements AgentProvider {
       approve: yes
         ? requests.filter((r) => r.status === "proposed").map((r) => r.id)
         : [],
+      learn: learnFrom(message),
     };
   }
 
-  async brief({ observations }: BriefInput): Promise<Briefing> {
+  async brief({ observations }: BriefInput): Promise<BriefResult> {
     return {
       headline: ["Early traction: contracts signed within weeks of launch."],
       followUps: [
@@ -109,16 +112,40 @@ export class FakeAgent implements AgentProvider {
         headline: [observations.map((o) => o.id)],
         followUps: [observations.slice(0, 1).map((o) => o.id)],
       },
+      remember: observations.length
+        ? [
+            {
+              text: `Someone said: ${observations[0]!.text}`,
+              evidence: [observations[0]!.id],
+            },
+          ]
+        : [],
     };
   }
 
-  async answer({ observations, history }: AnswerInput): Promise<string> {
+  async answer({
+    observations,
+    history,
+    memories,
+    question,
+  }: AnswerInput): Promise<AnswerResult> {
     const prior = history.length ? `(Turn ${history.length + 1}.) ` : "";
-    return (
-      prior +
-      (observations.length
+    const goals = memories.filter((m) => m.kind === "goal");
+    const answer = /goal/i.test(question)
+      ? goals.length
+        ? `Your goals: ${goals.map((g) => g.text).join("; ")}`
+        : "You haven't given me any goals."
+      : observations.length
         ? `From my notes: ${observations[0]!.text}`
-        : "I did not observe that.")
-    );
+        : "I did not observe that.";
+    return { answer: prior + answer, learn: learnFrom(question) };
   }
+}
+
+/** Canned learning: "remember ..." becomes an owner fact, "my goal is ..." a goal. */
+function learnFrom(message: string): LearnedFromOwner[] {
+  const goal = message.match(/my goal is (.+)/i)?.[1];
+  if (goal) return [{ kind: "goal", text: goal.trim() }];
+  const fact = message.match(/remember (?:that )?(.+)/i)?.[1];
+  return fact ? [{ kind: "owner", text: fact.trim() }] : [];
 }

@@ -4,4 +4,5 @@ export { ingestChunk, type ChunkInput } from "./ingest";
 export { observe } from "./observe";
 export { brief } from "./brief";
 export { ask, askHistory, clearAsks } from "./ask";
+export { proposeHeard, proposeLearned, recallMemory } from "./memory";
 export { actOnRequest, converse, presenceInput, setAutonomy } from "./presence";

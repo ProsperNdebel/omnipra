@@ -389,6 +389,44 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    memories: {
+      byAgent: async (agentId) => {
+        const rows = must(
+          await this.db
+            .from("agent_memories")
+            .select()
+            .eq("agent_id", agentId)
+            .order("created_at"),
+          "memories.byAgent",
+        );
+        return rows.map(R.memory.from);
+      },
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("agent_memories")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
+          "memories.get",
+        );
+        return row ? R.memory.from(row) : null;
+      },
+      save: async (ms) => {
+        if (ms.length === 0) return;
+        must(
+          await this.db.from("agent_memories").upsert(ms.map(R.memory.to)),
+          "memories.save",
+        );
+      },
+      remove: async (id) => {
+        must(
+          await this.db.from("agent_memories").delete().eq("id", id),
+          "memories.remove",
+        );
+      },
+    },
+
     askTurns: {
       append: async (t) => {
         must(

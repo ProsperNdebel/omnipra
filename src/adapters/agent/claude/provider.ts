@@ -2,10 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import type {
   AgentProvider,
   AnswerInput,
+  AnswerResult,
   BriefInput,
-  Briefing,
+  BriefResult,
   ConverseInput,
   ConverseResult,
+  LearnedFromOwner,
   NewAsk,
   NewObservation,
   ObservationId,
@@ -83,6 +85,7 @@ export class ClaudeAgentProvider implements AgentProvider {
       addOrders?: unknown;
       asks?: unknown;
       approve?: unknown;
+      learn?: unknown;
     };
     const byRef = new Map(
       input.requests.map((r, i) => [P.requestRef(i), r] as const),
@@ -98,17 +101,19 @@ export class ClaudeAgentProvider implements AgentProvider {
         const r = byRef.get(ref.trim().toLowerCase());
         return r && r.status === "proposed" ? [r.id] : [];
       }),
+      learn: parseLearn(out.learn),
     };
   }
 
   async brief({
     agent,
+    memories,
     mission,
     event,
     observations,
-  }: BriefInput): Promise<Briefing> {
+  }: BriefInput): Promise<BriefResult> {
     const out = (await this.json(this.models.brief, 4096, {
-      system: P.briefSystem(agent, mission, event),
+      system: P.briefSystem(agent, memories, mission, event),
       user: P.briefUser(observations),
       schema: BRIEFING_SCHEMA,
     })) as RawBriefing;
@@ -140,45 +145,53 @@ export class ClaudeAgentProvider implements AgentProvider {
         headline: headline.map((h) => resolve(h.cites)),
         followUps: followUps.map((f) => resolve(f.cites)),
       },
+      remember: (Array.isArray(out.remember) ? out.remember : [])
+        .filter((r) => typeof r?.text === "string" && r.text.trim())
+        .map((r) => ({ text: r.text.trim(), evidence: resolve(r.cites) }))
+        .filter((r) => r.evidence.length > 0)
+        .slice(0, 3),
     };
   }
 
   async answer({
     agent,
+    memories,
     question,
     observations,
     eventTitles,
     history,
-  }: AnswerInput): Promise<string> {
-    const res = await this.client.messages.create({
-      model: this.models.answer,
-      max_tokens: 1024,
-      system: P.answerSystem(agent),
-      messages: [
-        // Earlier turns as real conversation, so follow ups resolve naturally.
-        ...history.flatMap((t) => [
-          { role: "user" as const, content: t.question },
-          { role: "assistant" as const, content: t.answer },
-        ]),
-        {
-          role: "user",
-          content: P.answerUser(question, observations, eventTitles),
-        },
-      ],
-    });
-    return textOf(res).trim();
+  }: AnswerInput): Promise<AnswerResult> {
+    const out = (await this.json(this.models.answer, 1536, {
+      system: P.answerSystem(agent, memories),
+      // Earlier turns as real conversation, so follow ups resolve naturally.
+      history: history.flatMap((t) => [
+        { role: "user" as const, content: t.question },
+        { role: "assistant" as const, content: t.answer },
+      ]),
+      user: P.answerUser(question, observations, eventTitles),
+      schema: ANSWER_SCHEMA,
+    })) as { answer?: unknown; learn?: unknown };
+    return {
+      answer: typeof out.answer === "string" ? out.answer.trim() : "",
+      learn: parseLearn(out.learn),
+    };
   }
 
   private async json(
     model: string,
     maxTokens: number,
-    args: { system: string; user: string; schema: Record<string, unknown> },
+    args: {
+      system: string;
+      user: string;
+      schema: Record<string, unknown>;
+      history?: Anthropic.MessageParam[];
+    },
   ): Promise<unknown> {
     const res = await this.client.messages.create({
       model,
       max_tokens: maxTokens,
       system: args.system,
-      messages: [{ role: "user", content: args.user }],
+      messages: [...(args.history ?? []), { role: "user", content: args.user }],
       output_config: { format: { type: "json_schema", schema: args.schema } },
     });
     // Both of these can produce output that doesn't match the schema.
@@ -299,12 +312,28 @@ interface RawBriefing {
   followUps?: { name: string; why?: string; cites?: unknown }[];
   openQuestions?: unknown;
   markdown?: unknown;
+  remember?: { text: string; cites?: unknown }[];
 }
 
 const CITES = {
   type: "array",
   items: { type: "string" },
   description: "Refs of the observations this rests on, like n3.",
+};
+
+const LEARN = {
+  type: "array",
+  description:
+    "Durable things your owner just told you about themselves, their goals, or how you should behave. Usually empty.",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["kind", "text"],
+    properties: {
+      kind: { type: "string", enum: ["owner", "goal", "identity"] },
+      text: { type: "string" },
+    },
+  },
 };
 
 const CONVERSE_SCHEMA = {
@@ -325,13 +354,24 @@ const CONVERSE_SCHEMA = {
       items: { type: "string" },
       description: "Refs (like r2) of proposed asks the owner just approved.",
     },
+    learn: LEARN,
+  },
+};
+
+const ANSWER_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["answer", "learn"],
+  properties: {
+    answer: { type: "string", description: "Your answer to your owner." },
+    learn: LEARN,
   },
 };
 
 const BRIEFING_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["headline", "followUps", "openQuestions", "markdown"],
+  required: ["headline", "followUps", "openQuestions", "markdown", "remember"],
   properties: {
     headline: {
       type: "array",
@@ -358,6 +398,17 @@ const BRIEFING_SCHEMA = {
     },
     openQuestions: { type: "array", items: { type: "string" } },
     markdown: { type: "string", description: "The full briefing in markdown." },
+    remember: {
+      type: "array",
+      description:
+        "At most three things from this session worth remembering at future events. Often empty.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["text", "cites"],
+        properties: { text: { type: "string" }, cites: CITES },
+      },
+    },
   },
 };
 
@@ -396,4 +447,14 @@ function strings(v: unknown): string[] {
   return Array.isArray(v)
     ? v.filter((x): x is string => typeof x === "string")
     : [];
+}
+
+const LEARN_KINDS = new Set(["owner", "goal", "identity"]);
+
+function parseLearn(raw: unknown): LearnedFromOwner[] {
+  return (Array.isArray(raw) ? raw : []).flatMap((l) =>
+    LEARN_KINDS.has(l?.kind) && typeof l?.text === "string" && l.text.trim()
+      ? [{ kind: l.kind, text: l.text.trim() }]
+      : [],
+  );
 }

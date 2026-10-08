@@ -5,6 +5,7 @@ import {
   type AskTurnId,
 } from "@/core";
 import type { Deps } from "./deps";
+import { proposeLearned, recallMemory } from "./memory";
 
 const RECALL_LIMIT = 30;
 /** How much of the conversation the agent rereads before answering. */
@@ -19,14 +20,17 @@ export async function ask(
   d: Deps,
   agentId: AgentId,
   question: string,
-): Promise<AskTurn> {
+): Promise<AskTurn & { learned: string[] }> {
   const agent = await d.repos.agents.get(agentId);
   if (!agent) throw new DomainError("not_found", `agent ${agentId} not found`);
 
   const history = await d.repos.askTurns.recent(agentId, HISTORY_TURNS);
   const last = history.at(-1);
   const query = last ? `${question} ${last.question} ${last.answer}` : question;
-  const observations = await d.memory.recall(agentId, query, RECALL_LIMIT);
+  const [observations, memories] = await Promise.all([
+    d.memory.recall(agentId, query, RECALL_LIMIT),
+    recallMemory(d, agentId, query),
+  ]);
 
   const ids = [...new Set(observations.map((o) => o.manifestationId))];
   const contexts = await d.repos.manifestations.contexts({ ids });
@@ -34,8 +38,9 @@ export async function ask(
     contexts.map((c) => [c.manifestation.id, c.event.title]),
   );
 
-  const answer = await d.agent.answer({
+  const { answer, learn } = await d.agent.answer({
     agent,
+    memories,
     question,
     observations,
     eventTitles,
@@ -51,7 +56,11 @@ export async function ask(
     createdAt: d.now(),
   };
   await d.repos.askTurns.append(turn);
-  return turn;
+  const learned = await proposeLearned(d, agentId, learn, {
+    manifestationId: null,
+    quote: question,
+  });
+  return { ...turn, learned: learned.map((m) => m.text) };
 }
 
 /** The conversation so far, oldest first, for showing on the agent page. */

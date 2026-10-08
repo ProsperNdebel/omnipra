@@ -29,13 +29,16 @@ export async function ownedAgent(
 export interface AgentInput {
   name: string;
   profile: string;
+  style: string;
   lookFor: string[];
 }
 
 /** Below this, an agent has too little to go on and notes come out generic. */
 const MIN_PROFILE = 60;
 
-function clean(input: AgentInput): Pick<Agent, "name" | "profile" | "lookFor"> {
+function clean(
+  input: AgentInput,
+): Pick<Agent, "name" | "profile" | "style" | "lookFor"> {
   const name = input.name.trim();
   const profile = input.profile.trim();
   if (!name) throw new DomainError("bad_request", "Give your agent a name.");
@@ -48,6 +51,7 @@ function clean(input: AgentInput): Pick<Agent, "name" | "profile" | "lookFor"> {
   return {
     name: name.slice(0, 60),
     profile,
+    style: input.style.trim().slice(0, 1000),
     lookFor: input.lookFor.filter((x): x is LookFor =>
       (LOOK_FOR as readonly string[]).includes(x),
     ),

@@ -1,11 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export interface AskTurnView {
   id: string;
   question: string;
   answer: string;
+  /** What the agent proposed remembering from this question, if anything. */
+  learned?: string[];
 }
 
 /**
@@ -26,6 +29,7 @@ export function AskBox({
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (pending || turns.length > initial.length)
@@ -49,6 +53,8 @@ export function AskBox({
       if (!res.ok)
         throw new Error(body.message ?? `${name} couldn't answer. Try again.`);
       setTurns((t) => [...t, body as AskTurnView]);
+      // New proposals live in the server rendered memory section below.
+      if ((body as AskTurnView).learned?.length) router.refresh();
     } catch (err) {
       setQuestion(q);
       setError(err instanceof Error ? err.message : String(err));
@@ -72,6 +78,7 @@ export function AskBox({
               key={t.id}
               question={t.question}
               answer={t.answer}
+              learned={t.learned}
               name={name}
             />
           ))}
@@ -124,10 +131,12 @@ export function AskBox({
 function Turn({
   question,
   answer,
+  learned,
   name,
 }: {
   question: string;
   answer: string | null;
+  learned?: string[];
   name: string;
 }) {
   return (
@@ -142,6 +151,11 @@ function Turn({
           {answer ?? "Thinking"}
         </div>
       </li>
+      {learned?.map((l) => (
+        <li key={l} className="talk-update">
+          Wants to remember: {l} <a href="#memory">Review</a>
+        </li>
+      ))}
     </>
   );
 }
