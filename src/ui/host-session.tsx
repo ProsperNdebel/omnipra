@@ -17,12 +17,19 @@ interface Props {
 }
 
 const WARNINGS: Record<string, string> = {
-  page_hidden: "Keep this screen open. Recording pauses when you switch apps or lock the phone.",
+  page_hidden:
+    "Keep this screen open. Recording pauses when you switch apps or lock the phone.",
   low_audio: "It's quiet. Move closer to the speaker if you can.",
   no_wake_lock: "Keep the screen on. This browser can't hold it awake.",
 };
 
-export function HostSession({ id, agentName, eventTitle, initialStatus, startedAt }: Props) {
+export function HostSession({
+  id,
+  agentName,
+  eventTitle,
+  initialStatus,
+  startedAt,
+}: Props) {
   const [status, setStatus] = useState(initialStatus);
   const [cap, setCap] = useState<CaptureState | null>(null);
   const [observations, setObservations] = useState(0);
@@ -49,7 +56,9 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
   useEffect(() => {
     if (status !== "live") return;
     const t = setInterval(async () => {
-      const res = await fetch(`/api/manifestations/${id}/feed`).catch(() => null);
+      const res = await fetch(`/api/manifestations/${id}/feed`).catch(
+        () => null,
+      );
       if (res?.ok) setObservations((await res.json()).observationCount);
     }, 10_000);
     return () => clearInterval(t);
@@ -62,9 +71,14 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
     // Start the mic inside the tap (browsers require a gesture), tell the server in parallel.
     const capturing = s.start();
     if (status === "accepted") {
-      const res = await fetch(`/api/manifestations/${id}/start`, { method: "POST" });
+      const res = await fetch(`/api/manifestations/${id}/start`, {
+        method: "POST",
+      });
       if (!res.ok) {
-        setError((await res.json().catch(() => ({}))).message ?? "Couldn't start the session. Check your connection.");
+        setError(
+          (await res.json().catch(() => ({}))).message ??
+            "Couldn't start the session. Check your connection.",
+        );
         return;
       }
       setStatus("live");
@@ -77,9 +91,14 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
     // Stop recording and wait for every chunk to reach the server before ending,
     // so the briefing covers the whole session.
     await session.current?.stop();
-    const res = await fetch(`/api/manifestations/${id}/end`, { method: "POST" });
+    const res = await fetch(`/api/manifestations/${id}/end`, {
+      method: "POST",
+    });
     if (res.ok) setStatus("ended");
-    else setError("Couldn't end the session. Check your connection and try again.");
+    else
+      setError(
+        "Couldn't end the session. Check your connection and try again.",
+      );
     setEnding(false);
   }
 
@@ -94,7 +113,10 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
           <h1 className="title" style={{ marginTop: 0 }}>
             Done.
           </h1>
-          <p>{agentName} has what it needs and is writing its briefing for its owner. You can close this page.</p>
+          <p>
+            {agentName} has what it needs and is writing its briefing for its
+            owner. You can close this page.
+          </p>
         </div>
         <Link href="/host">Back to hosting</Link>
       </main>
@@ -130,13 +152,22 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
           <>
             <p className="clock">{clock(cap?.elapsedSec ?? 0)}</p>
             <p>
-              {agentName} is listening. {plural(observations, "observation")} so far.
+              {agentName} is listening. {plural(observations, "observation")} so
+              far.
             </p>
             <div className="meter" aria-hidden="true">
-              <i style={{ width: `${Math.min(100, Math.round((cap?.level ?? 0) * 900))}%` }} />
+              <i
+                style={{
+                  width: `${Math.min(100, Math.round((cap?.level ?? 0) * 900))}%`,
+                }}
+              />
             </div>
             {cap?.warning && <p className="error">{WARNINGS[cap.warning]}</p>}
-            {pending > 1 && <p className="small muted">{plural(pending, "chunk")} waiting to upload.</p>}
+            {pending > 1 && (
+              <p className="small muted">
+                {plural(pending, "chunk")} waiting to upload.
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -144,10 +175,13 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
               {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
             </h1>
             <p>
-              Only start where recording is allowed. Your microphone is used while this screen is open, and nothing
-              else on your phone is touched.
+              Only start where recording is allowed. Your microphone is used
+              while this screen is open, and nothing else on your phone is
+              touched.
             </p>
-            <p className="small muted">Keep the screen on and this page in front for the whole session.</p>
+            <p className="small muted">
+              Keep the screen on and this page in front for the whole session.
+            </p>
           </>
         )}
         {(error || cap?.error) && (
@@ -160,10 +194,18 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
       <div style={{ display: "grid", gap: 12 }}>
         {capturing ? (
           <button className="button huge quiet" onClick={end} disabled={ending}>
-            {ending ? (pending > 0 ? `Uploading ${plural(pending, "chunk")}` : "Ending") : "End session"}
+            {ending
+              ? pending > 0
+                ? `Uploading ${plural(pending, "chunk")}`
+                : "Ending"
+              : "End session"}
           </button>
         ) : (
-          <button className="button huge" onClick={start} disabled={cap?.status === "starting"}>
+          <button
+            className="button huge"
+            onClick={start}
+            disabled={cap?.status === "starting"}
+          >
             {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
           </button>
         )}

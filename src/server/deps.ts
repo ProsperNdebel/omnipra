@@ -10,6 +10,7 @@ import type { Deps } from "@/pipeline";
  * The one place adapters get chosen. Supabase when its env vars are set,
  * otherwise the in memory store (handy for running without a database).
  */
+
 // Module scoped, so a hot reload of any adapter rebuilds deps with the new code.
 let deps: Deps | undefined;
 
@@ -24,7 +25,10 @@ function build(): Deps {
     blobs: store,
     memory: store,
     asr: new DeepgramTranscriber(required("DEEPGRAM_API_KEY")),
-    agent: new ClaudeAgentProvider(required("ANTHROPIC_API_KEY"), process.env.ANTHROPIC_WORKSPACE_ID || undefined),
+    agent: new ClaudeAgentProvider(
+      required("ANTHROPIC_API_KEY"),
+      process.env.ANTHROPIC_WORKSPACE_ID || undefined,
+    ),
     now: () => new Date().toISOString(),
     newId: () => crypto.randomUUID(),
   };
@@ -34,7 +38,9 @@ function buildStore(): BlobStore & Memory & { repos: Repos } {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (url && secret) return new SupabaseStore(createServerClient(url, secret));
-  console.warn("[presence] Supabase env not set; using the in memory store. Data is lost on restart.");
+  console.warn(
+    "[presence] Supabase env not set; using the in memory store. Data is lost on restart.",
+  );
   // Only the in memory data needs to survive hot reloads.
   const g = globalThis as unknown as { __presenceMemoryStore?: InMemoryStore };
   return (g.__presenceMemoryStore ??= new InMemoryStore());
