@@ -57,17 +57,24 @@ export interface HostRequest {
   resolvedAt: ISODate | null;
 }
 
+/**
+ * proposed: the agent wants it, the owner hasn't approved. sent: with the host.
+ * accepted: the host said they'll do it. done / declined: the host's answer.
+ * dismissed: the owner dropped it.
+ */
 export type HostRequestStatus =
-  "proposed" | "dismissed" | "sent" | "done" | "declined";
+  "proposed" | "dismissed" | "sent" | "accepted" | "done" | "declined";
 
-export type HostRequestEvent = "send" | "dismiss" | "done" | "decline";
+export type HostRequestEvent =
+  "send" | "dismiss" | "accept" | "done" | "decline";
 
 const REQUEST_TRANSITIONS: Record<
   HostRequestStatus,
   Partial<Record<HostRequestEvent, HostRequestStatus>>
 > = {
   proposed: { send: "sent", dismiss: "dismissed" },
-  sent: { done: "done", decline: "declined" },
+  sent: { accept: "accepted", done: "done", decline: "declined" },
+  accepted: { done: "done", decline: "declined" },
   dismissed: {},
   done: {},
   declined: {},
@@ -77,6 +84,7 @@ const REQUEST_TRANSITIONS: Record<
 export const REQUEST_ROLE: Record<HostRequestEvent, "owner" | "host"> = {
   send: "owner",
   dismiss: "owner",
+  accept: "host",
   done: "host",
   decline: "host",
 };
@@ -114,4 +122,4 @@ export function transitionRequest(
 
 /** Requests the host should currently see and act on. */
 export const isOpenForHost = (r: Pick<HostRequest, "status">) =>
-  r.status === "sent";
+  r.status === "sent" || r.status === "accepted";

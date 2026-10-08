@@ -26,6 +26,7 @@ import type {
 import type { AgentMessage, HostRequest } from "./presence";
 import type { Suggestion } from "./suggestion";
 import type { Action, ActionKind, ActionPayload } from "./action";
+import type { AgentAttention } from "./attention";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -65,7 +66,26 @@ export interface AgentProvider {
   reflect(input: ReflectInput): Promise<NewSuggestion[]>;
   /** Prepare an action for the owner to approve: an email, invite, contact, to do or note. */
   prepare(input: PrepareInput): Promise<PreparedAction>;
+  /** Present in several rooms: weigh them against each other and decide where attention goes. */
+  orchestrate(input: OrchestrateInput): Promise<Orchestration>;
 }
+
+export interface RoomInput {
+  manifestationId: ManifestationId;
+  eventTitle: string;
+  plan: PlanItem[];
+  /** The latest notes from that room, oldest first. */
+  notes: Observation[];
+}
+
+export interface OrchestrateInput {
+  agent: Agent;
+  memories: AgentMemory[];
+  rooms: RoomInput[];
+  previous: AgentAttention | null;
+}
+
+export type Orchestration = Pick<AgentAttention, "rooms" | "focus" | "pattern">;
 
 /** The owner (or a suggestion) asked for an action; the agent fills in the details. */
 export interface ActRequest {
@@ -128,7 +148,7 @@ export type NewPlanItem = Omit<PlanItem, "id">;
 /** What a provider returns. Ids, timing and ownership are filled in by the pipeline, not the model. */
 export type NewObservation = Omit<
   Observation,
-  "id" | "agentId" | "manifestationId" | "atSec" | "createdAt"
+  "id" | "agentId" | "manifestationId" | "atSec" | "createdAt" | "hostRequestId"
 >;
 
 /** Everything the agent knows about where it is right now. */
@@ -357,6 +377,15 @@ export interface Repos {
     /** Upsert. */
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
+  };
+  attention: {
+    get(agentId: AgentId): Promise<AgentAttention | null>;
+    /**
+     * Take the right to orchestrate this agent now, if nobody has in the last
+     * `everySec`. Exactly one caller wins, however many rooms report at once.
+     */
+    claim(agentId: AgentId, now: string, everySec: number): Promise<boolean>;
+    save(a: AgentAttention): Promise<void>;
   };
   actions: {
     /** Newest first. */

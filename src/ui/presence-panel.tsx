@@ -38,7 +38,10 @@ export function PresencePanel({
     : [];
   const withHost = requests.filter(
     (r) =>
-      r.status === "sent" || r.status === "done" || r.status === "declined",
+      r.status === "sent" ||
+      r.status === "accepted" ||
+      r.status === "done" ||
+      r.status === "declined",
   );
   if (!active && messages.length === 0) return null;
 
@@ -114,6 +117,7 @@ const REQUEST_WORDS: Record<HostRequest["status"], string> = {
   proposed: "Waiting for you",
   dismissed: "Dropped",
   sent: "With the host now",
+  accepted: "The host is on it",
   done: "Done",
   declined: "Couldn't do it",
 };

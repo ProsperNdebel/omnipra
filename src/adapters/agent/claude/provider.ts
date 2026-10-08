@@ -10,6 +10,8 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  OrchestrateInput,
+  Orchestration,
   ActRequest,
   PrepareInput,
   PreparedAction,
@@ -269,6 +271,63 @@ export class ClaudeAgentProvider implements AgentProvider {
     return {
       payload: cleanPayload(input.kind, out),
       why: typeof out.why === "string" ? out.why.trim() : "",
+    };
+  }
+
+  async orchestrate(input: OrchestrateInput): Promise<Orchestration> {
+    const out = (await this.json(this.models.observe, 1536, {
+      system: P.orchestrateSystem(input),
+      user: P.orchestrateUser(input),
+      schema: ORCHESTRATE_SCHEMA,
+    })) as {
+      rooms?: { room?: unknown; value?: unknown; status?: unknown }[];
+      focus?: { room?: unknown; why?: unknown };
+      pattern?: { text?: unknown; cites?: unknown };
+    };
+    const roomOf = new Map(
+      input.rooms.map((r, i) => [
+        P.roomRef(i).toLowerCase(),
+        r.manifestationId,
+      ]),
+    );
+    const ref = (v: unknown) =>
+      roomOf.get(
+        String(v ?? "")
+          .trim()
+          .toLowerCase(),
+      );
+    const notes = P.orchestrateNotes(input);
+    const noteOf = new Map(notes.map((o, i) => [P.noteRef(i), o.id]));
+    const values = ["high", "medium", "low"] as const;
+
+    const rooms = (Array.isArray(out.rooms) ? out.rooms : []).flatMap((r) => {
+      const id = ref(r?.room);
+      const value = values.find((v) => v === r?.value);
+      return id && value
+        ? [
+            {
+              manifestationId: id,
+              value,
+              status: String(r.status ?? "").trim(),
+            },
+          ]
+        : [];
+    });
+    const focusId = ref(out.focus?.room);
+    const why = String(out.focus?.why ?? "").trim();
+    const text = String(out.pattern?.text ?? "").trim();
+    return {
+      rooms,
+      focus: focusId && why ? { manifestationId: focusId, why } : null,
+      pattern: text
+        ? {
+            text,
+            evidence: strings(out.pattern?.cites).flatMap((c) => {
+              const id = noteOf.get(c.trim().toLowerCase());
+              return id ? [id] : [];
+            }),
+          }
+        : null,
     };
   }
 
@@ -554,6 +613,41 @@ const PREPARE_SCHEMA = {
     notes: { type: "string" },
     text: { type: "string" },
     due: { type: "string" },
+  },
+};
+
+const ORCHESTRATE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["rooms", "focus", "pattern"],
+  properties: {
+    rooms: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["room", "value", "status"],
+        properties: {
+          room: { type: "string", description: "Room ref, like R1." },
+          value: { type: "string", enum: ["high", "medium", "low"] },
+          status: { type: "string" },
+        },
+      },
+    },
+    focus: {
+      type: "object",
+      additionalProperties: false,
+      required: ["room", "why"],
+      description: "Empty strings when no room clearly matters most.",
+      properties: { room: { type: "string" }, why: { type: "string" } },
+    },
+    pattern: {
+      type: "object",
+      additionalProperties: false,
+      required: ["text", "cites"],
+      description: "Empty text when there is no pattern across rooms.",
+      properties: { text: { type: "string" }, cites: CITES },
+    },
   },
 };
 

@@ -6,6 +6,8 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  OrchestrateInput,
+  Orchestration,
   ActRequest,
   PrepareInput,
   PreparedAction,
@@ -236,6 +238,30 @@ export class FakeAgent implements AgentProvider {
     }[kind] as Record<string, unknown>;
     return { payload: cleanPayload(kind, raw), why: "You asked for it." };
   }
+
+  async orchestrate({ rooms }: OrchestrateInput): Promise<Orchestration> {
+    const [first, second] = rooms;
+    return {
+      rooms: rooms.map((r, i) => ({
+        manifestationId: r.manifestationId,
+        value: i === 0 ? "high" : "low",
+        status: `${r.notes.length} notes so far at ${r.eventTitle}.`,
+      })),
+      focus: first
+        ? {
+            manifestationId: first.manifestationId,
+            why: "This is where the traction talk is.",
+          }
+        : null,
+      pattern:
+        first?.notes[0] && second?.notes[0]
+          ? {
+              text: "Both rooms are hearing about fast sales cycles.",
+              evidence: [first.notes[0].id, second.notes[0].id],
+            }
+          : null,
+    };
+  }
 }
 
 /** Canned learning: "remember ..." becomes an owner fact, "my goal is ..." a goal. */
@@ -251,7 +277,8 @@ function actFrom(message: string): ActRequest[] {
   const email = message.match(/^email (\w+)/i)?.[1];
   if (email) return [{ kind: "email", instruction: message, target: email }];
   const contact = message.match(/save (\w+) as a contact/i)?.[1];
-  if (contact) return [{ kind: "contact", instruction: message, target: contact }];
+  if (contact)
+    return [{ kind: "contact", instruction: message, target: contact }];
   const call = message.match(/schedule a call with (\w+)/i)?.[1];
   if (call) return [{ kind: "event", instruction: message, target: call }];
   const task = message.match(/remind me to (.+)/i)?.[1];

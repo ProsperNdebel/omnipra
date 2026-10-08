@@ -12,7 +12,13 @@ import { viewerId } from "@/server/viewer";
 
 export const runtime = "nodejs";
 
-const EVENTS: HostRequestEvent[] = ["send", "dismiss", "done", "decline"];
+const EVENTS: HostRequestEvent[] = [
+  "send",
+  "dismiss",
+  "accept",
+  "done",
+  "decline",
+];
 
 /**
  * POST /api/manifestations/:id/requests/:rid/{send|dismiss|done|decline}

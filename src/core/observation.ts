@@ -1,5 +1,6 @@
 import type {
   AgentId,
+  HostRequestId,
   ISODate,
   ManifestationId,
   ObservationId,
@@ -35,6 +36,11 @@ export interface Observation {
   basis: ObservationBasis;
   /** Who said it, as the room identified them ("Acme's CEO"). Null when it wasn't clear. */
   speaker: string | null;
+  /**
+   * Set when this came from the host answering one of the agent's requests rather
+   * than from the transcript. Such notes have no transcript evidence; the request is the source.
+   */
+  hostRequestId: HostRequestId | null;
   /** The plan item this advances, if any. How goal progress is counted. */
   planItem: string | null;
   /** Named people or companies, for follow ups and cross event recall. */

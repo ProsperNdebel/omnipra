@@ -83,7 +83,9 @@ export function HostSession({
   }, [id, status]);
 
   // A new ask buzzes the phone where the browser allows it (Android; iOS ignores this).
-  const open = requests.filter((r) => r.status === "sent");
+  const open = requests.filter(
+    (r) => r.status === "sent" || r.status === "accepted",
+  );
   const seenOpen = useRef(0);
   useEffect(() => {
     if (open.length > seenOpen.current && "vibrate" in navigator) {
@@ -285,6 +287,10 @@ export function HostSession({
  * Something the agent asks the host to do in the room. The host can add what they
  * heard, then mark it done or say they couldn't. Either way the owner sees it.
  */
+/**
+ * A request from the agent, in two steps so its owner knows where things stand:
+ * the host says they'll do it, then reports what they found out.
+ */
 function HostAsk({
   sessionId,
   agentName,
@@ -297,10 +303,11 @@ function HostAsk({
   onDone: () => Promise<void>;
 }) {
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState<"done" | "decline" | null>(null);
+  const [busy, setBusy] = useState<"accept" | "done" | "decline" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const accepted = r.status === "accepted";
 
-  async function act(event: "done" | "decline") {
+  async function act(event: "accept" | "done" | "decline") {
     setBusy(event);
     setError(null);
     const res = await fetch(
@@ -318,32 +325,51 @@ function HostAsk({
 
   return (
     <li className="proposal" style={{ display: "block" }}>
-      <div className="small muted">{agentName} asks you</div>
+      <div className="small muted">
+        {accepted ? "You said you'd do this" : `${agentName} has a request`}
+      </div>
       <div style={{ marginTop: 4, fontSize: "var(--t-md)", fontWeight: 600 }}>
         {r.ask}
       </div>
-      <input
-        type="text"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        maxLength={500}
-        placeholder="What did you find out? (optional)"
-        style={{ marginTop: 12 }}
-      />
+      {accepted && (
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+          placeholder="What did you find out?"
+          aria-label="What you found out"
+          style={{ marginTop: 12 }}
+        />
+      )}
       <div className="actions" style={{ marginTop: 12 }}>
-        <button
-          className="button"
-          onClick={() => act("done")}
-          disabled={!!busy}
-        >
-          {busy === "done" ? "Saving" : "Done"}
-        </button>
+        {accepted ? (
+          <button
+            className="button"
+            onClick={() => act("done")}
+            disabled={!!busy}
+          >
+            {busy === "done" ? "Saving" : "Done"}
+          </button>
+        ) : (
+          <button
+            className="button"
+            onClick={() => act("accept")}
+            disabled={!!busy}
+          >
+            {busy === "accept" ? "Saving" : "I'll ask"}
+          </button>
+        )}
         <button
           className="button quiet"
           onClick={() => act("decline")}
           disabled={!!busy}
         >
-          {busy === "decline" ? "Saving" : "Couldn't"}
+          {busy === "decline"
+            ? "Saving"
+            : accepted
+              ? "Couldn't"
+              : "Can't right now"}
         </button>
       </div>
       {error && (

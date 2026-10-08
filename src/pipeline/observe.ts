@@ -4,15 +4,18 @@ import type {
   ObservationId,
   SegmentId,
 } from "@/core";
+import { currentAttention, THINK_EVERY_SEC } from "@/core";
 import { loadContext, type Deps } from "./deps";
+import { orchestrate } from "./orchestrate";
 import { fileAsks, message, presenceInput } from "./presence";
 
 /**
  * Wait for this much new transcript before the agent thinks. Short enough that it can
  * react to the room within about half a minute, long enough to reason over a thought
- * rather than a fragment.
+ * rather than a fragment. When the agent is in several rooms, rooms that matter more
+ * get thought about more often (see THINK_EVERY_SEC).
  */
-const MIN_WINDOW_SEC = 20;
+const MIN_WINDOW_SEC = THINK_EVERY_SEC.high;
 
 /**
  * The agent's loop while present: read new transcript, record notes, interrupt the owner
@@ -32,6 +35,7 @@ export async function observe(
 
   const to = Math.max(...window.map((s) => s.endSec));
   if (!opts.force && to - from < MIN_WINDOW_SEC) return [];
+  if (!opts.force && to - from < (await windowFor(d, ctx))) return [];
   if (!(await d.repos.manifestations.advanceCursor(id, from, to))) return [];
 
   let result;
@@ -65,6 +69,7 @@ export async function observe(
       // When it was said in the room, not when the model got to it.
       atSec: saidAt(o.evidence),
       planItem: o.planItem && planIds.has(o.planItem) ? o.planItem : null,
+      hostRequestId: null,
       createdAt,
     }));
 
@@ -93,5 +98,26 @@ export async function observe(
     hostTakesRequests: input.hostTakesRequests,
   });
 
+  // Something new was heard: a moment to look across all the rooms it's in.
+  if (observations.length > 0 && !opts.force) {
+    await orchestrate(d, ctx.agent.id).catch((e) =>
+      console.error("orchestrate failed", e),
+    );
+  }
   return observations;
+}
+
+/** How much new transcript this room needs before the agent thinks, given its current value. */
+async function windowFor(
+  d: Deps,
+  ctx: Awaited<ReturnType<typeof loadContext>>,
+): Promise<number> {
+  const attention = currentAttention(
+    await d.repos.attention.get(ctx.agent.id),
+    d.now(),
+  );
+  const room = attention?.rooms.find(
+    (r) => r.manifestationId === ctx.manifestation.id,
+  );
+  return THINK_EVERY_SEC[room?.value ?? "high"];
 }

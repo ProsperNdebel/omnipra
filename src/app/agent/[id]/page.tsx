@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { askHistory } from "@/pipeline";
 import {
   agentActions,
+  agentAttention,
   agentHome,
   agentMemory,
   agentSuggestions,
@@ -15,6 +16,7 @@ import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
 import { MemoryPanel } from "@/ui/memory-panel";
+import { MultiPresence } from "@/ui/multi-presence";
 import { ActionsPanel } from "@/ui/actions-panel";
 import { SuggestionsPanel } from "@/ui/suggestions-panel";
 
@@ -34,7 +36,7 @@ export default async function AgentPage({
     notFound(),
   );
 
-  const [rows, turns, memory, progress, suggestions, actions] =
+  const [rows, turns, memory, progress, suggestions, actions, attention] =
     await Promise.all([
       agentHome(d, agent),
       askHistory(d, agent.id),
@@ -42,6 +44,7 @@ export default async function AgentPage({
       goalProgress(d, agent),
       agentSuggestions(d, agent),
       agentActions(d, agent),
+      agentAttention(d, agent),
     ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -73,7 +76,20 @@ export default async function AgentPage({
       <SuggestionsPanel agentId={agent.id} open={suggestions} />
       <ActionsPanel agentId={agent.id} name={agent.name} {...actions} />
 
-      {live.length > 0 && <Sessions rows={live} />}
+      {live.length > 1 ? (
+        <MultiPresence
+          name={agent.name}
+          attention={attention}
+          rooms={live.map((r) => ({
+            id: r.manifestation.id,
+            eventTitle: r.event.title,
+            hostName: r.hostName,
+            observations: r.observations,
+          }))}
+        />
+      ) : (
+        live.length > 0 && <Sessions rows={live} />
+      )}
 
       <div className="narrow">
         <h2 className="section">Ask {agent.name}</h2>

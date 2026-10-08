@@ -7,6 +7,7 @@ import type {
   PrepareInput,
   NoteInContext,
   ReflectInput,
+  OrchestrateInput,
   PlanInput,
   PlanItem,
   ConverseInput,
@@ -377,4 +378,43 @@ export function prepareUser(input: PrepareInput): string {
     `<notes>\n${notes}\n</notes>`,
     `<done_for_owner>\n${actionsText(input.recentActions)}\n</done_for_owner>`,
   ].join("\n\n");
+}
+
+/** Short refs (R1, R2, ...) for rooms while orchestrating. */
+export const roomRef = (i: number) => `R${i + 1}`;
+
+/** All notes an orchestration may cite, in ref order, room by room. */
+export const orchestrateNotes = (input: OrchestrateInput) =>
+  input.rooms.flatMap((r) => r.notes);
+
+export function orchestrateSystem(input: OrchestrateInput): string {
+  return [
+    agentIdentity(input.agent, input.memories),
+    `You are present in ${input.rooms.length} rooms at once, each through a different host. You are one mind across all of them. Step back and look at the latest from every room against your owner's goals and your plan for each.`,
+    `For each room give value (high, medium or low: how much it matters to your owner right now, not in general) and status: one short line to your owner about what is happening there now.`,
+    `Choose a focus only if one room clearly matters most right now, and say why in one sentence to your owner ("The fintech session just started on African expansion"). Otherwise leave focus empty. Rooms you rate higher get more of your attention.`,
+    `Report a pattern only when two or more rooms are hearing variations of the same thing that matters to your owner; cite notes from at least two rooms. Otherwise leave it empty. Do not repeat the previous pattern.`,
+    EVIDENCE_RULES,
+    `No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function orchestrateUser(input: OrchestrateInput): string {
+  let n = 0;
+  const rooms = input.rooms.map((r, i) => {
+    const plan = r.plan.length
+      ? r.plan.map((p) => `  plan: ${p.watchFor}`).join("\n")
+      : "  plan: (none)";
+    const notes = r.notes.length
+      ? r.notes
+          .map((o) => `  ${noteRef(n++)} ${fmtObservation(o).slice(2)}`)
+          .join("\n")
+      : "  (nothing noted yet)";
+    return `${roomRef(i)} "${r.eventTitle}"\n${plan}\n${notes}`;
+  });
+  const prev = input.previous;
+  const before = prev
+    ? `Last time: focus ${prev.focus ? `"${input.rooms.find((r) => r.manifestationId === prev.focus!.manifestationId)?.eventTitle ?? "a room you have left"}"` : "none"}; pattern ${prev.pattern ? `"${prev.pattern.text}"` : "none"}.`
+    : "This is the first time you are looking across these rooms.";
+  return [`<rooms>\n${rooms.join("\n\n")}\n</rooms>`, before].join("\n\n");
 }

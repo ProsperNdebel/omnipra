@@ -9,4 +9,5 @@ export { draftPlan } from "./plan";
 export { reflect } from "./reflect";
 export { withTitles } from "./notes";
 export { prepareActions, recentActions } from "./act";
+export { orchestrate } from "./orchestrate";
 export { actOnRequest, converse, presenceInput, setAutonomy } from "./presence";

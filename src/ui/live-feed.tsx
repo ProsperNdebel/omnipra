@@ -223,6 +223,7 @@ const noteAnchor = (id: string) => `note-${id}`;
 
 /** Who a note rests on, so a single speaker's claim never reads as fact. */
 function basisWords(o: Observation, agentName: string): string {
+  if (o.hostRequestId) return `reported by ${o.speaker ?? "your host"}`;
   if (o.basis === "corroborated") return "confirmed by more than one source";
   if (o.basis === "inference") return `${agentName}'s inference`;
   return o.speaker ? `claimed by ${o.speaker}` : "claimed";
@@ -247,7 +248,8 @@ function Observations({
               {o.alert && `, matched "${o.alert}"`}
             </div>
             <div style={{ marginTop: 4 }}>{o.text}</div>
-            <Source note={o} sessionId={sessionId} />
+            {/* Host reported notes have no transcript; the request is their source. */}
+            {o.evidence.length > 0 && <Source note={o} sessionId={sessionId} />}
           </div>
         </li>
       ))}

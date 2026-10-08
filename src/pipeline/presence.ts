@@ -1,4 +1,6 @@
 import {
+  type Observation,
+  type ObservationId,
   describeAction,
   DomainError,
   REQUEST_ROLE,
@@ -56,7 +58,10 @@ export async function presenceInput(
     conversation: messages.slice(-RECENT_MESSAGES),
     requests: requests.filter(
       (r) =>
-        r.status === "proposed" || r.status === "sent" || r.status === "done",
+        r.status === "proposed" ||
+        r.status === "sent" ||
+        r.status === "accepted" ||
+        r.status === "done",
     ),
     hostTakesRequests: listing?.openToRequests ?? false,
     related,
@@ -316,11 +321,11 @@ export async function actOnRequest(
   ) {
     throw new DomainError("forbidden", `You can't ${event} this request.`);
   }
+  const listing = (await d.repos.events.listingsFor([ctx.event.id])).find(
+    (l) => l.hostId === ctx.endpoint.hostId,
+  );
   if (event === "send") {
-    const listings = await d.repos.events.listingsFor([ctx.event.id]);
-    const open = listings.find(
-      (l) => l.hostId === ctx.endpoint.hostId,
-    )?.openToRequests;
+    const open = listing?.openToRequests;
     if (!open)
       throw new DomainError("bad_request", "This host isn't taking requests.");
   }
@@ -350,18 +355,52 @@ export async function actOnRequest(
             kind: "update",
             text: `Dropped: ${next.ask}`,
           })
-        : event === "done"
+        : event === "accept"
           ? message(d, ctx, {
               from: "host",
               kind: "update",
-              text: `Host did it: ${sentence(next.ask)}${note}`,
+              text: `Host is on it: ${sentence(next.ask)}`,
             })
-          : message(d, ctx, {
-              from: "host",
-              kind: "update",
-              text: `Host couldn't: ${sentence(next.ask)}${note}`,
-            });
+          : event === "done"
+            ? message(d, ctx, {
+                from: "host",
+                kind: "update",
+                text: `Host did it: ${sentence(next.ask)}${note}`,
+              })
+            : message(d, ctx, {
+                from: "host",
+                kind: "update",
+                text: `Host couldn't: ${sentence(next.ask)}${note}`,
+              });
   await d.repos.messages.append([line]);
+
+  // What the host found out is something the agent learned in the room: it becomes
+  // a note like any other, recalled in briefings, Ask and later events.
+  if (event === "done" && next.hostNote) {
+    const host = listing?.displayName.trim();
+    const started = ctx.manifestation.startedAt;
+    const note: Observation = {
+      id: d.newId() as ObservationId,
+      agentId: ctx.agent.id,
+      manifestationId: ctx.manifestation.id,
+      kind: "insight",
+      text: `Asked: ${sentence(next.ask)} Answer: ${sentence(next.hostNote)}`,
+      importance: 2,
+      alert: null,
+      basis: "claim",
+      speaker: host ? `${host}, your host` : "your host",
+      hostRequestId: next.id,
+      planItem: null,
+      entities: [],
+      evidence: [],
+      atSec: started
+        ? Math.max(0, (Date.parse(d.now()) - Date.parse(started)) / 1000)
+        : null,
+      createdAt: d.now(),
+    };
+    await d.repos.observations.append([note]);
+    await d.memory.index([note]);
+  }
   return next;
 }
 

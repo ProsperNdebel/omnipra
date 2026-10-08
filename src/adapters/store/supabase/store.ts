@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AgentAttention,
   AgentId,
   BlobStore,
   Memory,
@@ -14,7 +15,7 @@ const AUDIO_BUCKET = "audio";
 
 /** Note columns, without the full text search vector. */
 const OBSERVATION_COLUMNS =
-  "id, agent_id, manifestation_id, kind, text, importance, alert, basis, speaker, plan_item, entities, evidence, at_sec, created_at";
+  "id, agent_id, manifestation_id, kind, text, importance, alert, basis, speaker, plan_item, host_request_id, entities, evidence, at_sec, created_at";
 
 /**
  * A session joined to its device, mission, agent and event through foreign keys.
@@ -432,6 +433,41 @@ export class SupabaseStore implements BlobStore, Memory {
         must(
           await this.db.from("agent_memories").delete().eq("id", id),
           "memories.remove",
+        );
+      },
+    },
+
+    attention: {
+      get: async (agentId) => {
+        const row = must(
+          await this.db
+            .from("agent_attention")
+            .select("state")
+            .eq("agent_id", agentId)
+            .maybeSingle(),
+          "attention.get",
+        );
+        return ((row as { state?: unknown } | null)?.state ??
+          null) as AgentAttention | null;
+      },
+      claim: async (agentId, now, everySec) => {
+        const won = must(
+          await this.db.rpc("claim_attention", {
+            p_agent: agentId,
+            p_now: now,
+            p_every: everySec,
+          }),
+          "attention.claim",
+        );
+        return won === true;
+      },
+      save: async (a) => {
+        must(
+          await this.db
+            .from("agent_attention")
+            .update({ state: a })
+            .eq("agent_id", a.agentId),
+          "attention.save",
         );
       },
     },
