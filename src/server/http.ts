@@ -9,6 +9,7 @@ const STATUS: Record<string, number> = {
   not_capturing: 410,
   not_started: 425,
   capture_not_confirmed: 400,
+  unauthorized: 401,
   forbidden: 403,
   invalid_transition: 409,
   conflict: 409,

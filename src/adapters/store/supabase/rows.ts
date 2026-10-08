@@ -9,6 +9,8 @@ import type {
   Action,
   AgentCard,
   Encounter,
+  ApiKey,
+  ApiKeyId,
   EncounterId,
   Outing,
   OutingId,
@@ -493,5 +495,30 @@ export const encounter = {
     status: e.status,
     created_at: e.createdAt,
     resolved_at: e.resolvedAt,
+  }),
+};
+
+export const apiKey = {
+  from: (r: Row): ApiKey => ({
+    id: r.id as ApiKeyId,
+    agentId: r.agent_id as AgentId,
+    ownerId: r.owner_id as UserId,
+    label: r.label as string,
+    prefix: r.prefix as string,
+    hash: r.hash as string,
+    createdAt: r.created_at as string,
+    lastUsedAt: (r.last_used_at as string | null) ?? null,
+    revokedAt: (r.revoked_at as string | null) ?? null,
+  }),
+  to: (k: ApiKey): Row => ({
+    id: k.id,
+    agent_id: k.agentId,
+    owner_id: k.ownerId,
+    label: k.label,
+    prefix: k.prefix,
+    hash: k.hash,
+    created_at: k.createdAt,
+    last_used_at: k.lastUsedAt,
+    revoked_at: k.revokedAt,
   }),
 };

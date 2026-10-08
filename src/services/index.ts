@@ -10,3 +10,5 @@ export * from "./actions";
 export * from "./attention";
 export * from "./outings";
 export * from "./encounters";
+export * from "./api-keys";
+export * as v1 from "./api-v1";

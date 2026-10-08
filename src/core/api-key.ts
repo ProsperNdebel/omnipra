@@ -1,0 +1,21 @@
+import type { AgentId, ApiKeyId, ISODate, UserId } from "./ids";
+
+/**
+ * Lets an outside agent act as one Presence agent, with exactly its owner's rights
+ * over that agent and nothing else. Only a hash of the secret is stored.
+ */
+export interface ApiKey {
+  id: ApiKeyId;
+  agentId: AgentId;
+  ownerId: UserId;
+  label: string;
+  /** The first characters, so the owner can tell keys apart. */
+  prefix: string;
+  /** SHA-256 of the full secret. */
+  hash: string;
+  createdAt: ISODate;
+  lastUsedAt: ISODate | null;
+  revokedAt: ISODate | null;
+}
+
+export const API_KEY_PREFIX = "pres_";

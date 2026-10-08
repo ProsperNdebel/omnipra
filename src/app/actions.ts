@@ -12,6 +12,7 @@ import {
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
   actOnSuggestion,
+  revokeApiKey,
   answerIntroduction,
   bookOuting,
   dismissOuting,
@@ -343,4 +344,15 @@ export async function introductionAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#met`);
+}
+
+/** Turn off an outside agent's key. It stops working on its next call. */
+export async function revokeKeyAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  try {
+    await revokeApiKey(getDeps(), await viewerId(), str(form, "id"));
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#api`);
 }

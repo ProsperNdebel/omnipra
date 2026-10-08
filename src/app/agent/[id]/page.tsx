@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { askHistory } from "@/pipeline";
 import {
   agentActions,
+  agentApiKeys,
   agentAttention,
   agentEncounters,
   agentHome,
@@ -17,6 +18,7 @@ import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
+import { ApiKeysPanel } from "@/ui/api-keys-panel";
 import { EncountersPanel } from "@/ui/encounters-panel";
 import { MemoryPanel } from "@/ui/memory-panel";
 import { MultiPresence } from "@/ui/multi-presence";
@@ -50,6 +52,7 @@ export default async function AgentPage({
     attention,
     outings,
     met,
+    keys,
   ] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
@@ -60,6 +63,7 @@ export default async function AgentPage({
     agentAttention(d, agent),
     agentOutings(d, agent.id),
     agentEncounters(d, agent),
+    agentApiKeys(d, agent),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -131,6 +135,18 @@ export default async function AgentPage({
         memory={memory}
         progress={progress}
         error={error}
+      />
+
+      <ApiKeysPanel
+        agentId={agent.id}
+        name={agent.name}
+        keys={keys.map((k) => ({
+          id: k.id,
+          label: k.label,
+          prefix: k.prefix,
+          createdAt: k.createdAt,
+          lastUsedAt: k.lastUsedAt,
+        }))}
       />
 
       <h2 className="section">Sessions</h2>

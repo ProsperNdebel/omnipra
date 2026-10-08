@@ -10,6 +10,8 @@ import type {
   AgentAttention,
   Outing,
   Encounter,
+  ApiKey,
+  ApiKeyId,
   EncounterId,
   OutingId,
   ActionId,
@@ -56,6 +58,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly attention = new Map<AgentId, AgentAttention>();
   readonly outings = new Map<OutingId, Outing>();
   readonly encounters = new Map<EncounterId, Encounter>();
+  readonly apiKeys = new Map<ApiKeyId, ApiKey>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -200,6 +203,19 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    apiKeys: {
+      byHash: async (hash) =>
+        [...this.apiKeys.values()].find(
+          (k) => k.hash === hash && !k.revokedAt,
+        ) ?? null,
+      byAgent: async (agentId) =>
+        [...this.apiKeys.values()]
+          .filter((k) => k.agentId === agentId)
+          .sort(by((k) => k.createdAt))
+          .reverse(),
+      get: async (id) => this.apiKeys.get(id) ?? null,
+      save: async (k) => void this.apiKeys.set(k.id, k),
     },
     encounters: {
       byAgent: async (agentId) =>

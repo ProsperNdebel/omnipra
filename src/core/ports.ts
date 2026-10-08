@@ -12,6 +12,7 @@ import type {
   ActionId,
   OutingId,
   EncounterId,
+  ApiKeyId,
   ObservationId,
   SegmentId,
   UserId,
@@ -31,6 +32,7 @@ import type { Action, ActionKind, ActionPayload } from "./action";
 import type { AgentAttention } from "./attention";
 import type { Outing } from "./outing";
 import type { Encounter } from "./encounter";
+import type { ApiKey } from "./api-key";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -421,6 +423,14 @@ export interface Repos {
     /** Upsert. */
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
+  };
+  apiKeys: {
+    /** Only live keys: revoked ones never authenticate. */
+    byHash(hash: string): Promise<ApiKey | null>;
+    /** Newest first, revoked included. */
+    byAgent(agentId: AgentId): Promise<ApiKey[]>;
+    get(id: ApiKeyId): Promise<ApiKey | null>;
+    save(k: ApiKey): Promise<void>;
   };
   encounters: {
     /** Encounters this agent is on either side of. Newest first. */

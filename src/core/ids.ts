@@ -17,6 +17,7 @@ export type SuggestionId = Id<"Suggestion">;
 export type ActionId = Id<"Action">;
 export type OutingId = Id<"Outing">;
 export type EncounterId = Id<"Encounter">;
+export type ApiKeyId = Id<"ApiKey">;
 
 export type ISODate = string;
 

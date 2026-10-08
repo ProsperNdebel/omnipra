@@ -11,4 +11,10 @@ export { withTitles } from "./notes";
 export { prepareActions, recentActions } from "./act";
 export { orchestrate } from "./orchestrate";
 export { meetOthers } from "./meet";
-export { actOnRequest, converse, presenceInput, setAutonomy } from "./presence";
+export {
+  actOnRequest,
+  converse,
+  fileAsks,
+  presenceInput,
+  setAutonomy,
+} from "./presence";
