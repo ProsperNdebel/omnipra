@@ -1,5 +1,6 @@
 import {
   DomainError,
+  type Capability,
   type Agent,
   type EventId,
   type ManifestationId,
@@ -20,6 +21,17 @@ export interface Caller {
 }
 
 const MAX_DAYS = 30;
+
+/** Capability names in the API, which describe what an agent gets rather than the hardware. */
+const API_NAME: Partial<Record<Capability, string>> = {
+  mic: "audio",
+  camera: "vision",
+  speaker: "speech",
+  location: "location",
+};
+const FROM_API = Object.fromEntries(
+  Object.entries(API_NAME).map(([k, v]) => [v, k as Capability]),
+);
 
 /** Events an agent could attend, with the hosts who could carry it and what they offer. */
 export async function listEvents(d: Deps, days = 7) {
@@ -45,7 +57,7 @@ export async function listEvents(d: Deps, days = 7) {
         name: l.displayName,
         price_cents: l.priceCents,
         capabilities: [
-          ...(l.offers.includes("mic") ? ["audio"] : []),
+          ...l.offers.flatMap((c) => (API_NAME[c] ? [API_NAME[c]] : [])),
           ...(l.openToRequests ? ["host_requests"] : []),
         ],
       })),
@@ -80,9 +92,10 @@ export async function manifest(
     throw new DomainError("bad_request", "budget_cents must be a number.");
 
   const listings = await d.repos.events.listings(eventId);
+  const requires = wants.flatMap((w) => (FROM_API[w] ? [FROM_API[w]!] : []));
   const fits = listings
     .filter((l) => (body.host_id ? l.hostId === body.host_id : true))
-    .filter((l) => (wants.includes("audio") ? l.offers.includes("mic") : true))
+    .filter((l) => requires.every((c) => l.offers.includes(c)))
     .filter((l) => (wants.includes("host_requests") ? l.openToRequests : true))
     .filter((l) => l.priceCents <= budget)
     .sort((a, b) => a.priceCents - b.priceCents);
@@ -101,6 +114,7 @@ export async function manifest(
     instructions: String(body.instructions ?? "").slice(0, 2000),
     alerts: [],
     autonomy: body.autonomy === "act" ? "act" : "ask_first",
+    requires: requires.length ? requires : ["mic"],
   });
   return { session: await session(d, caller, m.id), missionId: m.missionId };
 }

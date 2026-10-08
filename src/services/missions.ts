@@ -1,4 +1,5 @@
 import {
+  type Capability,
   DomainError,
   supports,
   type EventId,
@@ -27,6 +28,8 @@ export async function sendAgent(
     alerts: string[];
     /** Only "act" if the host takes requests; otherwise the agent can't reach them anyway. */
     autonomy: Autonomy;
+    /** What the body must be able to do. Hearing, unless asked for more. */
+    requires?: Capability[];
   },
 ): Promise<Manifestation> {
   if (!input.agentId)
@@ -52,11 +55,13 @@ export async function sendAgent(
     );
 
   const endpoint = await d.repos.endpoints.get(listing.endpointId);
-  const requires = ["mic"] as const;
-  if (!endpoint || !supports(endpoint, [...requires])) {
+  const requires: Capability[] = input.requires?.length
+    ? input.requires
+    : ["mic"];
+  if (!endpoint || !supports(endpoint, requires)) {
     throw new DomainError(
       "bad_request",
-      "That host's device can't capture audio.",
+      `That host's device can't do what this needs (${requires.join(", ")}).`,
     );
   }
 
@@ -67,7 +72,7 @@ export async function sendAgent(
     instructions: input.instructions.trim(),
     alerts: input.alerts.map((a) => a.trim()).filter(Boolean),
     context: ["memory"],
-    requires: [...requires],
+    requires,
     autonomy: listing.openToRequests ? input.autonomy : "ask_first",
     orders: [],
     plan: null,

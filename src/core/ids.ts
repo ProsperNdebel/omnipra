@@ -18,6 +18,7 @@ export type ActionId = Id<"Action">;
 export type OutingId = Id<"Outing">;
 export type EncounterId = Id<"Encounter">;
 export type ApiKeyId = Id<"ApiKey">;
+export type FrameId = Id<"Frame">;
 
 export type ISODate = string;
 

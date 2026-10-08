@@ -13,6 +13,7 @@ import type {
   OutingId,
   EncounterId,
   ApiKeyId,
+  FrameId,
   ObservationId,
   SegmentId,
   UserId,
@@ -33,6 +34,7 @@ import type { AgentAttention } from "./attention";
 import type { Outing } from "./outing";
 import type { Encounter } from "./encounter";
 import type { ApiKey } from "./api-key";
+import type { Frame } from "./frame";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -78,6 +80,14 @@ export interface AgentProvider {
   scout(input: ScoutInput): Promise<ScoutResult>;
   /** Another agent at the same event: should this agent's owner know its owner? Sees only their card. */
   assess(input: AssessInput): Promise<{ relevant: boolean; why: string }>;
+  /** Something the body's camera saw: notes on what in it matters to the owner. */
+  see(input: SeeInput): Promise<NewObservation[]>;
+}
+
+export interface SeeInput extends PresenceInput {
+  image: { bytes: Uint8Array; mimeType: string };
+  /** What the host or device said about the image, if anything. */
+  caption: string | null;
 }
 
 export interface AssessInput {
@@ -194,7 +204,13 @@ export type NewPlanItem = Omit<PlanItem, "id">;
 /** What a provider returns. Ids, timing and ownership are filled in by the pipeline, not the model. */
 export type NewObservation = Omit<
   Observation,
-  "id" | "agentId" | "manifestationId" | "atSec" | "createdAt" | "hostRequestId"
+  | "id"
+  | "agentId"
+  | "manifestationId"
+  | "atSec"
+  | "createdAt"
+  | "hostRequestId"
+  | "frames"
 >;
 
 /** Everything the agent knows about where it is right now. */
@@ -343,6 +359,8 @@ export interface Repos {
   endpoints: {
     get(id: Endpoint["id"]): Promise<Endpoint | null>;
     byHost(hostId: UserId): Promise<Endpoint[]>;
+    /** A device calling the device API, by the hash of its token. */
+    byTokenHash(hash: string): Promise<Endpoint | null>;
     save(e: Endpoint): Promise<void>;
   };
   missions: {
@@ -423,6 +441,10 @@ export interface Repos {
     /** Upsert. */
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
+  };
+  frames: {
+    save(f: Frame): Promise<void>;
+    get(id: FrameId): Promise<Frame | null>;
   };
   apiKeys: {
     /** Only live keys: revoked ones never authenticate. */

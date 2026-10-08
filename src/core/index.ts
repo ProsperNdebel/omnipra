@@ -14,4 +14,5 @@ export * from "./attention";
 export * from "./outing";
 export * from "./encounter";
 export * from "./api-key";
+export * from "./frame";
 export * from "./ports";

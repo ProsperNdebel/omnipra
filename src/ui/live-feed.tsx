@@ -223,6 +223,8 @@ const noteAnchor = (id: string) => `note-${id}`;
 
 /** Who a note rests on, so a single speaker's claim never reads as fact. */
 function basisWords(o: Observation, agentName: string): string {
+  if (o.frames.length > 0)
+    return `seen${o.speaker ? `, from ${o.speaker}` : ""}`;
   if (o.hostRequestId) return `reported by ${o.speaker ?? "your host"}`;
   if (o.basis === "corroborated") return "confirmed by more than one source";
   if (o.basis === "inference") return `${agentName}'s inference`;
@@ -250,6 +252,27 @@ function Observations({
             <div style={{ marginTop: 4 }}>{o.text}</div>
             {/* Host reported notes have no transcript; the request is their source. */}
             {o.evidence.length > 0 && <Source note={o} sessionId={sessionId} />}
+            {/* Seen notes cite the image itself. */}
+            {o.frames.map((f) => (
+              <a
+                key={f}
+                href={`/api/manifestations/${sessionId}/frames/${f}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/manifestations/${sessionId}/frames/${f}`}
+                  alt="What the agent saw"
+                  style={{
+                    display: "block",
+                    marginTop: 8,
+                    maxWidth: 280,
+                    border: "1px solid var(--rule)",
+                  }}
+                />
+              </a>
+            ))}
           </div>
         </li>
       ))}

@@ -7,6 +7,8 @@ import type {
   NewPlanItem,
   PlanInput,
   AssessInput,
+  SeeInput,
+  NewObservation,
   OrchestrateInput,
   ScoutInput,
   ScoutResult,
@@ -296,6 +298,22 @@ export class FakeAgent implements AgentProvider {
         ? `${other.name} works on something close to what you're building.`
         : `${other.name}'s work doesn't touch your goals.`,
     };
+  }
+
+  async see({ caption }: SeeInput): Promise<NewObservation[]> {
+    return [
+      {
+        kind: "number",
+        text: `Seen: ${caption ?? "a slide"} shows 4 signed contracts.`,
+        importance: 2,
+        alert: null,
+        basis: "claim",
+        speaker: "the slide",
+        planItem: null,
+        entities: [],
+        evidence: [],
+      },
+    ];
   }
 }
 

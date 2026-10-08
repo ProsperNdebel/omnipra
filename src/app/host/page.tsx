@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { decideAction } from "@/app/actions";
-import { hostInbox, type ManifestationRow } from "@/services";
+import { hostDevices, hostInbox, type ManifestationRow } from "@/services";
+import { DevicesPanel } from "@/ui/devices-panel";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { Dot } from "@/ui/bar";
@@ -15,7 +16,11 @@ export default async function HostInbox({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const rows = await hostInbox(getDeps(), await viewerId());
+  const me = await viewerId();
+  const [rows, devices] = await Promise.all([
+    hostInbox(getDeps(), me),
+    hostDevices(getDeps(), me),
+  ]);
   const requests = rows.filter((r) => r.manifestation.status === "requested");
   const upcoming = rows.filter((r) =>
     ["accepted", "live"].includes(r.manifestation.status),
@@ -109,6 +114,15 @@ export default async function HostInbox({
             <List rows={past} />
           </>
         )}
+        <DevicesPanel
+          devices={devices.map((d) => ({
+            id: d.id,
+            name: d.name,
+            kind: d.kind,
+            capabilities: d.capabilities,
+            lastSeenAt: d.lastSeenAt,
+          }))}
+        />
       </div>
     </main>
   );

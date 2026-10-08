@@ -1,5 +1,6 @@
 import type {
   AgentId,
+  FrameId,
   HostRequestId,
   ISODate,
   ManifestationId,
@@ -47,6 +48,8 @@ export interface Observation {
   entities: string[];
   /** Transcript the observation rests on, so every claim can be traced. */
   evidence: SegmentId[];
+  /** Images it rests on, when the agent saw it rather than heard it. */
+  frames: FrameId[];
   /** Seconds into the session where the cited transcript starts. Null for notes made before this existed. */
   atSec: number | null;
   createdAt: ISODate;

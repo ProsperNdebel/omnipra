@@ -208,6 +208,7 @@ export function HostSession({
               />
             </div>
             {cap?.warning && <p className="error">{WARNINGS[cap.warning]}</p>}
+            <SnapPhoto sessionId={id} agentName={agentName} />
             {pending > 1 && (
               <p className="small muted">
                 {plural(pending, "chunk")} waiting to upload.
@@ -378,5 +379,73 @@ function HostAsk({
         </p>
       )}
     </li>
+  );
+}
+
+/**
+ * The phone's camera as the agent's eyes: point it at a slide, a whiteboard or a
+ * badge, and the agent reads it. Opens the camera directly on phones.
+ */
+function SnapPhoto({
+  sessionId,
+  agentName,
+}: {
+  sessionId: string;
+  agentName: string;
+}) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
+    "idle",
+  );
+  const [caption, setCaption] = useState("");
+
+  async function send(file: File) {
+    setState("sending");
+    const res = await fetch(`/api/manifestations/${sessionId}/frames`, {
+      method: "POST",
+      headers: {
+        "content-type": file.type,
+        ...(caption.trim()
+          ? { "x-caption": encodeURIComponent(caption.trim()) }
+          : {}),
+      },
+      body: file,
+    }).catch(() => null);
+    setState(res?.ok ? "sent" : "error");
+    if (res?.ok) setCaption("");
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <input
+        type="text"
+        value={caption}
+        onChange={(e) => setCaption(e.target.value)}
+        maxLength={300}
+        placeholder="What is it? (optional) The pricing slide"
+        aria-label="What the photo shows"
+      />
+      <label
+        className="button quiet"
+        style={{ display: "inline-block", marginTop: 12, cursor: "pointer" }}
+      >
+        {state === "sending" ? "Sending" : `Show ${agentName} something`}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          disabled={state === "sending"}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void send(f);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {state === "sent" && <p className="small muted">{agentName} has it.</p>}
+      {state === "error" && (
+        <p className="error">That photo didn&rsquo;t go through. Try again.</p>
+      )}
+    </div>
   );
 }

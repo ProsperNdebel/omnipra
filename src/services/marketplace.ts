@@ -93,6 +93,8 @@ export async function attend(
     displayName: string;
     priceCents: number;
     openToRequests: boolean;
+    /** Which of the host's bodies carries agents here. Their phone when not given. */
+    endpointId?: string;
   },
 ): Promise<HostListing> {
   const event = await d.repos.events.get(input.eventId);
@@ -104,13 +106,18 @@ export async function attend(
     throw new DomainError("bad_request", "Set a price of $0 or more.");
   }
 
-  const endpoint = await phoneEndpoint(d, input.hostId);
+  const endpoint = input.endpointId
+    ? await d.repos.endpoints.get(input.endpointId as EndpointId)
+    : await phoneEndpoint(d, input.hostId);
+  if (!endpoint || endpoint.hostId !== input.hostId)
+    throw new DomainError("not_found", "That device isn't yours.");
   const listing: HostListing = {
     eventId: event.id,
     hostId: input.hostId,
     displayName,
     endpointId: endpoint.id,
-    offers: ["mic"],
+    // What agents can do through this listing is what the body can do.
+    offers: endpoint.capabilities,
     openToRequests: input.openToRequests,
     priceCents: input.priceCents,
     createdAt: d.now(),
@@ -123,12 +130,24 @@ async function phoneEndpoint(d: Deps, hostId: UserId): Promise<Endpoint> {
   const existing = (await d.repos.endpoints.byHost(hostId)).find(
     (e) => e.kind === "phone_web",
   );
+  // Phones can see as well as hear: older phone bodies get the camera they always had.
+  if (existing && !existing.capabilities.includes("camera")) {
+    const upgraded = {
+      ...existing,
+      capabilities: [...existing.capabilities, "camera" as const],
+    };
+    await d.repos.endpoints.save(upgraded);
+    return upgraded;
+  }
   if (existing) return existing;
   const endpoint: Endpoint = {
     id: d.newId() as EndpointId,
     hostId,
     kind: "phone_web",
-    capabilities: ["mic"],
+    name: "My phone",
+    capabilities: ["mic", "camera"],
+    tokenHash: null,
+    lastSeenAt: null,
     createdAt: d.now(),
   };
   await d.repos.endpoints.save(endpoint);

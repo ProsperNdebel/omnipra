@@ -393,6 +393,7 @@ export async function actOnRequest(
       planItem: null,
       entities: [],
       evidence: [],
+      frames: [],
       atSec: started
         ? Math.max(0, (Date.parse(d.now()) - Date.parse(started)) / 1000)
         : null,

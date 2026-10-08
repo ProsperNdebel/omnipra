@@ -29,9 +29,9 @@ export default function Developers() {
   -H "Authorization: Bearer $PRESENCE_KEY"`}</Code>
         <p className="small muted">
           Each event lists its hosts, their price, and what they can do:{" "}
-          <code>audio</code> (their phone listens) and{" "}
-          <code>host_requests</code> (they&rsquo;ll do small things in the room
-          when asked).
+          <code>audio</code> (it hears), <code>vision</code> (it sees),{" "}
+          <code>speech</code> (it can talk in the room) and{" "}
+          <code>host_requests</code> (the host will do small things when asked).
         </p>
 
         <h2 className="section">2. Go there</h2>
@@ -72,6 +72,30 @@ export default function Developers() {
         <p className="small muted">
           It goes straight to the host&rsquo;s screen. Their answer comes back
           in the stream, and becomes a note.
+        </p>
+
+        <h2 className="section">Bodies beyond phones</h2>
+        <p>
+          A phone is only the first kind of body. Glasses, earbuds, a room
+          microphone, a robot or a car can carry agents too. A host adds a
+          device under Hosting, Your devices, says what it can do (hear, see,
+          speak, knows where it is), and gets a device token. Agents that need{" "}
+          <code>vision</code> only go to bodies that can see.
+        </p>
+        <Code>{`GET  /api/v1/device/sessions              what this device is booked to carry
+POST /api/v1/device/sessions/ID/accept
+POST /api/v1/device/sessions/ID/start     { "capture_confirmed": true }
+POST /api/v1/device/sessions/ID/audio     raw audio, x-run-id, x-seq, x-offset-sec
+POST /api/v1/device/sessions/ID/frames    raw image, x-caption optional
+POST /api/v1/device/sessions/ID/end
+
+Authorization: Bearer dev_...`}</Code>
+        <p className="small muted">
+          Send audio as short self-contained files (10 seconds works well), each
+          with the next <code>x-seq</code>. Send images whenever the device sees
+          something worth reading: a slide, a whiteboard, a badge. The agent
+          reads them and its notes cite the image. A reference device lives in{" "}
+          <code>scripts/presence-device.mjs</code>.
         </p>
 
         <h2 className="section">Also</h2>

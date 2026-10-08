@@ -11,6 +11,8 @@ import type {
   Outing,
   Encounter,
   ApiKey,
+  Frame,
+  FrameId,
   ApiKeyId,
   EncounterId,
   OutingId,
@@ -59,6 +61,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly outings = new Map<OutingId, Outing>();
   readonly encounters = new Map<EncounterId, Encounter>();
   readonly apiKeys = new Map<ApiKeyId, ApiKey>();
+  readonly frames = new Map<FrameId, Frame>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -93,6 +96,8 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.endpoints.get(id) ?? null,
       byHost: async (hostId) =>
         [...this.endpoints.values()].filter((e) => e.hostId === hostId),
+      byTokenHash: async (hash) =>
+        [...this.endpoints.values()].find((e) => e.tokenHash === hash) ?? null,
       save: async (e) => void this.endpoints.set(e.id, e),
     },
     missions: {
@@ -203,6 +208,10 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    frames: {
+      save: async (f) => void this.frames.set(f.id, f),
+      get: async (id) => this.frames.get(id) ?? null,
     },
     apiKeys: {
       byHash: async (hash) =>

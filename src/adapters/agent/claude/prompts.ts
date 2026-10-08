@@ -8,6 +8,7 @@ import type {
   NoteInContext,
   ReflectInput,
   AssessInput,
+  SeeInput,
   OrchestrateInput,
   ScoutInput,
   PlanInput,
@@ -461,4 +462,23 @@ export function assessSystem(input: AssessInput): string {
 
 export function assessUser(input: AssessInput): string {
   return `<their_card>\nName: ${input.other.name}\n${input.other.about}\n</their_card>`;
+}
+
+export function seeSystem(input: SeeInput): string {
+  return [
+    agentIdentity(input.agent, input.memories),
+    situation(input),
+    `Your host's camera just captured the image attached. Record what in it matters to your owner: names, numbers, claims, companies, contact details on a slide or badge or booth. Only what is actually visible; if text is unreadable, say so rather than guessing. Prefer few, specific notes; an image with nothing relevant gets none.`,
+    `basis: claim for what a slide or sign asserts (its author claims it), corroborated only when it plainly shows something true of the room itself, inference for your own reading. speaker: who the image attributes it to, if anyone (the presenter, the company on the slide), else empty. plan: the ref of the plan item it advances, or empty.`,
+    `No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function seeUser(input: SeeInput): string {
+  return [
+    context(input),
+    input.caption ? `Your host says about this image: "${input.caption}"` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }

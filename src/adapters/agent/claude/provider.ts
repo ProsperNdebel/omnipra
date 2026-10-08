@@ -11,6 +11,7 @@ import type {
   NewPlanItem,
   PlanInput,
   AssessInput,
+  SeeInput,
   OrchestrateInput,
   ScoutInput,
   ScoutResult,
@@ -396,12 +397,38 @@ export class ClaudeAgentProvider implements AgentProvider {
     };
   }
 
+  async see(input: SeeInput): Promise<NewObservation[]> {
+    const out = (await this.json(this.models.observe, 2048, {
+      system: P.seeSystem(input),
+      user: [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: input.image.mimeType as
+              "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+            data: Buffer.from(input.image.bytes).toString("base64"),
+          },
+        },
+        { type: "text", text: P.seeUser(input) },
+      ],
+      schema: SEE_SCHEMA,
+    })) as { observations?: unknown[] };
+    const planIds = new Map(
+      (input.mission.plan ?? []).map((p, i) => [P.planRef(i), p.id]),
+    );
+    return (out.observations ?? []).flatMap((o) => {
+      const parsed = parseObservation(o, planIds);
+      return parsed ? [{ ...parsed, evidence: [] }] : [];
+    });
+  }
+
   private async json(
     model: string,
     maxTokens: number,
     args: {
       system: string;
-      user: string;
+      user: string | Anthropic.ContentBlockParam[];
       schema: Record<string, unknown>;
       history?: Anthropic.MessageParam[];
     },
@@ -757,6 +784,42 @@ const ASSESS_SCHEMA = {
   properties: {
     relevant: { type: "boolean" },
     why: { type: "string" },
+  },
+};
+
+const SEE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["observations"],
+  properties: {
+    observations: {
+      type: "array",
+      description: "What in the image matters to your owner. Empty is fine.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "kind",
+          "text",
+          "importance",
+          "alert",
+          "basis",
+          "speaker",
+          "plan",
+          "entities",
+        ],
+        properties: {
+          kind: { type: "string", enum: KINDS },
+          text: { type: "string" },
+          importance: { type: "integer", enum: [1, 2, 3] },
+          alert: { type: "string" },
+          basis: { type: "string", enum: OBSERVATION_BASES },
+          speaker: { type: "string" },
+          plan: { type: "string" },
+          entities: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
   },
 };
 

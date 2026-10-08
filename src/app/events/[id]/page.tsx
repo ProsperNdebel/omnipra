@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { attendAction } from "@/app/actions";
 import { DomainError, type EventId } from "@/core";
-import { eventWithHosts } from "@/services";
+import { eventWithHosts, hostDevices } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { fmtDay, fmtRange, money } from "@/ui/format";
@@ -31,6 +31,7 @@ export default async function EventPage({
   });
   const { event, listings } = data;
   const me = await viewerId();
+  const devices = await hostDevices(getDeps(), me);
   const mine = listings.find((l) => l.hostId === me);
   const others = listings.filter((l) => l.hostId !== me);
   const open = event.capturePolicy !== "none";
@@ -147,6 +148,24 @@ export default async function EventPage({
                   </span>
                 </span>
               </label>
+              {devices.filter((x) => x.kind !== "phone_web").length > 0 && (
+                <label className="field">
+                  <span>Carry agents on</span>
+                  <select
+                    name="endpointId"
+                    defaultValue={mine?.endpointId ?? ""}
+                  >
+                    <option value="">My phone</option>
+                    {devices
+                      .filter((x) => x.kind !== "phone_web")
+                      .map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name} ({x.capabilities.join(", ")})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
               <div className="actions">
                 <SubmitButton pending={mine ? "Updating" : "Listing you"}>
                   {mine ? "Update listing" : "I\u2019m attending"}

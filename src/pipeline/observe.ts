@@ -70,6 +70,7 @@ export async function observe(
       atSec: saidAt(o.evidence),
       planItem: o.planItem && planIds.has(o.planItem) ? o.planItem : null,
       hostRequestId: null,
+      frames: [],
       createdAt,
     }));
 

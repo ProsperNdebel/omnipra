@@ -12,6 +12,7 @@ import {
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
   actOnSuggestion,
+  disconnectDevice,
   revokeApiKey,
   answerIntroduction,
   bookOuting,
@@ -81,6 +82,7 @@ export async function attendAction(form: FormData) {
       displayName: str(form, "displayName"),
       priceCents: Math.round(Number(str(form, "price")) * 100),
       openToRequests: form.get("openToRequests") === "on",
+      endpointId: str(form, "endpointId") || undefined,
     });
   } catch (err) {
     fail(`/events/${eventId}`, err);
@@ -355,4 +357,14 @@ export async function revokeKeyAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#api`);
+}
+
+/** A host disconnects one of their devices. */
+export async function disconnectDeviceAction(form: FormData) {
+  try {
+    await disconnectDevice(getDeps(), await viewerId(), str(form, "id"));
+  } catch (err) {
+    fail("/host", err);
+  }
+  redirect("/host#devices");
 }

@@ -15,7 +15,7 @@ const AUDIO_BUCKET = "audio";
 
 /** Note columns, without the full text search vector. */
 const OBSERVATION_COLUMNS =
-  "id, agent_id, manifestation_id, kind, text, importance, alert, basis, speaker, plan_item, host_request_id, entities, evidence, at_sec, created_at";
+  "id, agent_id, manifestation_id, kind, text, importance, alert, basis, speaker, plan_item, host_request_id, entities, evidence, frames, at_sec, created_at";
 
 /**
  * A session joined to its device, mission, agent and event through foreign keys.
@@ -119,6 +119,17 @@ export class SupabaseStore implements BlobStore, Memory {
           "endpoints.byHost",
         );
         return rows.map(R.endpoint.from);
+      },
+      byTokenHash: async (hash) => {
+        const row = must(
+          await this.db
+            .from("endpoints")
+            .select()
+            .eq("token_hash", hash)
+            .maybeSingle(),
+          "endpoints.byTokenHash",
+        );
+        return row ? R.endpoint.from(row) : null;
       },
       save: async (e) => {
         must(
@@ -439,6 +450,19 @@ export class SupabaseStore implements BlobStore, Memory {
           await this.db.from("agent_memories").delete().eq("id", id),
           "memories.remove",
         );
+      },
+    },
+
+    frames: {
+      save: async (f) => {
+        must(await this.db.from("frames").upsert(R.frame.to(f)), "frames.save");
+      },
+      get: async (id) => {
+        const row = must(
+          await this.db.from("frames").select().eq("id", id).maybeSingle(),
+          "frames.get",
+        );
+        return row ? R.frame.from(row) : null;
       },
     },
 
