@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import type { ManifestationId } from "@/core";
-import { access, feed } from "@/services";
+import { access, feed, hostNameFor } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
-import { Bar } from "@/ui/bar";
 import { fmtDay, fmtRange } from "@/ui/format";
 import { LiveFeed } from "@/ui/live-feed";
 
@@ -21,16 +20,14 @@ export default async function ManifestationPage({
     notFound(),
   );
   if (!a.isOwner) notFound();
-  const initial = await feed(d, a.manifestation.id, true);
-  const listings = await d.repos.events.listings(a.event.id);
-  const endpoint = await d.repos.endpoints.get(a.manifestation.endpointId);
-  const hostName =
-    listings.find((l) => l.hostId === endpoint?.hostId)?.displayName ??
-    "the host";
+  const [initial, name] = await Promise.all([
+    feed(d, a.manifestation.id, true),
+    hostNameFor(d, a),
+  ]);
+  const hostName = name ?? "the host";
 
   return (
     <main className="page">
-      <Bar here="agent" />
       <h1 className="title">{a.event.title}</h1>
       <p>
         {fmtDay(a.event.startsAt)}, {fmtRange(a.event.startsAt, a.event.endsAt)}

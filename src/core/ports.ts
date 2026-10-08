@@ -111,6 +111,8 @@ export interface Repos {
     save(e: PresenceEvent): Promise<void>;
     list(range: { from: string; to: string }): Promise<PresenceEvent[]>;
     listings(id: EventId): Promise<HostListing[]>;
+    /** Listings for many events in one round trip. */
+    listingsFor(ids: EventId[]): Promise<HostListing[]>;
     saveListing(l: HostListing): Promise<void>;
   };
   endpoints: {
@@ -130,6 +132,11 @@ export interface Repos {
     ): Promise<Manifestation[]>;
     /** Newest first. */
     byEndpoints(ids: Endpoint["id"][]): Promise<Manifestation[]>;
+    /**
+     * Sessions with everything around them, in one round trip. Filters combine with AND;
+     * an empty filter list matches nothing. Newest first.
+     */
+    contexts(filter: SessionFilter): Promise<SessionContext[]>;
     /**
      * Optimistic: only writes if the stored status still equals `expected` (null = insert).
      * Returns false when someone else changed it first.
@@ -159,11 +166,29 @@ export interface Repos {
   observations: {
     append(o: Observation[]): Promise<void>;
     byManifestation(id: ManifestationId): Promise<Observation[]>;
+    /** Notes for many sessions in one round trip. */
+    byManifestations(ids: ManifestationId[]): Promise<Observation[]>;
   };
   briefings: {
     get(id: ManifestationId): Promise<StoredBriefing | null>;
     save(b: StoredBriefing): Promise<void>;
   };
+}
+
+/** A session and everything it hangs off, so screens never fetch them one by one. */
+export interface SessionContext {
+  manifestation: Manifestation;
+  mission: Mission;
+  agent: Agent;
+  event: PresenceEvent;
+  endpoint: Endpoint;
+}
+
+export interface SessionFilter {
+  ids?: ManifestationId[];
+  agentIds?: AgentId[];
+  endpointIds?: Endpoint["id"][];
+  status?: Manifestation["status"];
 }
 
 export interface StoredBriefing extends Briefing {

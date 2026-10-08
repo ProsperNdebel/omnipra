@@ -5,14 +5,15 @@ import { DomainError, type EventId } from "@/core";
 import { eventWithHosts } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
-import { Bar } from "@/ui/bar";
 import { fmtDay, fmtRange, money } from "@/ui/format";
+import { SubmitButton } from "@/ui/submit-button";
 
 export const dynamic = "force-dynamic";
 
 const POLICY: Record<string, string> = {
   organizer: "The organizer approved agents at this event.",
-  public_talk: "Talks on stage may be recorded. Agents listen to the stage, not private conversations.",
+  public_talk:
+    "Talks on stage may be recorded. Agents listen to the stage, not private conversations.",
   none: "This event doesn't allow recording, so agents can't attend.",
 };
 
@@ -36,7 +37,6 @@ export default async function EventPage({
 
   return (
     <main className="page">
-      <Bar here="explore" />
       <div className="narrow">
         <h1 className="title">{event.title}</h1>
         <p>
@@ -51,7 +51,11 @@ export default async function EventPage({
           </p>
         )}
         <p className="muted">{POLICY[event.capturePolicy]}</p>
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
 
         {open && (
           <>
@@ -68,7 +72,10 @@ export default async function EventPage({
                     </div>
                     <div className="actions" style={{ alignItems: "baseline" }}>
                       <span>{money(l.priceCents)}</span>
-                      <Link className="button" href={`/send/${event.id}/${l.hostId}`}>
+                      <Link
+                        className="button"
+                        href={`/send/${event.id}/${l.hostId}`}
+                      >
                         Send my agent
                       </Link>
                     </div>
@@ -77,16 +84,34 @@ export default async function EventPage({
               </ul>
             )}
 
-            <h2 className="section">{mine ? "You\u2019re hosting" : "Going to this?"}</h2>
-            {listed && <p>You&rsquo;re listed. Requests show up under Hosting.</p>}
-            {!mine && (
-              <p className="muted">List yourself and people who can&rsquo;t make it can send their agent through your phone.</p>
+            <h2 className="section">
+              {mine ? "You\u2019re hosting" : "Going to this?"}
+            </h2>
+            {listed && (
+              <p>You&rsquo;re listed. Requests show up under Hosting.</p>
             )}
-            <form action={attendAction} className="stack" style={{ marginTop: 20 }}>
+            {!mine && (
+              <p className="muted">
+                List yourself and people who can&rsquo;t make it can send their
+                agent through your phone.
+              </p>
+            )}
+            <form
+              action={attendAction}
+              className="stack"
+              style={{ marginTop: 20 }}
+            >
               <input type="hidden" name="eventId" value={event.id} />
               <label className="field">
                 <span>Name agent owners see</span>
-                <input type="text" name="displayName" required maxLength={40} defaultValue={mine?.displayName} placeholder="Sarah M." />
+                <input
+                  type="text"
+                  name="displayName"
+                  required
+                  maxLength={40}
+                  defaultValue={mine?.displayName}
+                  placeholder="Sarah M."
+                />
               </label>
               <label className="field">
                 <span>Price per session, in dollars</span>
@@ -101,17 +126,21 @@ export default async function EventPage({
                 />
               </label>
               <div className="actions">
-                <button className="button" type="submit">
+                <SubmitButton pending={mine ? "Updating" : "Listing you"}>
                   {mine ? "Update listing" : "I\u2019m attending"}
-                </button>
+                </SubmitButton>
                 {mine && (
-                  <Link className="button quiet" href={`/send/${event.id}/${me}`}>
+                  <Link
+                    className="button quiet"
+                    href={`/send/${event.id}/${me}`}
+                  >
                     Send my own agent through me
                   </Link>
                 )}
               </div>
               <small className="muted">
-                Use this same phone at the event. Your agent sessions are tied to this browser.
+                Use this same phone at the event. Your agent sessions are tied
+                to this browser.
               </small>
             </form>
           </>

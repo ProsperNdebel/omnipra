@@ -4,7 +4,7 @@ import { agentHome, ownedAgent } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
-import { Bar, Dot, STATUS_WORDS } from "@/ui/bar";
+import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,6 @@ export default async function AgentPage({
 
   return (
     <main className="page">
-      <Bar here="agent" />
-
       <p className="small" style={{ marginTop: 40 }}>
         <Link href="/agent">All agents</Link>
       </p>

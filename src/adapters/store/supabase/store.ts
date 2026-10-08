@@ -1,9 +1,29 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AgentId, BlobStore, Memory, Observation, Repos } from "@/core";
+import type {
+  AgentId,
+  BlobStore,
+  Memory,
+  Observation,
+  Repos,
+  SessionContext,
+} from "@/core";
 import { must } from "./client";
 import * as R from "./rows";
 
 const AUDIO_BUCKET = "audio";
+
+/** Note columns, without the full text search vector. */
+const OBSERVATION_COLUMNS =
+  "id, agent_id, manifestation_id, kind, text, importance, alert, entities, evidence, at_sec, created_at";
+
+/**
+ * A session joined to its device, mission, agent and event through foreign keys.
+ * !inner makes filters on the embedded tables filter the sessions themselves.
+ */
+const SESSION_CONTEXT =
+  "*, endpoints!inner(*), missions!inner(*, agents!inner(*), events!inner(*))";
+
+type Row = Record<string, unknown>;
 
 /** Repos, BlobStore and Memory on one Supabase project. Implements the same ports as InMemoryStore. */
 export class SupabaseStore implements BlobStore, Memory {
@@ -65,6 +85,14 @@ export class SupabaseStore implements BlobStore, Memory {
             .eq("event_id", id)
             .order("price_cents"),
           "events.listings",
+        );
+        return rows.map(R.listing.from);
+      },
+      listingsFor: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db.from("host_listings").select().in("event_id", ids),
+          "events.listingsFor",
         );
         return rows.map(R.listing.from);
       },
@@ -176,6 +204,29 @@ export class SupabaseStore implements BlobStore, Memory {
         return rows.length === 1;
       },
 
+      contexts: async (f) => {
+        if ([f.ids, f.agentIds, f.endpointIds].some((x) => x && x.length === 0))
+          return [];
+        let q = this.db
+          .from("manifestations")
+          .select(SESSION_CONTEXT)
+          .order("created_at", { ascending: false });
+        if (f.ids) q = q.in("id", f.ids);
+        if (f.agentIds) q = q.in("missions.agent_id", f.agentIds);
+        if (f.endpointIds) q = q.in("endpoint_id", f.endpointIds);
+        if (f.status) q = q.eq("status", f.status);
+        const rows = must(await q, "manifestations.contexts") as Row[];
+        return rows.map((r): SessionContext => {
+          const mission = r.missions as Row;
+          return {
+            manifestation: R.manifestation.from(r),
+            endpoint: R.endpoint.from(r.endpoints as Row),
+            mission: R.mission.from(mission),
+            agent: R.agent.from(mission.agents as Row),
+            event: R.event.from(mission.events as Row),
+          };
+        });
+      },
       advanceCursor: async (id, from, to) => {
         const rows = must(
           await this.db
@@ -245,6 +296,18 @@ export class SupabaseStore implements BlobStore, Memory {
           "observations.byManifestation",
         );
         return rows.map(R.observation.from);
+      },
+      byManifestations: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db
+            .from("observations")
+            .select(OBSERVATION_COLUMNS)
+            .in("manifestation_id", ids)
+            .order("created_at"),
+          "observations.byManifestations",
+        );
+        return (rows as Row[]).map(R.observation.from);
       },
     },
 

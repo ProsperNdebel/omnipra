@@ -3,7 +3,7 @@ import { ownerAgents } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AgentFields } from "@/ui/agent-fields";
-import { Bar } from "@/ui/bar";
+import { SubmitButton } from "@/ui/submit-button";
 
 export default async function NewAgent({
   searchParams,
@@ -15,7 +15,6 @@ export default async function NewAgent({
 
   return (
     <main className="page">
-      <Bar here="agent" />
       <div className="narrow">
         <h1 className="title">
           {first ? "Make your agent" : "Make another agent"}
@@ -37,9 +36,7 @@ export default async function NewAgent({
             defaultName={first ? "Scout" : undefined}
             namePlaceholder={first ? undefined : "Fundraising scout"}
           />
-          <button className="button" type="submit">
-            Make agent
-          </button>
+          <SubmitButton pending="Making your agent">Make agent</SubmitButton>
         </form>
       </div>
     </main>

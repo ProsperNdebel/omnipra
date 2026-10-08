@@ -1,4 +1,9 @@
-import { DomainError, type ManifestationEvent, type ManifestationId, type UserId } from "@/core";
+import {
+  DomainError,
+  type ManifestationEvent,
+  type ManifestationId,
+  type UserId,
+} from "@/core";
 import { loadContext, type Deps, type ManifestationContext } from "@/pipeline";
 
 export interface Access extends ManifestationContext {
@@ -7,12 +12,16 @@ export interface Access extends ManifestationContext {
 }
 
 /** Who the viewer is to this manifestation. Owner sees everything; host sees only what they need. */
-export async function access(d: Deps, id: ManifestationId, viewer: UserId): Promise<Access> {
+export async function access(
+  d: Deps,
+  id: ManifestationId,
+  viewer: UserId,
+): Promise<Access> {
   const ctx = await loadContext(d, id);
-  const endpoint = await d.repos.endpoints.get(ctx.manifestation.endpointId);
   const isOwner = ctx.agent.ownerId === viewer;
-  const isHost = endpoint?.hostId === viewer;
-  if (!isOwner && !isHost) throw new DomainError("forbidden", "Not your session.");
+  const isHost = ctx.endpoint.hostId === viewer;
+  if (!isOwner && !isHost)
+    throw new DomainError("forbidden", "Not your session.");
   return { ...ctx, isOwner, isHost };
 }
 
@@ -34,7 +43,11 @@ export async function authorizeTransition(
 ): Promise<void> {
   const a = await access(d, id, viewer);
   const role = ROLE[event];
-  if ((role === "host" && !a.isHost) || (role === "owner" && !a.isOwner) || role === "system") {
+  if (
+    (role === "host" && !a.isHost) ||
+    (role === "owner" && !a.isOwner) ||
+    role === "system"
+  ) {
     throw new DomainError("forbidden", `You can't ${event} this session.`);
   }
 }

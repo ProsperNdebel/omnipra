@@ -17,22 +17,38 @@ export interface EventSummary {
 }
 
 /** Events that haven't ended, starting within the next week, with their supply. */
-export async function upcomingEvents(d: Deps, now = new Date()): Promise<EventSummary[]> {
+export async function upcomingEvents(
+  d: Deps,
+  now = new Date(),
+): Promise<EventSummary[]> {
   const to = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
-  const events = await d.repos.events.list({ from: now.toISOString(), to: to.toISOString() });
-  return Promise.all(
-    events.map(async (event) => {
-      const listings = await d.repos.events.listings(event.id);
-      const prices = listings.map((l) => l.priceCents);
-      return { event, hosts: listings.length, fromCents: prices.length ? Math.min(...prices) : null };
-    }),
-  );
+  const events = await d.repos.events.list({
+    from: now.toISOString(),
+    to: to.toISOString(),
+  });
+  const listings = await d.repos.events.listingsFor(events.map((e) => e.id));
+  return events.map((event) => {
+    const prices = listings
+      .filter((l) => l.eventId === event.id)
+      .map((l) => l.priceCents);
+    return {
+      event,
+      hosts: prices.length,
+      fromCents: prices.length ? Math.min(...prices) : null,
+    };
+  });
 }
 
-export async function eventWithHosts(d: Deps, id: EventId): Promise<{ event: PresenceEvent; listings: HostListing[] }> {
-  const event = await d.repos.events.get(id);
+export async function eventWithHosts(
+  d: Deps,
+  id: EventId,
+): Promise<{ event: PresenceEvent; listings: HostListing[] }> {
+  const [event, listings] = await Promise.all([
+    d.repos.events.get(id),
+    d.repos.events.listings(id),
+  ]);
   if (!event) throw new DomainError("not_found", "event not found");
-  return { event, listings: await d.repos.events.listings(id) };
+  return { event, listings };
 }
 
 export interface NewEvent {
@@ -44,12 +60,23 @@ export interface NewEvent {
   capturePolicy: CapturePolicy;
 }
 
-export async function createEvent(d: Deps, input: NewEvent): Promise<PresenceEvent> {
-  if (!input.title.trim()) throw new DomainError("bad_request", "Give the event a title.");
+export async function createEvent(
+  d: Deps,
+  input: NewEvent,
+): Promise<PresenceEvent> {
+  if (!input.title.trim())
+    throw new DomainError("bad_request", "Give the event a title.");
   if (!(Date.parse(input.endsAt) > Date.parse(input.startsAt))) {
-    throw new DomainError("bad_request", "The event has to end after it starts.");
+    throw new DomainError(
+      "bad_request",
+      "The event has to end after it starts.",
+    );
   }
-  const event: PresenceEvent = { id: d.newId() as EventId, ...input, title: input.title.trim() };
+  const event: PresenceEvent = {
+    id: d.newId() as EventId,
+    ...input,
+    title: input.title.trim(),
+  };
   await d.repos.events.save(event);
   return event;
 }
@@ -60,12 +87,18 @@ export async function createEvent(d: Deps, input: NewEvent): Promise<PresenceEve
  */
 export async function attend(
   d: Deps,
-  input: { eventId: EventId; hostId: UserId; displayName: string; priceCents: number },
+  input: {
+    eventId: EventId;
+    hostId: UserId;
+    displayName: string;
+    priceCents: number;
+  },
 ): Promise<HostListing> {
   const event = await d.repos.events.get(input.eventId);
   if (!event) throw new DomainError("not_found", "event not found");
   const displayName = input.displayName.trim();
-  if (!displayName) throw new DomainError("bad_request", "Add the name agent owners will see.");
+  if (!displayName)
+    throw new DomainError("bad_request", "Add the name agent owners will see.");
   if (!Number.isInteger(input.priceCents) || input.priceCents < 0) {
     throw new DomainError("bad_request", "Set a price of $0 or more.");
   }
@@ -85,7 +118,9 @@ export async function attend(
 }
 
 async function phoneEndpoint(d: Deps, hostId: UserId): Promise<Endpoint> {
-  const existing = (await d.repos.endpoints.byHost(hostId)).find((e) => e.kind === "phone_web");
+  const existing = (await d.repos.endpoints.byHost(hostId)).find(
+    (e) => e.kind === "phone_web",
+  );
   if (existing) return existing;
   const endpoint: Endpoint = {
     id: d.newId() as EndpointId,

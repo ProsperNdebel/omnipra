@@ -5,7 +5,7 @@ import { ownedAgent } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AgentFields } from "@/ui/agent-fields";
-import { Bar } from "@/ui/bar";
+import { SubmitButton } from "@/ui/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,6 @@ export default async function EditAgent({
 
   return (
     <main className="page">
-      <Bar here="agent" />
       <div className="narrow">
         <p className="small" style={{ marginTop: 40 }}>
           <Link href={`/agent/${agent.id}`}>Back to {agent.name}</Link>
@@ -45,9 +44,7 @@ export default async function EditAgent({
           <input type="hidden" name="id" value={agent.id} />
           <AgentFields agent={agent} />
           <div className="actions">
-            <button className="button" type="submit">
-              Save changes
-            </button>
+            <SubmitButton pending="Saving">Save changes</SubmitButton>
             <Link className="button quiet" href={`/agent/${agent.id}`}>
               Cancel
             </Link>

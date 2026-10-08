@@ -6,6 +6,7 @@ import type { Observation, ObservationId, ObservationKind } from "@/core";
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
+import { SubmitButton } from "./submit-button";
 
 const POLL_MS = 8_000;
 const DONE = new Set(["briefed", "declined", "cancelled"]);
@@ -65,7 +66,9 @@ export function LiveFeed({
           <form action={decideAction} style={{ marginTop: 20 }}>
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="decision" value="cancel" />
-            <button className="button quiet">Cancel request</button>
+            <SubmitButton pending="Cancelling" quiet>
+              Cancel request
+            </SubmitButton>
           </form>
         </>
       )}

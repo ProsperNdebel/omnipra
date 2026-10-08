@@ -5,8 +5,8 @@ import type { EventId } from "@/core";
 import { eventWithHosts, ownerAgents } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
-import { Bar } from "@/ui/bar";
 import { fmtDay, fmtRange, money } from "@/ui/format";
+import { SubmitButton } from "@/ui/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +23,14 @@ export default async function Send({
   ]);
   const here = `/send/${eventId}/${hostId}`;
   const d = getDeps();
-  const agents = await ownerAgents(d, await viewerId());
+  const [agents, eventData] = await Promise.all([
+    viewerId().then((v) => ownerAgents(d, v)),
+    eventWithHosts(d, eventId as EventId).catch(() => null),
+  ]);
   if (agents.length === 0)
     redirect(`/agent/new?next=${encodeURIComponent(here)}`);
-
-  const { event, listings } = await eventWithHosts(d, eventId as EventId).catch(
-    () => notFound(),
-  );
+  if (!eventData) notFound();
+  const { event, listings } = eventData;
   const listing = listings.find((l) => l.hostId === hostId);
   if (!listing) notFound();
 
@@ -39,7 +40,6 @@ export default async function Send({
 
   return (
     <main className="page">
-      <Bar here="explore" />
       <div className="narrow">
         <h1 className="title">
           {only ? `Send ${only.name}` : "Send an agent"}
@@ -121,9 +121,9 @@ export default async function Send({
             />
             <small>One per line. Optional.</small>
           </label>
-          <button className="button" type="submit">
+          <SubmitButton pending="Sending">
             Send {only ? only.name : "agent"} for {money(listing.priceCents)}
-          </button>
+          </SubmitButton>
           <small className="muted">
             {listing.displayName} has to accept, and only starts {it} once
             they&rsquo;re in the room. Payment is settled directly with the host

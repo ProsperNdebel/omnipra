@@ -482,3 +482,51 @@ input[type="checkbox"] {
 .rows > li {
   scroll-margin-top: 24px;
 }
+
+/* Navigation feedback ---------------------------------------------------------- */
+
+/* A hairline across the top while the next page renders. Appears after a beat,
+   so fast navigations don't flash it. */
+.loading {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.loading > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--ink);
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: loading-fill 2.4s cubic-bezier(0.1, 0.7, 0.2, 1) 120ms forwards;
+}
+
+@keyframes loading-fill {
+  to {
+    transform: scaleX(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading > i {
+    animation: none;
+    transform: scaleX(1);
+    opacity: 0.4;
+  }
+}
+
+.button[aria-busy="true"] {
+  cursor: progress;
+}
+
+/* The nav lives in the layout, outside each page's main. Same measure as .page. */
+.page-head {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}

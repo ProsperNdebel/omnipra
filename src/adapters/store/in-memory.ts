@@ -13,6 +13,7 @@ import type {
   Observation,
   PresenceEvent,
   Repos,
+  SessionContext,
   StoredBriefing,
   TranscriptSegment,
 } from "@/core";
@@ -50,6 +51,8 @@ export class InMemoryStore implements BlobStore, Memory {
           .filter((e) => e.endsAt >= from && e.startsAt <= to)
           .sort(by((e) => e.startsAt)),
       listings: async (id) => this.listings.filter((l) => l.eventId === id),
+      listingsFor: async (ids) =>
+        this.listings.filter((l) => ids.includes(l.eventId)),
       saveListing: async (l) => {
         const i = this.listings.findIndex(
           (x) => x.eventId === l.eventId && x.hostId === l.hostId,
@@ -90,6 +93,26 @@ export class InMemoryStore implements BlobStore, Memory {
         this.manifestations.set(m.id, m);
         return true;
       },
+      contexts: async (f) => {
+        if ([f.ids, f.agentIds, f.endpointIds].some((x) => x && x.length === 0))
+          return [];
+        const out: SessionContext[] = [];
+        for (const manifestation of this.manifestations.values()) {
+          const mission = this.missions.get(manifestation.missionId);
+          const agent = mission && this.agents.get(mission.agentId);
+          const event = mission && this.events.get(mission.eventId);
+          const endpoint = this.endpoints.get(manifestation.endpointId);
+          if (!mission || !agent || !event || !endpoint) continue;
+          if (f.ids && !f.ids.includes(manifestation.id)) continue;
+          if (f.agentIds && !f.agentIds.includes(agent.id)) continue;
+          if (f.endpointIds && !f.endpointIds.includes(endpoint.id)) continue;
+          if (f.status && manifestation.status !== f.status) continue;
+          out.push({ manifestation, mission, agent, event, endpoint });
+        }
+        return out.sort((a, b) =>
+          b.manifestation.createdAt.localeCompare(a.manifestation.createdAt),
+        );
+      },
       advanceCursor: async (id, from, to) => {
         const m = this.manifestations.get(id);
         if (!m || m.observedThroughSec !== from) return false;
@@ -115,6 +138,8 @@ export class InMemoryStore implements BlobStore, Memory {
       append: async (o) => void this.observations.push(...o),
       byManifestation: async (id) =>
         this.observations.filter((o) => o.manifestationId === id),
+      byManifestations: async (ids) =>
+        this.observations.filter((o) => ids.includes(o.manifestationId)),
     },
     briefings: {
       get: async (id) => this.briefings.get(id) ?? null,

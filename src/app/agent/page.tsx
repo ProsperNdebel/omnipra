@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { agentHome, liveAcross, ownerAgents } from "@/services";
+import { ownerAgents, ownerOverview } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AutoRefresh } from "@/ui/auto-refresh";
-import { Bar, Dot } from "@/ui/bar";
+import { Dot } from "@/ui/bar";
 import { fmtTime, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
@@ -15,25 +15,13 @@ export default async function Agents() {
   const agents = await ownerAgents(d, await viewerId());
   if (agents.length === 0) redirect("/agent/new");
 
-  const [live, rows] = await Promise.all([
-    liveAcross(d, agents),
-    Promise.all(
-      agents.map(async (agent) => {
-        const sessions = await agentHome(d, agent);
-        return {
-          agent,
-          live: sessions.filter((s) => s.manifestation.status === "live")
-            .length,
-          total: sessions.length,
-        };
-      }),
-    ),
-  ]);
+  // One joined query for every agent's sessions, plus notes and hosts for the live ones.
+  const { live, counts } = await ownerOverview(d, agents);
+  const rows = agents.map((agent) => ({ agent, ...counts.get(agent.id)! }));
   const places = new Set(live.map((r) => r.event.id)).size;
 
   return (
     <main className="page">
-      <Bar here="agent" />
       {live.length > 0 && <AutoRefresh />}
 
       <h1 className="title">Your agents</h1>

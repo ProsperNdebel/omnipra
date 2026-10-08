@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { upcomingEvents, type EventSummary } from "@/services";
 import { getDeps } from "@/server/deps";
-import { Bar } from "@/ui/bar";
 import { dayOf, fmtDay, fmtTime, money, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +11,15 @@ export default async function Home() {
 
   return (
     <main className="page">
-      <Bar here="explore" />
-
       <h1 className="display">
         Be where
         <br />
         you can&rsquo;t.
       </h1>
-      <p className="lede">Send your agent to the events you can&rsquo;t make, through people already there.</p>
+      <p className="lede">
+        Send your agent to the events you can&rsquo;t make, through people
+        already there.
+      </p>
 
       {days.length === 0 ? (
         <p style={{ marginTop: 72 }}>
