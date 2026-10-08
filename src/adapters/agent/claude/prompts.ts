@@ -1,6 +1,9 @@
 import type {
   Agent,
   AgentMemory,
+  DraftInput,
+  NoteInContext,
+  ReflectInput,
   PlanInput,
   PlanItem,
   ConverseInput,
@@ -289,5 +292,65 @@ export function planUser(input: PlanInput): string {
     `<event>\n${event.title}${event.venue ? `, at ${event.venue}` : ""}, ${event.startsAt} to ${event.endsAt}${event.sourceUrl ? `\n${event.sourceUrl}` : ""}\n</event>`,
     `<mission>\n${mission.instructions || "(no specific instructions)"}${mission.alerts.length ? `\nAlerts: ${mission.alerts.join("; ")}` : ""}\n</mission>`,
     `<goals>\n${goals.length ? goals.map((g, i) => `- ${goalRef(i)} ${g.text}`).join("\n") : "(your owner has not set goals; plan from the mission and their profile)"}\n</goals>`,
+  ].join("\n\n");
+}
+
+/** All notes a reflection may cite, in ref order: this event first, then earlier ones. */
+export function reflectNotes(input: ReflectInput): NoteInContext[] {
+  return [
+    ...input.notes.map((note) => ({ note, eventTitle: input.event.title })),
+    ...input.earlier,
+  ];
+}
+
+export function reflectSystem(input: ReflectInput): string {
+  return [
+    agentIdentity(input.agent, input.memories),
+    `You just finished attending "${input.event.title}" for your owner. Look across what you heard there and at earlier events, and suggest at most three things your owner should do. Only what clearly serves their goals or interests; if nothing does, return none. Fewer, sharper suggestions beat more.`,
+    `Kinds:
+- connection: a pattern across events that matters to their goals, like two companies with the same unmet need. It must cite notes from at least two different events.
+- follow_up: someone worth contacting, and why.
+- question: something still unanswered that is worth chasing at the next event.`,
+    `You may offer to help with each: intro (draft an introduction, between your owner and someone, or between two people you heard), message (draft a follow up message to someone), or watch (keep watching for it at future events). For intro and message, name the target as they were named in the notes. Use no offer when none fits.`,
+    EVIDENCE_RULES,
+    `Every suggestion cites the refs of the notes it rests on (like n3). Do not repeat a suggestion that is still open. Address your owner directly in one or two short sentences, and say why it matters to them in "why". No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function reflectUser(input: ReflectInput): string {
+  const all = reflectNotes(input);
+  const lines = all.map(
+    (n, i) => `${noteRef(i)} ${fmtObservation(n.note, n.eventTitle).slice(2)}`,
+  );
+  const open = input.open.length
+    ? input.open.map((o) => `- ${o.text}`).join("\n")
+    : "(none)";
+  return [
+    `<notes>\n${lines.join("\n") || "(no notes)"}\n</notes>`,
+    `<open_suggestions>\n${open}\n</open_suggestions>`,
+  ].join("\n\n");
+}
+
+export function draftSystem(input: DraftInput): string {
+  const what =
+    input.suggestion.offer === "intro"
+      ? "an introduction"
+      : "a follow up message";
+  return [
+    agentIdentity(input.agent, input.memories),
+    `Your owner asked you to draft ${what}${input.suggestion.target ? ` involving ${input.suggestion.target}` : ""}. Write it in your owner's voice, first person, ready to send: short, specific, warm without gushing.`,
+    `Use only facts from the notes below and what you know about your owner. Your owner was not in the room themselves; you attended for them. Never claim they met or spoke with anyone in person; say they heard about or followed the talk. Attribute claims to who made them.`,
+    `Plain text, no subject line, end with "[Your name]". No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function draftUser(input: DraftInput): string {
+  const s = input.suggestion;
+  const notes = input.notes
+    .map((n) => fmtObservation(n.note, n.eventTitle))
+    .join("\n");
+  return [
+    `<suggestion>\n${s.text}\nWhy: ${s.why}${s.target ? `\nFor: ${s.target}` : ""}\n</suggestion>`,
+    `<notes>\n${notes}\n</notes>`,
   ].join("\n\n");
 }

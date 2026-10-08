@@ -5,6 +5,9 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  DraftInput,
+  NewSuggestion,
+  ReflectInput,
   AudioInput,
   BriefInput,
   BriefResult,
@@ -164,6 +167,35 @@ export class FakeAgent implements AgentProvider {
         watchFor: "Traction numbers: contracts, revenue, customers.",
       },
     ];
+  }
+
+  async reflect({ notes, earlier }: ReflectInput): Promise<NewSuggestion[]> {
+    const here = notes[0];
+    if (!here) return [];
+    const there = earlier[0];
+    return [
+      there
+        ? {
+            kind: "connection",
+            text: "The same traction story came up at two events.",
+            why: "Worth comparing notes with both founders.",
+            offer: "intro",
+            target: "The founders",
+            evidence: [here.id, there.note.id],
+          }
+        : {
+            kind: "follow_up",
+            text: "The founders here are worth a message.",
+            why: "Fast sales cycle, close to what you're building.",
+            offer: "message",
+            target: "The founders",
+            evidence: [here.id],
+          },
+    ];
+  }
+
+  async draft({ suggestion, notes }: DraftInput): Promise<string> {
+    return `Hi ${suggestion.target ?? "there"}, I heard about your talk at ${notes[0]?.eventTitle ?? "the event"}. Would love to compare notes.\n\n[Your name]`;
   }
 }
 

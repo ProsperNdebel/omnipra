@@ -10,6 +10,9 @@ import type {
   LearnedFromOwner,
   NewPlanItem,
   PlanInput,
+  DraftInput,
+  NewSuggestion,
+  ReflectInput,
   NewAsk,
   NewObservation,
   ObservationId,
@@ -211,6 +214,51 @@ export class ClaudeAgentProvider implements AgentProvider {
     });
   }
 
+  async reflect(input: ReflectInput): Promise<NewSuggestion[]> {
+    const all = P.reflectNotes(input);
+    if (all.length === 0) return [];
+    const out = (await this.json(this.models.brief, 2048, {
+      system: P.reflectSystem(input),
+      user: P.reflectUser(input),
+      schema: REFLECT_SCHEMA,
+    })) as { suggestions?: Record<string, unknown>[] };
+    const byRef = new Map(all.map((n, i) => [P.noteRef(i), n.note.id]));
+    return (Array.isArray(out.suggestions) ? out.suggestions : [])
+      .flatMap((r): NewSuggestion[] => {
+        const kind = SUGGESTION_KINDS.find((k) => k === r?.kind);
+        if (!kind || typeof r.text !== "string" || !r.text.trim()) return [];
+        const offer = OFFERS.find((o) => o === r.offer) ?? null;
+        const target =
+          typeof r.target === "string" && r.target.trim()
+            ? r.target.trim()
+            : null;
+        return [
+          {
+            kind,
+            text: r.text.trim(),
+            why: typeof r.why === "string" ? r.why.trim() : "",
+            offer,
+            target,
+            evidence: [...new Set(strings(r.cites))].flatMap((ref) => {
+              const id = byRef.get(ref.trim().toLowerCase());
+              return id ? [id] : [];
+            }),
+          },
+        ];
+      })
+      .slice(0, 3);
+  }
+
+  async draft(input: DraftInput): Promise<string> {
+    const res = await this.client.messages.create({
+      model: this.models.answer,
+      max_tokens: 1024,
+      system: P.draftSystem(input),
+      messages: [{ role: "user", content: P.draftUser(input) }],
+    });
+    return textOf(res).trim();
+  }
+
   private async json(
     model: string,
     maxTokens: number,
@@ -401,6 +449,41 @@ const PLAN_SCHEMA = {
             description: 'The goal ref this serves (like g1), or "mission".',
           },
           watchFor: { type: "string" },
+        },
+      },
+    },
+  },
+};
+
+const SUGGESTION_KINDS = ["connection", "follow_up", "question"] as const;
+const OFFERS = ["intro", "message", "watch"] as const;
+
+const REFLECT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["suggestions"],
+  properties: {
+    suggestions: {
+      type: "array",
+      description: "At most three. Often fewer, sometimes none.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind", "text", "why", "offer", "target", "cites"],
+        properties: {
+          kind: { type: "string", enum: SUGGESTION_KINDS },
+          text: { type: "string" },
+          why: { type: "string" },
+          offer: {
+            type: "string",
+            enum: [...OFFERS, "none"],
+          },
+          target: {
+            type: "string",
+            description:
+              "Who an intro or message is for, as named in the notes, or an empty string.",
+          },
+          cites: CITES,
         },
       },
     },

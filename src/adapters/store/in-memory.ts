@@ -5,6 +5,8 @@ import type {
   AgentMemory,
   AskTurn,
   MemoryId,
+  Suggestion,
+  SuggestionId,
   HostRequest,
   HostRequestId,
   BlobStore,
@@ -42,6 +44,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly hostRequests = new Map<HostRequestId, HostRequest>();
   askTurns: AskTurn[] = [];
   readonly memories = new Map<MemoryId, AgentMemory>();
+  readonly suggestions = new Map<SuggestionId, Suggestion>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
   readonly repos: Repos = {
@@ -150,6 +153,7 @@ export class InMemoryStore implements BlobStore, Memory {
         this.observations.filter((o) => o.manifestationId === id),
       byManifestations: async (ids) =>
         this.observations.filter((o) => ids.includes(o.manifestationId)),
+      byIds: async (ids) => this.observations.filter((o) => ids.includes(o.id)),
     },
     messages: {
       append: async (m) => void this.messages.push(...m),
@@ -179,6 +183,15 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    suggestions: {
+      byAgent: async (agentId) =>
+        [...this.suggestions.values()]
+          .filter((s) => s.agentId === agentId)
+          .sort(by((s) => s.createdAt))
+          .reverse(),
+      get: async (id) => this.suggestions.get(id) ?? null,
+      save: async (ss) => ss.forEach((s) => this.suggestions.set(s.id, s)),
     },
     askTurns: {
       append: async (t) => void this.askTurns.push(t),

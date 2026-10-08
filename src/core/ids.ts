@@ -13,6 +13,7 @@ export type MessageId = Id<"Message">;
 export type HostRequestId = Id<"HostRequest">;
 export type AskTurnId = Id<"AskTurn">;
 export type MemoryId = Id<"Memory">;
+export type SuggestionId = Id<"Suggestion">;
 
 export type ISODate = string;
 

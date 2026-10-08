@@ -8,4 +8,5 @@ export * from "./observation";
 export * from "./presence";
 export * from "./ask";
 export * from "./memory";
+export * from "./suggestion";
 export * from "./ports";

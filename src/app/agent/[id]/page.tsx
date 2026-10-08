@@ -1,13 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { askHistory } from "@/pipeline";
-import { agentHome, agentMemory, goalProgress, ownedAgent } from "@/services";
+import {
+  agentHome,
+  agentMemory,
+  agentSuggestions,
+  goalProgress,
+  ownedAgent,
+} from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
 import { MemoryPanel } from "@/ui/memory-panel";
+import { SuggestionsPanel } from "@/ui/suggestions-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +32,12 @@ export default async function AgentPage({
     notFound(),
   );
 
-  const [rows, turns, memory, progress] = await Promise.all([
+  const [rows, turns, memory, progress, suggestions] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
     agentMemory(d, agent),
     goalProgress(d, agent),
+    agentSuggestions(d, agent),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -57,6 +65,13 @@ export default async function AgentPage({
           </a>
         </p>
       )}
+
+      <SuggestionsPanel
+        agentId={agent.id}
+        name={agent.name}
+        open={suggestions.open}
+        drafted={suggestions.drafted}
+      />
 
       {live.length > 0 && <Sessions rows={live} />}
 

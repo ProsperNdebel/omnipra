@@ -2,6 +2,7 @@ import type { ManifestationId, StoredBriefing } from "@/core";
 import { loadContext, type Deps } from "./deps";
 import { applyTransition } from "./lifecycle";
 import { proposeHeard, recallMemory } from "./memory";
+import { reflect } from "./reflect";
 import { observe } from "./observe";
 
 /**
@@ -47,5 +48,8 @@ export async function brief(
   );
   if (ctx.manifestation.status === "ended")
     await applyTransition(d, id, "brief");
+  // After the briefing is visible: look across events for what to do next. A failure
+  // here costs suggestions, never the briefing.
+  await reflect(d, id).catch((e) => console.error("reflect failed", e));
   return stored;
 }

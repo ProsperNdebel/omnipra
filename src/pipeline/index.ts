@@ -6,4 +6,5 @@ export { brief } from "./brief";
 export { ask, askHistory, clearAsks } from "./ask";
 export { proposeHeard, proposeLearned, recallMemory } from "./memory";
 export { draftPlan } from "./plan";
+export { draftFor, reflect, withTitles } from "./reflect";
 export { actOnRequest, converse, presenceInput, setAutonomy } from "./presence";

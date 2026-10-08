@@ -288,9 +288,7 @@ export class SupabaseStore implements BlobStore, Memory {
         const rows = must(
           await this.db
             .from("observations")
-            .select(
-              "id, agent_id, manifestation_id, kind, text, importance, alert, entities, evidence, at_sec, created_at",
-            )
+            .select(OBSERVATION_COLUMNS)
             .eq("manifestation_id", id)
             .order("created_at"),
           "observations.byManifestation",
@@ -306,6 +304,17 @@ export class SupabaseStore implements BlobStore, Memory {
             .in("manifestation_id", ids)
             .order("created_at"),
           "observations.byManifestations",
+        );
+        return (rows as Row[]).map(R.observation.from);
+      },
+      byIds: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db
+            .from("observations")
+            .select(OBSERVATION_COLUMNS)
+            .in("id", ids),
+          "observations.byIds",
         );
         return (rows as Row[]).map(R.observation.from);
       },
@@ -423,6 +432,40 @@ export class SupabaseStore implements BlobStore, Memory {
         must(
           await this.db.from("agent_memories").delete().eq("id", id),
           "memories.remove",
+        );
+      },
+    },
+
+    suggestions: {
+      byAgent: async (agentId) => {
+        const rows = must(
+          await this.db
+            .from("agent_suggestions")
+            .select()
+            .eq("agent_id", agentId)
+            .order("created_at", { ascending: false }),
+          "suggestions.byAgent",
+        );
+        return rows.map(R.suggestion.from);
+      },
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("agent_suggestions")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
+          "suggestions.get",
+        );
+        return row ? R.suggestion.from(row) : null;
+      },
+      save: async (ss) => {
+        if (ss.length === 0) return;
+        must(
+          await this.db
+            .from("agent_suggestions")
+            .upsert(ss.map(R.suggestion.to)),
+          "suggestions.save",
         );
       },
     },

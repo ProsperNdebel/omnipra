@@ -11,6 +11,7 @@ import {
 } from "@/core";
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
+  actOnSuggestion,
   addMemory,
   attend,
   authorizeTransition,
@@ -222,4 +223,16 @@ export async function editPlanAction(form: FormData) {
     fail(`/m/${id}`, err);
   }
   redirect(`/m/${id}#plan`);
+}
+
+/** Take the agent up on a suggestion (draft it, or watch for it), or dismiss it. */
+export async function suggestionAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  const op = str(form, "op") === "accept" ? "accept" : "dismiss";
+  try {
+    await actOnSuggestion(getDeps(), await viewerId(), str(form, "id"), op);
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#next`);
 }

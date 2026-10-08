@@ -8,6 +8,7 @@ import type {
   MissionId,
   HostRequestId,
   MemoryId,
+  SuggestionId,
   ObservationId,
   SegmentId,
   UserId,
@@ -22,6 +23,7 @@ import type {
   LearnedFromOwner,
 } from "./memory";
 import type { AgentMessage, HostRequest } from "./presence";
+import type { Suggestion } from "./suggestion";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -57,6 +59,41 @@ export interface AgentProvider {
   answer(input: AnswerInput): Promise<AnswerResult>;
   /** Before it goes: how it will serve its owner's goals at this event. */
   plan(input: PlanInput): Promise<NewPlanItem[]>;
+  /** After an event: what its owner should do, looking across everything heard so far. */
+  reflect(input: ReflectInput): Promise<NewSuggestion[]>;
+  /** Write the intro or message a suggestion offered. */
+  draft(input: DraftInput): Promise<string>;
+}
+
+/** A note with where it was heard, for reasoning across events. */
+export interface NoteInContext {
+  note: Observation;
+  eventTitle: string;
+}
+
+export interface ReflectInput {
+  agent: Agent;
+  memories: AgentMemory[];
+  /** The event that just ended. */
+  event: PresenceEvent;
+  /** Notes from it. */
+  notes: Observation[];
+  /** Related notes from earlier events. */
+  earlier: NoteInContext[];
+  /** Suggestions still open, so it doesn't repeat itself. */
+  open: Pick<Suggestion, "text">[];
+}
+
+export type NewSuggestion = Pick<
+  Suggestion,
+  "kind" | "text" | "why" | "offer" | "target" | "evidence"
+>;
+
+export interface DraftInput {
+  agent: Agent;
+  memories: AgentMemory[];
+  suggestion: Suggestion;
+  notes: NoteInContext[];
 }
 
 export interface PlanInput {
@@ -266,6 +303,7 @@ export interface Repos {
     byManifestation(id: ManifestationId): Promise<Observation[]>;
     /** Notes for many sessions in one round trip. */
     byManifestations(ids: ManifestationId[]): Promise<Observation[]>;
+    byIds(ids: ObservationId[]): Promise<Observation[]>;
   };
   briefings: {
     get(id: ManifestationId): Promise<StoredBriefing | null>;
@@ -295,6 +333,13 @@ export interface Repos {
     /** Upsert. */
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
+  };
+  suggestions: {
+    /** Newest first. */
+    byAgent(agentId: AgentId): Promise<Suggestion[]>;
+    get(id: SuggestionId): Promise<Suggestion | null>;
+    /** Upsert. */
+    save(s: Suggestion[]): Promise<void>;
   };
   askTurns: {
     append(t: AskTurn): Promise<void>;
