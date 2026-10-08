@@ -11,6 +11,8 @@ import type {
   NewPlanItem,
   PlanInput,
   OrchestrateInput,
+  ScoutInput,
+  ScoutResult,
   Orchestration,
   ActRequest,
   PrepareInput,
@@ -331,6 +333,54 @@ export class ClaudeAgentProvider implements AgentProvider {
     };
   }
 
+  async scout(input: ScoutInput): Promise<ScoutResult> {
+    if (input.candidates.length === 0) return { picks: [], skipped: [] };
+    const out = (await this.json(this.models.brief, 3072, {
+      system: P.scoutSystem(input),
+      user: P.scoutUser(input),
+      schema: SCOUT_SCHEMA,
+    })) as {
+      picks?: { host?: unknown; why?: unknown; instructions?: unknown }[];
+      skipped?: { event?: unknown; why?: unknown }[];
+    };
+    const hostOf = new Map(
+      input.candidates.flatMap((c, i) =>
+        c.hosts.map(
+          (h, j) =>
+            [
+              P.hostRef(i, j),
+              { eventId: c.event.id, hostId: h.hostId },
+            ] as const,
+        ),
+      ),
+    );
+    const eventOf = new Map(
+      input.candidates.map((c, i) => [P.eventRef(i), c.event.id]),
+    );
+    const key = (v: unknown) =>
+      String(v ?? "")
+        .trim()
+        .toLowerCase();
+    return {
+      picks: (Array.isArray(out.picks) ? out.picks : []).flatMap((p) => {
+        const h = hostOf.get(key(p?.host));
+        return h
+          ? [
+              {
+                ...h,
+                why: String(p.why ?? "").trim(),
+                instructions: String(p.instructions ?? "").trim(),
+              },
+            ]
+          : [];
+      }),
+      skipped: (Array.isArray(out.skipped) ? out.skipped : []).flatMap((s) => {
+        const eventId = eventOf.get(key(s?.event));
+        return eventId ? [{ eventId, why: String(s.why ?? "").trim() }] : [];
+      }),
+    };
+  }
+
   private async json(
     model: string,
     maxTokens: number,
@@ -647,6 +697,40 @@ const ORCHESTRATE_SCHEMA = {
       required: ["text", "cites"],
       description: "Empty text when there is no pattern across rooms.",
       properties: { text: { type: "string" }, cites: CITES },
+    },
+  },
+};
+
+const SCOUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["picks", "skipped"],
+  properties: {
+    picks: {
+      type: "array",
+      description: "Best first.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["host", "why", "instructions"],
+        properties: {
+          host: { type: "string", description: "Host ref, like e2h1." },
+          why: { type: "string" },
+          instructions: { type: "string" },
+        },
+      },
+    },
+    skipped: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["event", "why"],
+        properties: {
+          event: { type: "string", description: "Event ref, like e3." },
+          why: { type: "string" },
+        },
+      },
     },
   },
 };

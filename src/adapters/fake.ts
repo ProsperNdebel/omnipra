@@ -7,6 +7,8 @@ import type {
   NewPlanItem,
   PlanInput,
   OrchestrateInput,
+  ScoutInput,
+  ScoutResult,
   Orchestration,
   ActRequest,
   PrepareInput,
@@ -260,6 +262,26 @@ export class FakeAgent implements AgentProvider {
               evidence: [first.notes[0].id, second.notes[0].id],
             }
           : null,
+    };
+  }
+
+  async scout({ candidates }: ScoutInput): Promise<ScoutResult> {
+    // Picks every event, cheapest host first, so the budget rule has work to do.
+    return {
+      picks: candidates.flatMap((c) => {
+        const h = [...c.hosts].sort((a, b) => a.priceCents - b.priceCents)[0];
+        return h
+          ? [
+              {
+                eventId: c.event.id,
+                hostId: h.hostId,
+                why: `${c.event.title} fits what you're after.`,
+                instructions: `Listen for traction numbers and founders worth meeting at ${c.event.title}.`,
+              },
+            ]
+          : [];
+      }),
+      skipped: [],
     };
   }
 }

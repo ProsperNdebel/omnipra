@@ -6,6 +6,7 @@ import {
   agentAttention,
   agentHome,
   agentMemory,
+  agentOutings,
   agentSuggestions,
   goalProgress,
   ownedAgent,
@@ -17,6 +18,7 @@ import { Dot, STATUS_WORDS } from "@/ui/bar";
 import { fmtDay, fmtTime, plural } from "@/ui/format";
 import { MemoryPanel } from "@/ui/memory-panel";
 import { MultiPresence } from "@/ui/multi-presence";
+import { OutingsPanel } from "@/ui/outings-panel";
 import { ActionsPanel } from "@/ui/actions-panel";
 import { SuggestionsPanel } from "@/ui/suggestions-panel";
 
@@ -36,16 +38,25 @@ export default async function AgentPage({
     notFound(),
   );
 
-  const [rows, turns, memory, progress, suggestions, actions, attention] =
-    await Promise.all([
-      agentHome(d, agent),
-      askHistory(d, agent.id),
-      agentMemory(d, agent),
-      goalProgress(d, agent),
-      agentSuggestions(d, agent),
-      agentActions(d, agent),
-      agentAttention(d, agent),
-    ]);
+  const [
+    rows,
+    turns,
+    memory,
+    progress,
+    suggestions,
+    actions,
+    attention,
+    outings,
+  ] = await Promise.all([
+    agentHome(d, agent),
+    askHistory(d, agent.id),
+    agentMemory(d, agent),
+    goalProgress(d, agent),
+    agentSuggestions(d, agent),
+    agentActions(d, agent),
+    agentAttention(d, agent),
+    agentOutings(d, agent.id),
+  ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
 
@@ -107,6 +118,8 @@ export default async function AgentPage({
           }))}
         />
       </div>
+
+      <OutingsPanel agentId={agent.id} name={agent.name} outings={outings} />
 
       <MemoryPanel
         agent={agent}

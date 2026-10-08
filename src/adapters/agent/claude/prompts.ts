@@ -8,6 +8,7 @@ import type {
   NoteInContext,
   ReflectInput,
   OrchestrateInput,
+  ScoutInput,
   PlanInput,
   PlanItem,
   ConverseInput,
@@ -417,4 +418,34 @@ export function orchestrateUser(input: OrchestrateInput): string {
     ? `Last time: focus ${prev.focus ? `"${input.rooms.find((r) => r.manifestationId === prev.focus!.manifestationId)?.eventTitle ?? "a room you have left"}"` : "none"}; pattern ${prev.pattern ? `"${prev.pattern.text}"` : "none"}.`
     : "This is the first time you are looking across these rooms.";
   return [`<rooms>\n${rooms.join("\n\n")}\n</rooms>`, before].join("\n\n");
+}
+
+/** Short refs (e1, e2, ...) for candidate events and (h1, h2, ...) for their hosts. */
+export const eventRef = (i: number) => `e${i + 1}`;
+export const hostRef = (i: number, j: number) => `e${i + 1}h${j + 1}`;
+
+export function scoutSystem(input: ScoutInput): string {
+  return [
+    agentIdentity(input.agent, input.memories),
+    `Your owner wants you to decide where to be: "${input.request}". Budget: $${(input.budgetCents / 100).toFixed(2)} in total. Below are the events on Presence in that window, each with the hosts who can carry you there and their price.`,
+    `Pick the events that best serve your owner's goals and this request, best first, and for each the best host: prefer hosts who take requests when you might need things asked, then lower price. Stay within budget; fewer, better events beat spreading thin. For each pick, say why in one sentence to your owner, and write the mission you will carry there: two or three sentences in your owner's voice saying what to listen for, specific to that event.`,
+    `For every event you pass on, say why in a few words. Do not invent events or hosts; use only the refs given. No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function scoutUser(input: ScoutInput): string {
+  if (input.candidates.length === 0)
+    return "No events are listed in this window.";
+  return input.candidates
+    .map((c, i) => {
+      const e = c.event;
+      const hosts = c.hosts
+        .map(
+          (h, j) =>
+            `  ${hostRef(i, j)} ${h.displayName}, $${(h.priceCents / 100).toFixed(2)}${h.openToRequests ? ", takes requests" : ""}`,
+        )
+        .join("\n");
+      return `${eventRef(i)} "${e.title}"${e.venue ? ` at ${e.venue}` : ""}, ${e.startsAt}\n${hosts}`;
+    })
+    .join("\n\n");
 }

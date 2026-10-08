@@ -8,3 +8,4 @@ export * from "./plans";
 export * from "./suggestions";
 export * from "./actions";
 export * from "./attention";
+export * from "./outings";

@@ -437,6 +437,37 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    outings: {
+      byAgent: async (agentId) => {
+        const rows = must(
+          await this.db
+            .from("agent_outings")
+            .select()
+            .eq("agent_id", agentId)
+            .order("created_at", { ascending: false }),
+          "outings.byAgent",
+        );
+        return rows.map(R.outing.from);
+      },
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("agent_outings")
+            .select()
+            .eq("id", id)
+            .maybeSingle(),
+          "outings.get",
+        );
+        return row ? R.outing.from(row) : null;
+      },
+      save: async (o) => {
+        must(
+          await this.db.from("agent_outings").upsert(R.outing.to(o)),
+          "outings.save",
+        );
+      },
+    },
+
     attention: {
       get: async (agentId) => {
         const row = must(

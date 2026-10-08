@@ -10,6 +10,7 @@ import type {
   MemoryId,
   SuggestionId,
   ActionId,
+  OutingId,
   ObservationId,
   SegmentId,
   UserId,
@@ -27,6 +28,7 @@ import type { AgentMessage, HostRequest } from "./presence";
 import type { Suggestion } from "./suggestion";
 import type { Action, ActionKind, ActionPayload } from "./action";
 import type { AgentAttention } from "./attention";
+import type { Outing } from "./outing";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -68,6 +70,37 @@ export interface AgentProvider {
   prepare(input: PrepareInput): Promise<PreparedAction>;
   /** Present in several rooms: weigh them against each other and decide where attention goes. */
   orchestrate(input: OrchestrateInput): Promise<Orchestration>;
+  /** Decide where to be: rank what's on against the owner's goals, pick hosts, write missions. */
+  scout(input: ScoutInput): Promise<ScoutResult>;
+}
+
+export interface ScoutCandidate {
+  event: PresenceEvent;
+  hosts: {
+    hostId: UserId;
+    displayName: string;
+    priceCents: number;
+    openToRequests: boolean;
+  }[];
+}
+
+export interface ScoutInput {
+  agent: Agent;
+  memories: AgentMemory[];
+  request: string;
+  budgetCents: number;
+  candidates: ScoutCandidate[];
+}
+
+export interface ScoutResult {
+  /** Best first. Pipeline enforces the budget and that each host is real. */
+  picks: {
+    eventId: EventId;
+    hostId: UserId;
+    why: string;
+    instructions: string;
+  }[];
+  skipped: { eventId: EventId; why: string }[];
 }
 
 export interface RoomInput {
@@ -377,6 +410,12 @@ export interface Repos {
     /** Upsert. */
     save(m: AgentMemory[]): Promise<void>;
     remove(id: MemoryId): Promise<void>;
+  };
+  outings: {
+    /** Newest first. */
+    byAgent(agentId: AgentId): Promise<Outing[]>;
+    get(id: OutingId): Promise<Outing | null>;
+    save(o: Outing): Promise<void>;
   };
   attention: {
     get(agentId: AgentId): Promise<AgentAttention | null>;

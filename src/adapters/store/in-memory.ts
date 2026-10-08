@@ -8,6 +8,8 @@ import type {
   Suggestion,
   Action,
   AgentAttention,
+  Outing,
+  OutingId,
   ActionId,
   SuggestionId,
   HostRequest,
@@ -50,6 +52,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly suggestions = new Map<SuggestionId, Suggestion>();
   readonly actions = new Map<ActionId, Action>();
   readonly attention = new Map<AgentId, AgentAttention>();
+  readonly outings = new Map<OutingId, Outing>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -189,6 +192,15 @@ export class InMemoryStore implements BlobStore, Memory {
       get: async (id) => this.memories.get(id) ?? null,
       save: async (ms) => ms.forEach((m) => this.memories.set(m.id, m)),
       remove: async (id) => void this.memories.delete(id),
+    },
+    outings: {
+      byAgent: async (agentId) =>
+        [...this.outings.values()]
+          .filter((o) => o.agentId === agentId)
+          .sort(by((o) => o.createdAt))
+          .reverse(),
+      get: async (id) => this.outings.get(id) ?? null,
+      save: async (o) => void this.outings.set(o.id, o),
     },
     attention: {
       get: async (agentId) => this.attention.get(agentId) ?? null,

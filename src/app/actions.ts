@@ -12,6 +12,9 @@ import {
 import { applyTransition, draftPlan } from "@/pipeline";
 import {
   actOnSuggestion,
+  bookOuting,
+  dismissOuting,
+  scout,
   decideOnAction,
   editAction,
   addMemory,
@@ -271,4 +274,43 @@ export async function editActionAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#actions`);
+}
+
+/** "Find places for me": the agent proposes where to be, within a budget. */
+export async function scoutAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  try {
+    await scout(getDeps(), await viewerId(), agentId, {
+      request: str(form, "request"),
+      budgetCents: Math.round(Number(str(form, "budget")) * 100),
+      days: Number(str(form, "days")),
+    });
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#outings`);
+}
+
+/** Book the agent's proposed plan, or turn it down. Booking drafts each event's plan in the background. */
+export async function outingAction(form: FormData) {
+  const agentId = str(form, "agentId");
+  const id = str(form, "id");
+  try {
+    if (str(form, "op") === "book") {
+      const d = getDeps();
+      const missions = await bookOuting(d, await viewerId(), id);
+      after(() =>
+        Promise.all(
+          missions.map((m) =>
+            draftPlan(d, m).catch((e) => console.error("plan failed", e)),
+          ),
+        ),
+      );
+    } else {
+      await dismissOuting(getDeps(), await viewerId(), id);
+    }
+  } catch (err) {
+    fail(`/agent/${agentId}`, err);
+  }
+  redirect(`/agent/${agentId}#outings`);
 }

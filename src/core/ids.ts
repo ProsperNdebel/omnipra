@@ -15,6 +15,7 @@ export type AskTurnId = Id<"AskTurn">;
 export type MemoryId = Id<"Memory">;
 export type SuggestionId = Id<"Suggestion">;
 export type ActionId = Id<"Action">;
+export type OutingId = Id<"Outing">;
 
 export type ISODate = string;
 

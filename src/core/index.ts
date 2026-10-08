@@ -11,4 +11,5 @@ export * from "./memory";
 export * from "./suggestion";
 export * from "./action";
 export * from "./attention";
+export * from "./outing";
 export * from "./ports";
