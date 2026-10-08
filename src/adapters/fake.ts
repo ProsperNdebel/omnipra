@@ -3,6 +3,8 @@ import type {
   AnswerInput,
   AnswerResult,
   LearnedFromOwner,
+  NewPlanItem,
+  PlanInput,
   AudioInput,
   BriefInput,
   BriefResult,
@@ -47,12 +49,19 @@ export class FakeAgent implements AgentProvider {
     conversation,
     requests,
     hostTakesRequests,
+    mission,
   }: ObserveInput): Promise<ObserveResult> {
     const launch = window.find((s) => /launched/i.test(s.text));
     const nudged = conversation.some((m) => m.kind === "nudge");
     return {
       observations: window.map((s) => ({
         kind: "number",
+        basis: "claim",
+        speaker: null,
+        // Anything about contracts advances the first plan item.
+        planItem: /contract/i.test(s.text)
+          ? (mission.plan?.[0]?.id ?? null)
+          : null,
         text: `Heard: ${s.text}`,
         importance: 2,
         alert: null,
@@ -139,6 +148,22 @@ export class FakeAgent implements AgentProvider {
         ? `From my notes: ${observations[0]!.text}`
         : "I did not observe that.";
     return { answer: prior + answer, learn: learnFrom(question) };
+  }
+
+  async plan({ memories }: PlanInput): Promise<NewPlanItem[]> {
+    const goals = memories.filter((m) => m.kind === "goal");
+    return [
+      ...goals.map((g) => ({
+        goalId: g.id,
+        goal: g.text,
+        watchFor: `Anyone whose work touches: ${g.text}`,
+      })),
+      {
+        goalId: null,
+        goal: "This mission",
+        watchFor: "Traction numbers: contracts, revenue, customers.",
+      },
+    ];
   }
 }
 

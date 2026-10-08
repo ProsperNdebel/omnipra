@@ -11,6 +11,7 @@ import type {
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
+import { PlanPanel } from "./plan-panel";
 import { AlertsPrompt, PresencePanel } from "./presence-panel";
 import { SubmitButton } from "./submit-button";
 
@@ -112,6 +113,18 @@ export function LiveFeed({
         <AlertsPrompt agentName={agentName} />
       )}
 
+      <PlanPanel
+        id={id}
+        agentName={agentName}
+        plan={f.plan}
+        notes={obs}
+        editable={
+          f.status === "requested" ||
+          f.status === "accepted" ||
+          f.status === "live"
+        }
+      />
+
       {f.status === "ended" && (
         <RetryBriefing id={id} agentName={agentName} onDone={refresh} />
       )}
@@ -121,7 +134,7 @@ export function LiveFeed({
       {important.length > 0 && (
         <section className="narrow">
           <h2 className="section">Worth acting on</h2>
-          <Observations list={important} sessionId={id} />
+          <Observations list={important} sessionId={id} agentName={agentName} />
         </section>
       )}
       {rest.length > 0 && (
@@ -129,7 +142,7 @@ export function LiveFeed({
           <h2 className="section">
             {f.briefing ? "Everything else it noted" : "Notes"}
           </h2>
-          <Observations list={rest} sessionId={id} />
+          <Observations list={rest} sessionId={id} agentName={agentName} />
         </section>
       )}
     </>
@@ -208,12 +221,21 @@ function when(o: Observation): string {
 
 const noteAnchor = (id: string) => `note-${id}`;
 
+/** Who a note rests on, so a single speaker's claim never reads as fact. */
+function basisWords(o: Observation, agentName: string): string {
+  if (o.basis === "corroborated") return "confirmed by more than one source";
+  if (o.basis === "inference") return `${agentName}'s inference`;
+  return o.speaker ? `claimed by ${o.speaker}` : "claimed";
+}
+
 function Observations({
   list,
   sessionId,
+  agentName,
 }: {
   list: Observation[];
   sessionId: string;
+  agentName: string;
 }) {
   return (
     <ul className="rows">
@@ -221,7 +243,7 @@ function Observations({
         <li key={o.id} id={noteAnchor(o.id)}>
           <div className="full">
             <div className="small muted">
-              {KIND[o.kind]}, {when(o)}
+              {KIND[o.kind]}, {basisWords(o, agentName)}, {when(o)}
               {o.alert && `, matched "${o.alert}"`}
             </div>
             <div style={{ marginTop: 4 }}>{o.text}</div>

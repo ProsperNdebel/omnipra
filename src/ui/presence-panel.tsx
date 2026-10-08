@@ -32,7 +32,10 @@ export function PresencePanel({
   onChange: () => Promise<void>;
 }) {
   useAlerts(agentName, messages, requests);
-  const proposed = requests.filter((r) => r.status === "proposed");
+  // Once the agent has left the room, an unsent proposal can no longer be acted on.
+  const proposed = active
+    ? requests.filter((r) => r.status === "proposed")
+    : [];
   const withHost = requests.filter(
     (r) =>
       r.status === "sent" || r.status === "done" || r.status === "declined",

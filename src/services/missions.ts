@@ -70,6 +70,7 @@ export async function sendAgent(
     requires: [...requires],
     autonomy: listing.openToRequests ? input.autonomy : "ask_first",
     orders: [],
+    plan: null,
     createdAt: d.now(),
   };
   await d.repos.missions.save(mission);

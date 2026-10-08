@@ -53,6 +53,7 @@ export async function observe(
     Math.min(...evidence.map((e) => startOf.get(e)!));
 
   const createdAt = d.now();
+  const planIds = new Set((ctx.mission.plan ?? []).map((p) => p.id));
   const observations: Observation[] = result.observations
     .map((o) => ({ ...o, evidence: cited(o.evidence) }))
     .filter((o) => o.evidence.length > 0)
@@ -63,6 +64,7 @@ export async function observe(
       manifestationId: id,
       // When it was said in the room, not when the model got to it.
       atSec: saidAt(o.evidence),
+      planItem: o.planItem && planIds.has(o.planItem) ? o.planItem : null,
       createdAt,
     }));
 

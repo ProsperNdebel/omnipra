@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { askHistory } from "@/pipeline";
-import { agentHome, agentMemory, ownedAgent } from "@/services";
+import { agentHome, agentMemory, goalProgress, ownedAgent } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
@@ -25,10 +25,11 @@ export default async function AgentPage({
     notFound(),
   );
 
-  const [rows, turns, memory] = await Promise.all([
+  const [rows, turns, memory, progress] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
     agentMemory(d, agent),
+    goalProgress(d, agent),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
@@ -76,7 +77,12 @@ export default async function AgentPage({
         />
       </div>
 
-      <MemoryPanel agent={agent} memory={memory} error={error} />
+      <MemoryPanel
+        agent={agent}
+        memory={memory}
+        progress={progress}
+        error={error}
+      />
 
       <h2 className="section">Sessions</h2>
       {rest.length === 0 && live.length === 0 ? (

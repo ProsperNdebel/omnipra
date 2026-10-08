@@ -13,7 +13,7 @@ import type {
   UserId,
 } from "./ids";
 import type { Manifestation } from "./manifestation";
-import type { Mission } from "./mission";
+import type { Mission, PlanItem } from "./mission";
 import type { Observation, TranscriptSegment } from "./observation";
 import type { AskTurn } from "./ask";
 import type {
@@ -55,7 +55,20 @@ export interface AgentProvider {
   brief(input: BriefInput): Promise<BriefResult>;
   /** Owner asks a question; answer only from what the agent experienced. */
   answer(input: AnswerInput): Promise<AnswerResult>;
+  /** Before it goes: how it will serve its owner's goals at this event. */
+  plan(input: PlanInput): Promise<NewPlanItem[]>;
 }
+
+export interface PlanInput {
+  agent: Agent;
+  /** Active memories: goals above all, plus experiences that bear on this event. */
+  memories: AgentMemory[];
+  mission: Mission;
+  event: PresenceEvent;
+}
+
+/** goalId must be one of the goal memories passed in, or null for the mission itself. */
+export type NewPlanItem = Omit<PlanItem, "id">;
 
 /** What a provider returns. Ids, timing and ownership are filled in by the pipeline, not the model. */
 export type NewObservation = Omit<

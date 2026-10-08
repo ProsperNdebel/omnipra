@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { addMemoryAction, reviewMemoryAction } from "@/app/actions";
 import type { Agent, MemoryKind } from "@/core";
-import type { AgentMemoryView, MemoryView } from "@/services";
+import type { AgentMemoryView, GoalProgress, MemoryView } from "@/services";
+import { plural } from "./format";
 import { SubmitButton } from "./submit-button";
 
 const KIND_WORDS: Record<MemoryKind, string> = {
@@ -18,10 +19,12 @@ const KIND_WORDS: Record<MemoryKind, string> = {
 export function MemoryPanel({
   agent,
   memory,
+  progress,
   error,
 }: {
   agent: Agent;
   memory: AgentMemoryView;
+  progress: Record<string, GoalProgress>;
   error?: string;
 }) {
   const { proposed, active } = memory;
@@ -73,6 +76,7 @@ export function MemoryPanel({
         items={active.goal}
         empty={`No goals yet. Give ${name} something to work toward across events.`}
         placeholder="Find banks that need Shona speech recognition"
+        extra={(m) => <Progress p={progress[m.id]} />}
       />
 
       <Group
@@ -126,6 +130,7 @@ function Group({
   intro,
   empty,
   placeholder,
+  extra,
 }: {
   agent: Agent;
   kind: MemoryKind;
@@ -133,6 +138,8 @@ function Group({
   items: MemoryView[];
   intro?: React.ReactNode;
   empty?: string;
+  /** More to say about each item, like progress on a goal. */
+  extra?: (m: MemoryView) => React.ReactNode;
   /** Set when the owner can add to this group directly. */
   placeholder?: string;
 }) {
@@ -149,6 +156,7 @@ function Group({
             <li key={m.id}>
               <div className="full">
                 <div>{m.text}</div>
+                {extra?.(m)}
                 <div className="small muted" style={{ marginTop: 2 }}>
                   <Source m={m} />
                 </div>
@@ -277,5 +285,27 @@ function Correct({
         </form>
       )}
     </details>
+  );
+}
+
+/** How far a goal has come across events, from notes tagged to plan items that serve it. */
+function Progress({ p }: { p: GoalProgress | undefined }) {
+  if (!p || (p.notes === 0 && p.watchingNow === 0)) {
+    return (
+      <div className="small muted" style={{ marginTop: 2 }}>
+        Nothing toward this yet.
+      </div>
+    );
+  }
+  const parts = [
+    p.notes > 0 &&
+      `${plural(p.notes, "note")} from ${plural(p.events, "event")}`,
+    p.watchingNow > 0 &&
+      `watching for it at ${plural(p.watchingNow, "event")} now`,
+  ].filter(Boolean);
+  return (
+    <div className="small" style={{ marginTop: 2 }}>
+      {parts.join(", ")}
+    </div>
   );
 }

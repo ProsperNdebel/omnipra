@@ -8,6 +8,8 @@ import type {
   ConverseInput,
   ConverseResult,
   LearnedFromOwner,
+  NewPlanItem,
+  PlanInput,
   NewAsk,
   NewObservation,
   ObservationId,
@@ -16,6 +18,7 @@ import type {
   ObserveResult,
   SegmentId,
 } from "@/core";
+import { OBSERVATION_BASES } from "@/core";
 import * as P from "./prompts";
 
 /**
@@ -54,9 +57,13 @@ export class ClaudeAgentProvider implements AgentProvider {
       nudges?: unknown[];
       asks?: unknown[];
     };
+    // Plan refs (p1, p2) back to plan item ids; unknown refs mean no item.
+    const planIds = new Map(
+      (input.mission.plan ?? []).map((p, i) => [P.planRef(i), p.id]),
+    );
     return {
       observations: (out.observations ?? []).flatMap((o) => {
-        const parsed = parseObservation(o);
+        const parsed = parseObservation(o, planIds);
         return parsed ? [parsed] : [];
       }),
       nudges: (out.nudges ?? []).flatMap((n) => {
@@ -114,7 +121,7 @@ export class ClaudeAgentProvider implements AgentProvider {
   }: BriefInput): Promise<BriefResult> {
     const out = (await this.json(this.models.brief, 4096, {
       system: P.briefSystem(agent, memories, mission, event),
-      user: P.briefUser(observations),
+      user: P.briefUser(observations, mission.plan),
       schema: BRIEFING_SCHEMA,
     })) as RawBriefing;
 
@@ -175,6 +182,33 @@ export class ClaudeAgentProvider implements AgentProvider {
       answer: typeof out.answer === "string" ? out.answer.trim() : "",
       learn: parseLearn(out.learn),
     };
+  }
+
+  async plan(input: PlanInput): Promise<NewPlanItem[]> {
+    const out = (await this.json(this.models.brief, 1536, {
+      system: P.planSystem(input),
+      user: P.planUser(input),
+      schema: PLAN_SCHEMA,
+    })) as { items?: { goal?: unknown; watchFor?: unknown }[] };
+    const goals = input.memories.filter((m) => m.kind === "goal");
+    const byRef = new Map(goals.map((g, i) => [P.goalRef(i), g]));
+    return (Array.isArray(out.items) ? out.items : []).flatMap((item) => {
+      if (typeof item?.watchFor !== "string" || !item.watchFor.trim())
+        return [];
+      // A ref the model invented falls back to the mission, never to a made up goal.
+      const goal = byRef.get(
+        String(item.goal ?? "")
+          .trim()
+          .toLowerCase(),
+      );
+      return [
+        {
+          goalId: goal?.id ?? null,
+          goal: goal?.text ?? "This mission",
+          watchFor: item.watchFor.trim(),
+        },
+      ];
+    });
   }
 
   private async json(
@@ -279,6 +313,9 @@ const OBSERVE_SCHEMA = {
           "text",
           "importance",
           "alert",
+          "basis",
+          "speaker",
+          "plan",
           "entities",
           "evidence",
         ],
@@ -293,6 +330,17 @@ const OBSERVE_SCHEMA = {
             type: "string",
             description:
               "The mission alert this matches, verbatim, or an empty string.",
+          },
+          basis: { type: "string", enum: OBSERVATION_BASES },
+          speaker: {
+            type: "string",
+            description:
+              "Who said it, as identified in the room, or an empty string.",
+          },
+          plan: {
+            type: "string",
+            description:
+              "Ref of the plan item this advances (like p2), or an empty string.",
           },
           entities: { type: "array", items: { type: "string" } },
           evidence: {
@@ -332,6 +380,29 @@ const LEARN = {
     properties: {
       kind: { type: "string", enum: ["owner", "goal", "identity"] },
       text: { type: "string" },
+    },
+  },
+};
+
+const PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["items"],
+  properties: {
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["goal", "watchFor"],
+        properties: {
+          goal: {
+            type: "string",
+            description: 'The goal ref this serves (like g1), or "mission".',
+          },
+          watchFor: { type: "string" },
+        },
+      },
     },
   },
 };
@@ -413,7 +484,10 @@ const BRIEFING_SCHEMA = {
 };
 
 /** Model output is still validated field by field; anything malformed is dropped. */
-function parseObservation(o: unknown): NewObservation | null {
+function parseObservation(
+  o: unknown,
+  planIds: Map<string, string>,
+): NewObservation | null {
   if (!o || typeof o !== "object") return null;
   const r = o as Record<string, unknown>;
   // Enum casing can drift from the schema, so compare case insensitively.
@@ -424,6 +498,19 @@ function parseObservation(o: unknown): NewObservation | null {
     kind,
     text: r.text,
     importance,
+    basis:
+      OBSERVATION_BASES.find((b) => b === String(r.basis).toLowerCase()) ??
+      "claim",
+    speaker:
+      typeof r.speaker === "string" && r.speaker.trim()
+        ? r.speaker.trim().slice(0, 120)
+        : null,
+    planItem:
+      planIds.get(
+        String(r.plan ?? "")
+          .trim()
+          .toLowerCase(),
+      ) ?? null,
     alert:
       typeof r.alert === "string" && r.alert.trim().length > 0
         ? r.alert.trim()

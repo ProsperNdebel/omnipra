@@ -14,7 +14,7 @@ const AUDIO_BUCKET = "audio";
 
 /** Note columns, without the full text search vector. */
 const OBSERVATION_COLUMNS =
-  "id, agent_id, manifestation_id, kind, text, importance, alert, entities, evidence, at_sec, created_at";
+  "id, agent_id, manifestation_id, kind, text, importance, alert, basis, speaker, plan_item, entities, evidence, at_sec, created_at";
 
 /**
  * A session joined to its device, mission, agent and event through foreign keys.

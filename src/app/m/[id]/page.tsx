@@ -11,10 +11,12 @@ export const dynamic = "force-dynamic";
 /** The owner's window into one manifestation: live observations, then the briefing. */
 export default async function ManifestationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { error }] = await Promise.all([params, searchParams]);
   const d = getDeps();
   const a = await access(d, id as ManifestationId, await viewerId()).catch(() =>
     notFound(),
@@ -33,6 +35,11 @@ export default async function ManifestationPage({
         {fmtDay(a.event.startsAt)}, {fmtRange(a.event.startsAt, a.event.endsAt)}
         . {a.agent.name} through {hostName.replace(/\.$/, "")}.
       </p>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <LiveFeed
         id={a.manifestation.id}
         agentName={a.agent.name}

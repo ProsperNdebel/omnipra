@@ -6,6 +6,7 @@ import type {
   HostRequest,
   Manifestation,
   Observation,
+  PlanItem,
   PresenceEvent,
   SessionContext,
   StoredBriefing,
@@ -198,6 +199,8 @@ export interface Feed {
   requests: HostRequest[] | HostRequestView[];
   autonomy: Autonomy;
   hostTakesRequests: boolean;
+  /** Owner only. Null until drafted. */
+  plan: PlanItem[] | null;
 }
 
 export async function feed(
@@ -234,6 +237,7 @@ export async function feed(
             hostNote: r.hostNote,
           })),
     autonomy: ctx.mission.autonomy,
+    plan: asOwner ? ctx.mission.plan : null,
     hostTakesRequests:
       listings.find((l) => l.hostId === ctx.endpoint.hostId)?.openToRequests ??
       false,

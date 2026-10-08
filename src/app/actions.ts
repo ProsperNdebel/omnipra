@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import {
   DomainError,
@@ -8,7 +9,7 @@ import {
   type ManifestationId,
   type UserId,
 } from "@/core";
-import { applyTransition } from "@/pipeline";
+import { applyTransition, draftPlan } from "@/pipeline";
 import {
   addMemory,
   attend,
@@ -16,6 +17,8 @@ import {
   createAgent,
   createEvent,
   sendAgent,
+  editPlan,
+  replan,
   reviewMemory,
   updateAgent,
   type MemoryReview,
@@ -125,6 +128,13 @@ export async function sendAgentAction(form: FormData) {
       autonomy: str(form, "autonomy") === "act" ? "act" : "ask_first",
     });
     id = m.id;
+    // The plan drafts while the owner lands on the session page; it shows when ready.
+    const missionId = m.missionId;
+    after(() =>
+      draftPlan(getDeps(), missionId).catch((e) =>
+        console.error("plan failed", e),
+      ),
+    );
   } catch (err) {
     fail(`/send/${eventId}/${hostId}`, err);
   }
@@ -181,4 +191,35 @@ export async function reviewMemoryAction(form: FormData) {
     fail(`/agent/${agentId}`, err);
   }
   redirect(`/agent/${agentId}#memory`);
+}
+
+/** Draft or redraft the agent's plan for a session. */
+export async function replanAction(form: FormData) {
+  const id = str(form, "manifestationId");
+  try {
+    await replan(getDeps(), await viewerId(), id);
+  } catch (err) {
+    fail(`/m/${id}`, err);
+  }
+  redirect(`/m/${id}#plan`);
+}
+
+/** The owner's edits to the plan: one field per item (blank removes it), plus one new line. */
+export async function editPlanAction(form: FormData) {
+  const id = str(form, "manifestationId");
+  try {
+    await editPlan(getDeps(), await viewerId(), id, {
+      items: form
+        .getAll("itemId")
+        .map(String)
+        .map((itemId) => ({
+          id: itemId,
+          watchFor: str(form, `item:${itemId}`),
+        })),
+      added: str(form, "added"),
+    });
+  } catch (err) {
+    fail(`/m/${id}`, err);
+  }
+  redirect(`/m/${id}#plan`);
 }

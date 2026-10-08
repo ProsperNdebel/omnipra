@@ -1,6 +1,8 @@
 import type {
   Agent,
   AgentMemory,
+  PlanInput,
+  PlanItem,
   ConverseInput,
   Mission,
   Observation,
@@ -55,6 +57,7 @@ function situation(input: PresenceInput): string {
   return [
     `Right now you are present at "${event.title}" through a host's phone microphone. Your owner is somewhere else and relies on you to be their presence in this room. You hear the room as a rolling transcript. Speaker labels like S0 and S1 are per chunk and unreliable; never treat them as identities.`,
     `Your mission here:\n<mission>\n${mission.instructions}\n</mission>`,
+    planText(mission),
     mission.orders.length
       ? `Since the session started, your owner told you (newest last, these take priority):\n${mission.orders.map((o) => `- ${o}`).join("\n")}`
       : "",
@@ -89,15 +92,19 @@ const OBSERVE_RULES = `How to record observations:
 - importance: 3 means the owner should act on it or it matches an alert, 2 is relevant to their interests, 1 is useful background.
 - kind: person (someone worth knowing, with their company and why), company, number (prices, metrics, dates; keep units), opportunity, question (something left unanswered that the owner would want answered), insight (anything else).
 - entities: the people and companies named in that observation, as written.
+- basis: how far your owner can trust it. claim when one speaker said it, which is most things. corroborated only when more than one person independently said or agreed to it in what you heard, or it is a plain fact of the room itself (who is on stage, what was announced as happening here); one speaker repeating themselves is still a claim. inference when it is your own reading that nobody said outright, like "they seem to be raising"; keep inferences rare and only when useful.
+- speaker: who said it, as the room identified them: a name, a role, a company ("Acme's CEO", "the moderator"). Only from what was said, never from the S0/S1 labels. Empty if it was not clear.
+- Write claims as claims ("Acme's CEO said they have 40 bank customers"), never as established fact.
+- plan: the ref of the plan item this note advances (like p2), or an empty string. Only when it genuinely advances that item.
 - It is fine to record nothing. Most minutes of most talks are not relevant.
 
 When to nudge your owner (interrupt them, even though they are busy elsewhere):
-- Only when something said right now matters to them specifically and waiting for the briefing would lose value: it matches an alert, it touches their own work directly, someone they should meet just spoke, or it connects to something you heard in another room.
+- Only when something said right now matters to them specifically and waiting for the briefing would lose value: it clearly advances one of their goals or a plan item, it matches an alert, it touches their own work directly, someone they should meet just spoke, or it connects to something you heard in another room.
 - Say why it matters to them in one or two sentences, in your own voice, addressed to them. Cite the transcript lines.
 - At most one nudge per window, and usually none. Never nudge about something you already nudged about in the conversation.
 
 When to propose an ask for your host (only if your host takes requests):
-- When one question or action in the room would get your owner something they clearly want and can't get otherwise: a number the speaker skipped, whether a company is open to partners, a founder's contact.
+- When one question or action in the room would get your owner something they clearly want and can't get otherwise, above all something that advances a plan item: a number the speaker skipped, whether a company is open to partners, a founder's contact.
 - Write the ask to the host: short, polite, concrete, something a person can do in a minute. Write "why" to your owner.
 - At most one per window, and never repeat or rephrase an ask that already exists.
 
@@ -176,10 +183,15 @@ export function briefSystem(
   return [
     agentIdentity(agent, memories),
     `You just finished attending "${event.title}" for your owner. Your mission was:\n<mission>\n${mission.instructions}\n</mission>`,
+    planText(mission),
+    mission.plan?.length
+      ? `In the markdown, include a short section on the plan: for each item, whether it moved and what moved it (cite notes), or plainly that it did not. No padding when nothing moved.`
+      : "",
     mission.orders.length
       ? `During the session your owner also told you:\n${mission.orders.map((o) => `- ${o}`).join("\n")}`
       : "",
     `Write the briefing your owner reads afterward. They are busy: lead with what matters to them specifically, not a summary of the event. Use only your observations; do not add facts. If the session yielded little of value, say so plainly in one line rather than padding it.`,
+    EVIDENCE_RULES,
     `Every headline point and follow up must cite the refs of the observations it rests on (like n3). Your owner can open each one to see exactly what was said, so never cite a note that does not support the claim.`,
     `Finally, pick at most three things from this session worth remembering at future events: durable facts about people, companies or the market that bear on your owner's goals and interests. Write each one self contained, naming who said it and where ("At ${event.title}, the founder of X said they need Shona speech recognition"). Record them as what was said, not as verified truth, and cite the notes each rests on. Skip anything already in your experiences. Often nothing qualifies; then return none.`,
     `Write in plain, direct sentences. No dashes as punctuation, no filler, no hype.`,
@@ -191,12 +203,17 @@ export function briefSystem(
 /** Short refs (n1, n2, ...) instead of uuids: easier for the model to cite exactly. */
 export const noteRef = (i: number) => `n${i + 1}`;
 
-export function briefUser(observations: Observation[]): string {
+export function briefUser(
+  observations: Observation[],
+  plan: PlanItem[] | null,
+): string {
   if (observations.length === 0)
     return "You recorded no observations during this session.";
-  const lines = observations.map(
-    (o, i) => `${noteRef(i)} ${fmtObservation(o).slice(2)}`,
-  );
+  const refOf = new Map((plan ?? []).map((p, i) => [p.id, planRef(i)]));
+  const lines = observations.map((o, i) => {
+    const item = o.planItem ? refOf.get(o.planItem) : undefined;
+    return `${noteRef(i)} ${fmtObservation(o).slice(2)}${item ? ` (advances ${item})` : ""}`;
+  });
   return `<observations>\n${lines.join("\n")}\n</observations>`;
 }
 
@@ -204,6 +221,7 @@ export function answerSystem(agent: Agent, memories: AgentMemory[]): string {
   return [
     agentIdentity(agent, memories),
     `Your owner is asking about things you experienced at events. This is an ongoing conversation; read follow ups in light of what was already said. Answer only from the observations provided, which come from your own presence at those events, and from what you know above. Say which event something came from when it helps. If neither contains the answer, say you did not observe that; never answer from general knowledge.`,
+    EVIDENCE_RULES,
     `Be brief and direct. No dashes as punctuation.`,
     LEARN_RULES,
   ].join("\n\n");
@@ -225,11 +243,51 @@ export function answerUser(
 function fmtObservation(o: Observation, eventTitle?: string): string {
   const alert = o.alert ? ` alert="${o.alert}"` : "";
   const where = eventTitle ? `, at "${eventTitle}"` : "";
-  return `- [${o.kind}, importance ${o.importance}${alert}${where}] ${o.text}`;
+  const basis =
+    o.basis === "claim"
+      ? `claim${o.speaker ? ` by ${o.speaker}` : ""}`
+      : o.basis === "inference"
+        ? "your inference"
+        : "corroborated";
+  return `- [${o.kind}, ${basis}, importance ${o.importance}${alert}${where}] ${o.text}`;
 }
+
+/** How briefings and answers treat what notes rest on. */
+const EVIDENCE_RULES = `Each observation is marked claim (one speaker said it), corroborated (more than one source, or a plain fact of the room) or your inference. Carry that through: attribute claims to who made them ("Acme's CEO says"), mark your inferences as yours ("my read is"), and never present a single speaker's claim as established fact.`;
 
 function clock(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** Short refs (p1, p2, ...) for plan items, so notes can say which they advance. */
+export const planRef = (i: number) => `p${i + 1}`;
+/** Short refs (g1, g2, ...) for goals while drafting a plan. */
+export const goalRef = (i: number) => `g${i + 1}`;
+
+function planText(mission: Mission): string {
+  if (!mission.plan?.length) return "";
+  const items = mission.plan
+    .map((p, i) => `- ${planRef(i)} (goal: ${p.goal}) ${p.watchFor}`)
+    .join("\n");
+  return `Your plan for this event, drafted from your owner's goals:\n<plan>\n${items}\n</plan>`;
+}
+
+export function planSystem(input: PlanInput): string {
+  return [
+    agentIdentity(input.agent, input.memories),
+    `You are about to attend "${input.event.title}" for your owner. Before you go, write a short plan: for each of your owner's goals this event could plausibly serve, one concrete thing to listen for or do in this room. Add an item for the mission instructions only if they ask for something the goals don't cover.`,
+    `Be specific to this event and its likely speakers and audience; skip goals it can't touch. Two to five items, fewer is fine, none if nothing fits. Each item names the goal it serves by ref (g1, g2, ...) or "mission", and says what to watch for in one sentence addressed to yourself. No dashes as punctuation.`,
+  ].join("\n\n");
+}
+
+export function planUser(input: PlanInput): string {
+  const { event, mission } = input;
+  const goals = input.memories.filter((m) => m.kind === "goal");
+  return [
+    `<event>\n${event.title}${event.venue ? `, at ${event.venue}` : ""}, ${event.startsAt} to ${event.endsAt}${event.sourceUrl ? `\n${event.sourceUrl}` : ""}\n</event>`,
+    `<mission>\n${mission.instructions || "(no specific instructions)"}${mission.alerts.length ? `\nAlerts: ${mission.alerts.join("; ")}` : ""}\n</mission>`,
+    `<goals>\n${goals.length ? goals.map((g, i) => `- ${goalRef(i)} ${g.text}`).join("\n") : "(your owner has not set goals; plan from the mission and their profile)"}\n</goals>`,
+  ].join("\n\n");
 }

@@ -4,3 +4,4 @@ export * from "./missions";
 export * from "./access";
 export * from "./views";
 export * from "./memory";
+export * from "./plans";
