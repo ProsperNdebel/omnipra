@@ -94,9 +94,7 @@ export function HostSession({ id, agentName, eventTitle, initialStatus, startedA
           <h1 className="title" style={{ marginTop: 0 }}>
             Done.
           </h1>
-          <p>
-            {agentName} has what it needs and is writing its briefing. {plural(observations, "observation")} captured.
-          </p>
+          <p>{agentName} has what it needs and is writing its briefing for its owner. You can close this page.</p>
         </div>
         <Link href="/host">Back to hosting</Link>
       </main>
