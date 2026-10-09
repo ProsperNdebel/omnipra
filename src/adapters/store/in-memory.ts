@@ -1,5 +1,8 @@
 import type {
   UserId,
+  AuditEntry,
+  Block,
+  Report,
   Agent,
   AgentId,
   AgentMessage,
@@ -64,6 +67,9 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly apiKeys = new Map<ApiKeyId, ApiKey>();
   readonly frames = new Map<FrameId, Frame>();
   readonly accounts = new Map<string, UserId>();
+  readonly audit: AuditEntry[] = [];
+  readonly blocks: Block[] = [];
+  readonly reports: Report[] = [];
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -241,6 +247,37 @@ export class InMemoryStore implements BlobStore, Memory {
           .reverse(),
       get: async (id) => this.apiKeys.get(id) ?? null,
       save: async (k) => void this.apiKeys.set(k.id, k),
+    },
+    audit: {
+      record: async (e) => void this.audit.push(e),
+      forUser: async (userId, limit) =>
+        this.audit
+          .filter((e) => e.involved.includes(userId))
+          .sort(by((e) => e.at))
+          .reverse()
+          .slice(0, limit),
+    },
+    blocks: {
+      isBlocked: async (hostId, ownerId) =>
+        this.blocks.some((b) => b.hostId === hostId && b.ownerId === ownerId),
+      byHost: async (hostId) => this.blocks.filter((b) => b.hostId === hostId),
+      save: async (b) => {
+        if (
+          !this.blocks.some(
+            (x) => x.hostId === b.hostId && x.ownerId === b.ownerId,
+          )
+        )
+          this.blocks.push(b);
+      },
+      remove: async (hostId, ownerId) => {
+        const i = this.blocks.findIndex(
+          (b) => b.hostId === hostId && b.ownerId === ownerId,
+        );
+        if (i >= 0) this.blocks.splice(i, 1);
+      },
+    },
+    reports: {
+      save: async (r) => void this.reports.push(r),
     },
     accounts: {
       claim: async (authId, guestId) => {

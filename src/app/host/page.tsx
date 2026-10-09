@@ -1,6 +1,12 @@
 import Link from "next/link";
-import { decideAction } from "@/app/actions";
-import { hostDevices, hostInbox, type ManifestationRow } from "@/services";
+import { sensorsInWords } from "@/core";
+import { decideAction, unblockAction } from "@/app/actions";
+import {
+  hostBlocks,
+  hostDevices,
+  hostInbox,
+  type ManifestationRow,
+} from "@/services";
 import { DevicesPanel } from "@/ui/devices-panel";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
@@ -17,9 +23,10 @@ export default async function HostInbox({
 }) {
   const { error } = await searchParams;
   const me = await viewerId();
-  const [rows, devices] = await Promise.all([
+  const [rows, devices, blocked] = await Promise.all([
     hostInbox(getDeps(), me),
     hostDevices(getDeps(), me),
+    hostBlocks(getDeps(), me),
   ]);
   const requests = rows.filter((r) => r.manifestation.status === "requested");
   const upcoming = rows.filter((r) =>
@@ -64,10 +71,9 @@ export default async function HostInbox({
                   <div>{money(r.manifestation.priceCents)}</div>
                   <div className="full">
                     <p className="small">
-                      {r.agentName} will use your microphone only, and only
-                      while you have the session open. It listens to the stage
-                      and writes notes for its owner. You&rsquo;ll see how much
-                      it has captured, not what.
+                      {r.agentName} will use {sensorsInWords(r.requires)}.
+                      Nothing else on your phone. It writes notes for its owner;
+                      you&rsquo;ll see how much it has captured, not what.
                     </p>
                     {/* One form per decision: the clicked button's value isn't reliably sent to server actions. */}
                     <div className="actions" style={{ marginTop: 14 }}>
@@ -123,6 +129,35 @@ export default async function HostInbox({
             lastSeenAt: d.lastSeenAt,
           }))}
         />
+
+        {blocked.length > 0 && (
+          <>
+            <h2 className="section">Blocked</h2>
+            <ul className="rows">
+              {blocked.map((b) => (
+                <li key={b.ownerId}>
+                  <div>
+                    The owner of {b.agents.join(", ") || "a deleted agent"}
+                    <div className="small muted">
+                      Can&rsquo;t send you requests.
+                    </div>
+                  </div>
+                  <form action={unblockAction}>
+                    <input type="hidden" name="ownerId" value={b.ownerId} />
+                    <SubmitButton pending="Unblocking" quiet>
+                      Unblock
+                    </SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <p className="small muted" style={{ marginTop: 40 }}>
+          <Link href="/activity">Activity</Link>: every session, device and
+          block on your account.
+        </p>
       </div>
     </main>
   );

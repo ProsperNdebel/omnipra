@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AgentAttention,
+  AuditEntry,
   UserId,
   AgentId,
   BlobStore,
@@ -515,6 +516,115 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    audit: {
+      record: async (e) => {
+        must(
+          await this.db.from("audit_log").insert({
+            id: e.id,
+            at: e.at,
+            actor_id: e.actorId,
+            action: e.action,
+            subject_kind: e.subject.kind,
+            subject_id: e.subject.id,
+            involved: e.involved,
+            detail: e.detail,
+          }),
+          "audit.record",
+        );
+      },
+      forUser: async (userId, limit) => {
+        const rows = must(
+          await this.db
+            .from("audit_log")
+            .select()
+            .contains("involved", [userId])
+            .order("at", { ascending: false })
+            .limit(limit),
+          "audit.forUser",
+        ) as Record<string, unknown>[];
+        return rows.map((r) => ({
+          id: r.id as string,
+          at: r.at as string,
+          actorId: (r.actor_id as UserId | null) ?? null,
+          action: r.action as AuditEntry["action"],
+          subject: {
+            kind: r.subject_kind as AuditEntry["subject"]["kind"],
+            id: r.subject_id as string,
+          },
+          involved: r.involved as UserId[],
+          detail: (r.detail as string | null) ?? null,
+        }));
+      },
+    },
+    blocks: {
+      isBlocked: async (hostId, ownerId) => {
+        const row = must(
+          await this.db
+            .from("blocks")
+            .select("host_id")
+            .eq("host_id", hostId)
+            .eq("owner_id", ownerId)
+            .maybeSingle(),
+          "blocks.isBlocked",
+        );
+        return !!row;
+      },
+      byHost: async (hostId) => {
+        const rows = must(
+          await this.db
+            .from("blocks")
+            .select()
+            .eq("host_id", hostId)
+            .order("created_at", { ascending: false }),
+          "blocks.byHost",
+        ) as Record<string, unknown>[];
+        return rows.map((r) => ({
+          hostId: r.host_id as UserId,
+          ownerId: r.owner_id as UserId,
+          createdAt: r.created_at as string,
+        }));
+      },
+      save: async (b) => {
+        must(
+          await this.db
+            .from("blocks")
+            .upsert(
+              {
+                host_id: b.hostId,
+                owner_id: b.ownerId,
+                created_at: b.createdAt,
+              },
+              { onConflict: "host_id,owner_id", ignoreDuplicates: true },
+            ),
+          "blocks.save",
+        );
+      },
+      remove: async (hostId, ownerId) => {
+        must(
+          await this.db
+            .from("blocks")
+            .delete()
+            .eq("host_id", hostId)
+            .eq("owner_id", ownerId),
+          "blocks.remove",
+        );
+      },
+    },
+    reports: {
+      save: async (r) => {
+        must(
+          await this.db.from("reports").insert({
+            id: r.id,
+            reporter_id: r.reporterId,
+            manifestation_id: r.manifestationId,
+            agent_id: r.agentId,
+            reason: r.reason,
+            created_at: r.createdAt,
+          }),
+          "reports.save",
+        );
+      },
+    },
     accounts: {
       claim: async (authId, guestId, email) => {
         const find = async () =>

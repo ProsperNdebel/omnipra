@@ -26,7 +26,9 @@ export class ChunkQueue {
     this.db = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, VERSION);
       req.onupgradeneeded = () => {
-        const store = req.result.createObjectStore(STORE, { keyPath: ["manifestationId", "runId", "seq"] });
+        const store = req.result.createObjectStore(STORE, {
+          keyPath: ["manifestationId", "runId", "seq"],
+        });
         store.createIndex("queuedAt", "queuedAt");
       };
       req.onsuccess = () => resolve(req.result);
@@ -40,17 +42,32 @@ export class ChunkQueue {
 
   /** Oldest chunk across all manifestations, or null when the queue is empty. */
   async oldest(): Promise<QueuedChunk | null> {
-    return this.tx("readonly", (s) =>
-      new Promise<QueuedChunk | null>((resolve, reject) => {
-        const req = s.index("queuedAt").openCursor();
-        req.onsuccess = () => resolve((req.result?.value as QueuedChunk) ?? null);
-        req.onerror = () => reject(req.error);
-      }),
+    return this.tx(
+      "readonly",
+      (s) =>
+        new Promise<QueuedChunk | null>((resolve, reject) => {
+          const req = s.index("queuedAt").openCursor();
+          req.onsuccess = () =>
+            resolve((req.result?.value as QueuedChunk) ?? null);
+          req.onerror = () => reject(req.error);
+        }),
     );
   }
 
-  async remove(c: Pick<QueuedChunk, "manifestationId" | "runId" | "seq">): Promise<void> {
-    await this.tx("readwrite", (s) => s.delete([c.manifestationId, c.runId, c.seq]));
+  async remove(
+    c: Pick<QueuedChunk, "manifestationId" | "runId" | "seq">,
+  ): Promise<void> {
+    await this.tx("readwrite", (s) =>
+      s.delete([c.manifestationId, c.runId, c.seq]),
+    );
+  }
+
+  /** Every chunk of one manifestation, gone. For an emergency stop. */
+  async removeAll(manifestationId: string): Promise<void> {
+    // Array keys sort after strings and numbers, so this spans every [id, runId, seq].
+    await this.tx("readwrite", (s) =>
+      s.delete(IDBKeyRange.bound([manifestationId], [manifestationId, []])),
+    );
   }
 
   async count(): Promise<number> {

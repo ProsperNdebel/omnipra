@@ -9,7 +9,7 @@ import {
   type ManifestationId,
   type UserId,
 } from "@/core";
-import { applyTransition, draftPlan } from "@/pipeline";
+import { applyTransition, draftPlan, recordSession } from "@/pipeline";
 import {
   actOnSuggestion,
   disconnectDevice,
@@ -26,6 +26,7 @@ import {
   createAgent,
   createEvent,
   sendAgent,
+  unblock,
   editPlan,
   replan,
   reviewMemory,
@@ -162,8 +163,10 @@ export async function decideAction(form: FormData) {
   const back = decision === "cancel" ? `/m/${id}` : "/host";
   try {
     const d = getDeps();
-    await authorizeTransition(d, id, await viewerId(), decision);
+    const viewer = await viewerId();
+    const ctx = await authorizeTransition(d, id, viewer, decision);
     await applyTransition(d, id, decision);
+    await recordSession(d, ctx, viewer, `session.${decision}`);
   } catch (err) {
     fail(back, err);
   }
@@ -367,4 +370,14 @@ export async function disconnectDeviceAction(form: FormData) {
     fail("/host", err);
   }
   redirect("/host#devices");
+}
+
+/** A host lets a blocked owner send requests again. */
+export async function unblockAction(form: FormData) {
+  try {
+    await unblock(getDeps(), await viewerId(), str(form, "ownerId"));
+  } catch (err) {
+    fail("/host", err);
+  }
+  redirect("/host");
 }

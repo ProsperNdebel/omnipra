@@ -10,7 +10,7 @@ import {
   type UserId,
   type Autonomy,
 } from "@/core";
-import type { Deps } from "@/pipeline";
+import { recordSession, type Deps } from "@/pipeline";
 import { ownedAgent } from "./agents";
 
 /**
@@ -54,6 +54,10 @@ export async function sendAgent(
       "That host isn't listed for this event anymore.",
     );
 
+  // A host who blocked this owner simply isn't available to them.
+  if (await d.repos.blocks.isBlocked(input.hostId, input.ownerId))
+    throw new DomainError("bad_request", "That host isn't available.");
+
   const endpoint = await d.repos.endpoints.get(listing.endpointId);
   const requires: Capability[] = input.requires?.length
     ? input.requires
@@ -94,5 +98,12 @@ export async function sendAgent(
     createdAt: d.now(),
   };
   await d.repos.manifestations.save(manifestation, null);
+  await recordSession(
+    d,
+    { manifestation, agent, endpoint },
+    input.ownerId,
+    "session.requested",
+    event.title,
+  );
   return manifestation;
 }

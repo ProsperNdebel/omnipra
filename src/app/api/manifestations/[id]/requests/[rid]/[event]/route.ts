@@ -4,7 +4,7 @@ import {
   type HostRequestId,
   type ManifestationId,
 } from "@/core";
-import { actOnRequest } from "@/pipeline";
+import { actOnRequest, recordSession } from "@/pipeline";
 import { access } from "@/services";
 import { getDeps } from "@/server/deps";
 import { badRequest, errorResponse } from "@/server/http";
@@ -39,7 +39,8 @@ export async function POST(
     } | null;
 
     const d = getDeps();
-    const a = await access(d, id as ManifestationId, await viewerId());
+    const viewer = await viewerId();
+    const a = await access(d, id as ManifestationId, viewer);
     const request = await d.repos.hostRequests.get(rid as HostRequestId);
     if (!request || request.manifestationId !== a.manifestation.id) {
       throw new DomainError("not_found", "That request doesn't exist.");
@@ -58,6 +59,8 @@ export async function POST(
             : undefined,
       },
     );
+    if (event === "decline")
+      await recordSession(d, a, viewer, "request.declined", request.ask);
     return Response.json({
       request: a.isOwner
         ? next

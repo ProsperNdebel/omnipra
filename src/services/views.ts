@@ -1,4 +1,5 @@
 import type {
+  Capability,
   Agent,
   AgentId,
   AgentMessage,
@@ -27,6 +28,8 @@ export interface ManifestationRow {
   agentName: string;
   hostName: string | null;
   instructions: string;
+  /** The sensors this session uses on the host's device. */
+  requires: Capability[];
   observations: number;
   important: number;
   /** Most recent note, by when it was said. Owner views only; hosts never get content. */
@@ -65,6 +68,7 @@ async function rows(
       agentName: c.agent.name,
       hostName: hostName.get(`${c.event.id}:${c.endpoint.hostId}`) ?? null,
       instructions: c.mission.instructions,
+      requires: c.mission.requires,
       observations: mine.length,
       important: mine.filter((o) => o.importance === 3).length,
       latest: opts.withContent ? latestSaid(mine) : null,

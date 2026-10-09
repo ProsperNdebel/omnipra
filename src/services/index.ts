@@ -13,3 +13,4 @@ export * from "./encounters";
 export * from "./api-keys";
 export * as v1 from "./api-v1";
 export * from "./devices";
+export * from "./safety";

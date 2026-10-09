@@ -119,6 +119,10 @@ export default async function Agents() {
             Make another agent
           </Link>
         </p>
+        <p className="small muted" style={{ marginTop: 40 }}>
+          <Link href="/activity">Activity</Link>: every session, key and report
+          on your account.
+        </p>
       </div>
     </main>
   );

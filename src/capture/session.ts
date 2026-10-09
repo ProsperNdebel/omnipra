@@ -53,6 +53,7 @@ export class CaptureSession {
     error: null,
   };
   private listeners = new Set<Listener>();
+  private halted = false;
   private stream: MediaStream | null = null;
   private recorder: SegmentedRecorder | null = null;
   private readonly queue = new ChunkQueue();
@@ -146,7 +147,20 @@ export class CaptureSession {
     this.set({ status: "stopped" });
   }
 
+  /**
+   * Emergency stop: the mic goes off at once and audio not yet uploaded is deleted
+   * from this device. For when someone objects or the host must stop right now.
+   */
+  async halt(): Promise<void> {
+    this.halted = true;
+    await this.release();
+    void this.recorder?.stop();
+    await this.queue.removeAll(this.opts.manifestationId);
+    this.set({ status: "stopped", pendingUploads: 0 });
+  }
+
   private async enqueue(c: RecordedChunk): Promise<void> {
+    if (this.halted) return;
     await this.queue.put({
       manifestationId: this.opts.manifestationId,
       runId: c.runId,

@@ -12,7 +12,7 @@ import {
   type ManifestationId,
   type UserId,
 } from "@/core";
-import { applyTransition, type Deps } from "@/pipeline";
+import { applyTransition, record, type Deps } from "@/pipeline";
 
 const hash = (secret: string) =>
   createHash("sha256").update(secret).digest("hex");
@@ -52,6 +52,13 @@ export async function registerDevice(
     createdAt: d.now(),
   };
   await d.repos.endpoints.save(device);
+  await record(d, {
+    actorId: hostId,
+    action: "device.added",
+    subject: { kind: "device", id: device.id },
+    involved: [hostId],
+    detail: `${name} (${capabilities.join(", ")})`,
+  });
   return { device, token };
 }
 
@@ -71,6 +78,13 @@ export async function disconnectDevice(d: Deps, hostId: UserId, id: string) {
   if (!e || e.hostId !== hostId || e.kind === "phone_web")
     throw new DomainError("not_found", "That device isn't yours.");
   await d.repos.endpoints.save({ ...e, tokenHash: null });
+  await record(d, {
+    actorId: hostId,
+    action: "device.disconnected",
+    subject: { kind: "device", id: e.id },
+    involved: [hostId],
+    detail: e.name,
+  });
 }
 
 /** Which body is calling, from its bearer token. */

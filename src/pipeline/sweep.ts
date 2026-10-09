@@ -4,6 +4,7 @@ import {
   type ManifestationId,
   type MessageId,
 } from "@/core";
+import { recordSession } from "./audit";
 import { brief } from "./brief";
 import type { Deps } from "./deps";
 import { applyTransition } from "./lifecycle";
@@ -24,6 +25,13 @@ export async function sweepAbandoned(d: Deps): Promise<ManifestationId[]> {
     try {
       await applyTransition(d, c.manifestation.id, "end");
       ended.push(c.manifestation.id);
+      await recordSession(
+        d,
+        c,
+        null,
+        "session.abandoned",
+        `No audio or photos for ${Math.round(silent / 60)} minutes.`,
+      );
       await d.repos.messages.append([
         {
           id: d.newId() as MessageId,

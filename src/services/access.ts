@@ -25,22 +25,26 @@ export async function access(
   return { ...ctx, isOwner, isHost };
 }
 
-/** The host runs the session; the owner can only withdraw a request. */
-const ROLE: Record<ManifestationEvent, "host" | "owner" | "system"> = {
-  accept: "host",
-  decline: "host",
-  start: "host",
-  end: "host",
-  cancel: "owner",
-  brief: "system",
-};
+/**
+ * The host runs the session. The owner can withdraw a request, and end a live session
+ * (revoking its access to the room) at any time.
+ */
+const ROLE: Record<ManifestationEvent, "host" | "owner" | "either" | "system"> =
+  {
+    accept: "host",
+    decline: "host",
+    start: "host",
+    end: "either",
+    cancel: "owner",
+    brief: "system",
+  };
 
 export async function authorizeTransition(
   d: Deps,
   id: ManifestationId,
   viewer: UserId,
   event: ManifestationEvent,
-): Promise<void> {
+): Promise<Access> {
   const a = await access(d, id, viewer);
   const role = ROLE[event];
   if (
@@ -50,4 +54,5 @@ export async function authorizeTransition(
   ) {
     throw new DomainError("forbidden", `You can't ${event} this session.`);
   }
+  return a;
 }

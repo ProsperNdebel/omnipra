@@ -7,6 +7,7 @@ import { HttpChunkTransport } from "@/client/http-chunk-transport";
 import type { CapturePolicy, ManifestationStatus } from "@/core";
 import type { HostRequestView } from "@/services/views";
 import { Dot } from "./bar";
+import { ReportPanel } from "./report-panel";
 import { clock, plural } from "./format";
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   capturePolicy: CapturePolicy;
   initialStatus: ManifestationStatus;
   startedAt: string | null;
+  /** The sensors this session uses, in words (see sensorsInWords). */
+  sensors: string;
 }
 
 /** What the event allows, in the host's words, so they know what they're confirming. */
@@ -40,6 +43,7 @@ export function HostSession({
   capturePolicy,
   initialStatus,
   startedAt,
+  sensors,
 }: Props) {
   const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState(initialStatus);
@@ -73,6 +77,11 @@ export function HostSession({
     const f = await res.json();
     setObservations(f.observationCount);
     setRequests(f.requests);
+    // Ended from elsewhere (the owner, or for silence): stop listening at once.
+    if (f.status !== "live") {
+      await session.current?.halt();
+      setStatus(f.status);
+    }
   };
   useEffect(() => {
     if (status !== "live") return;
@@ -139,6 +148,21 @@ export function HostSession({
     setEnding(false);
   }
 
+  /** Emergency stop: mic off now, unsent audio deleted, session ended. */
+  async function stopNow() {
+    setEnding(true);
+    await session.current?.halt();
+    const res = await fetch(`/api/manifestations/${id}/stop`, {
+      method: "POST",
+    }).catch(() => null);
+    if (res?.ok) setStatus("ended");
+    else
+      setError(
+        "The microphone is off. Ending the session didn't reach the server; it ends on its own soon.",
+      );
+    setEnding(false);
+  }
+
   const capturing = cap?.status === "live";
   const pending = cap?.pendingUploads ?? 0;
 
@@ -155,7 +179,10 @@ export function HostSession({
             owner. You can close this page.
           </p>
         </div>
-        <Link href="/host">Back to hosting</Link>
+        <div style={{ display: "grid", gap: 16 }}>
+          <Link href="/host">Back to hosting</Link>
+          <ReportPanel sessionId={id} asHost />
+        </div>
       </main>
     );
   }
@@ -167,7 +194,10 @@ export function HostSession({
         <div className="center">
           <p>This session was {status}.</p>
         </div>
-        <Link href="/host">Back to hosting</Link>
+        <div style={{ display: "grid", gap: 16 }}>
+          <Link href="/host">Back to hosting</Link>
+          <ReportPanel sessionId={id} asHost />
+        </div>
       </main>
     );
   }
@@ -177,7 +207,9 @@ export function HostSession({
       <div>
         <p style={{ margin: 0 }}>
           <Dot on={capturing} breathe={capturing} />
-          {agentName}
+          {capturing
+            ? `${agentName} is listening`
+            : `${agentName} is not listening`}
         </p>
         <p className="small muted" style={{ marginTop: 4 }}>
           {eventTitle}
@@ -226,8 +258,12 @@ export function HostSession({
               {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
             </h1>
             <p>
-              Your microphone is used while this screen is open, and nothing
-              else on your phone is touched.
+              {agentName} uses {sensors}. Nothing else on your phone.
+            </p>
+            <p className="small muted">
+              What it hears becomes text for its owner, who sees notes and the
+              lines behind them, never a recording. Photos you send are shown to
+              them. A dot at the top stays lit while it listens.
             </p>
             <p className="small muted">{POLICY[capturePolicy]}</p>
             {status === "accepted" && (
@@ -265,13 +301,22 @@ export function HostSession({
 
       <div style={{ display: "grid", gap: 12 }}>
         {capturing ? (
-          <button className="button huge quiet" onClick={end} disabled={ending}>
-            {ending
-              ? pending > 0
-                ? `Uploading ${plural(pending, "chunk")}`
-                : "Ending"
-              : "End session"}
-          </button>
+          <>
+            <button
+              className="button huge quiet"
+              onClick={end}
+              disabled={ending}
+            >
+              {ending
+                ? pending > 0
+                  ? `Uploading ${plural(pending, "chunk")}`
+                  : "Ending"
+                : "End session"}
+            </button>
+            <button className="linkish" onClick={stopNow} disabled={ending}>
+              Stop now and discard what hasn&rsquo;t uploaded
+            </button>
+          </>
         ) : (
           <button
             className="button huge"
@@ -284,6 +329,7 @@ export function HostSession({
             {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
           </button>
         )}
+        <ReportPanel sessionId={id} asHost />
       </div>
     </main>
   );

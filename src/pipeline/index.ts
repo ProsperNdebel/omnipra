@@ -13,6 +13,7 @@ export { orchestrate } from "./orchestrate";
 export { meetOthers } from "./meet";
 export { ingestFrame, type FrameInput } from "./see";
 export { sweepAbandoned } from "./sweep";
+export { record, recordSession } from "./audit";
 export {
   actOnRequest,
   converse,

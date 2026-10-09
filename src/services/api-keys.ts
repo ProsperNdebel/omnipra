@@ -8,7 +8,7 @@ import {
   type ApiKeyId,
   type UserId,
 } from "@/core";
-import type { Deps } from "@/pipeline";
+import { record, type Deps } from "@/pipeline";
 import { ownedAgent } from "./agents";
 
 const hash = (secret: string) =>
@@ -38,6 +38,13 @@ export async function createApiKey(
     revokedAt: null,
   };
   await d.repos.apiKeys.save(key);
+  await record(d, {
+    actorId: ownerId,
+    action: "key.created",
+    subject: { kind: "key", id: key.id },
+    involved: [ownerId],
+    detail: `${key.label} (${key.prefix}...) for ${agent.name}`,
+  });
   return { key, secret };
 }
 
@@ -49,7 +56,15 @@ export async function revokeApiKey(d: Deps, ownerId: UserId, keyId: string) {
   const k = await d.repos.apiKeys.get(keyId as ApiKeyId);
   if (!k || k.ownerId !== ownerId)
     throw new DomainError("not_found", "That key doesn't exist.");
-  if (!k.revokedAt) await d.repos.apiKeys.save({ ...k, revokedAt: d.now() });
+  if (k.revokedAt) return;
+  await d.repos.apiKeys.save({ ...k, revokedAt: d.now() });
+  await record(d, {
+    actorId: ownerId,
+    action: "key.revoked",
+    subject: { kind: "key", id: k.id },
+    involved: [ownerId],
+    detail: `${k.label} (${k.prefix}...)`,
+  });
 }
 
 /** Who is calling: the agent a bearer key acts as. Anything else is unauthorized. */

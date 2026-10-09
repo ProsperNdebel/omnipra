@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import type { ManifestationEvent, ManifestationId } from "@/core";
-import { applyTransition, brief, meetOthers } from "@/pipeline";
+import { applyTransition, brief, meetOthers, recordSession } from "@/pipeline";
 import { authorizeTransition } from "@/services";
 import { getDeps } from "@/server/deps";
 import { badRequest, errorResponse } from "@/server/http";
@@ -8,43 +8,49 @@ import { viewerId } from "@/server/viewer";
 
 export const runtime = "nodejs";
 
-const ACTIONS: ManifestationEvent[] = [
+/** "stop" is the host's emergency stop: an end, recorded as such. */
+const ACTIONS = [
   "accept",
   "decline",
   "cancel",
   "start",
   "end",
-];
+  "stop",
+] as const;
+type Action = (typeof ACTIONS)[number];
 
-/** POST /api/manifestations/:id/{accept|decline|cancel|start|end} */
+/** POST /api/manifestations/:id/{accept|decline|cancel|start|end|stop} */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string; action: string }> },
 ) {
   try {
     const { id, action } = await params;
-    if (!ACTIONS.includes(action as ManifestationEvent))
+    if (!ACTIONS.includes(action as Action))
       badRequest(`unknown action ${action}`);
+    const event: ManifestationEvent =
+      action === "stop" ? "end" : (action as ManifestationEvent);
 
     const d = getDeps();
     const manifestationId = id as ManifestationId;
-    await authorizeTransition(
-      d,
-      manifestationId,
-      await viewerId(),
-      action as ManifestationEvent,
-    );
+    const viewer = await viewerId();
+    const ctx = await authorizeTransition(d, manifestationId, viewer, event);
     // Starting carries the host's confirmation that recording is allowed where they are.
     const body = (await req.json().catch(() => null)) as {
       captureConfirmed?: unknown;
     } | null;
-    const manifestation = await applyTransition(
+    const manifestation = await applyTransition(d, manifestationId, event, {
+      captureConfirmed: body?.captureConfirmed === true,
+    });
+
+    await recordSession(
       d,
-      manifestationId,
-      action as ManifestationEvent,
-      {
-        captureConfirmed: body?.captureConfirmed === true,
-      },
+      ctx,
+      viewer,
+      `session.${action as Action}`,
+      action === "end" && ctx.isOwner && !ctx.isHost
+        ? "Ended by the owner."
+        : undefined,
     );
 
     if (action === "start") {
@@ -55,7 +61,7 @@ export async function POST(
         ),
       );
     }
-    if (action === "end") {
+    if (event === "end") {
       after(() =>
         brief(d, manifestationId).catch((e) =>
           console.error("brief failed", e),

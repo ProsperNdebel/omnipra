@@ -13,6 +13,7 @@ import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
 import { PlanPanel } from "./plan-panel";
+import { ReportPanel } from "./report-panel";
 import { AlertsPrompt, PresencePanel } from "./presence-panel";
 import { SubmitButton } from "./submit-button";
 
@@ -136,6 +137,8 @@ export function LiveFeed({
         }
       />
 
+      {live && <EndForOwner id={id} hostName={hostName} onDone={refresh} />}
+
       {f.status === "ended" && (
         <RetryBriefing id={id} agentName={agentName} onDone={refresh} />
       )}
@@ -154,6 +157,11 @@ export function LiveFeed({
             {f.briefing ? "Everything else it noted" : "Notes"}
           </h2>
           <Observations list={rest} sessionId={id} agentName={agentName} />
+        </section>
+      )}
+      {f.status !== "requested" && (
+        <section className="narrow" style={{ marginTop: 40 }}>
+          <ReportPanel sessionId={id} asHost={false} />
         </section>
       )}
     </>
@@ -435,6 +443,48 @@ function Briefing({
             ))}
           </ul>
         </>
+      )}
+    </section>
+  );
+}
+
+/** The owner can pull their agent out of the room at any time. Two taps, so it isn't an accident. */
+function EndForOwner({
+  id,
+  hostName,
+  onDone,
+}: {
+  id: string;
+  hostName: string;
+  onDone: () => Promise<void>;
+}) {
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function end() {
+    setBusy(true);
+    await fetch(`/api/manifestations/${id}/end`, { method: "POST" }).catch(
+      () => null,
+    );
+    await onDone();
+    setBusy(false);
+  }
+  return (
+    <section className="narrow" style={{ marginTop: 32 }}>
+      {!sure ? (
+        <button className="linkish" onClick={() => setSure(true)}>
+          End this session
+        </button>
+      ) : (
+        <p>
+          Stop listening now? {hostName}&rsquo;s phone stops recording and you
+          get the briefing.{" "}
+          <button className="linkish" onClick={end} disabled={busy}>
+            {busy ? "Ending" : "End it"}
+          </button>{" "}
+          <button className="linkish" onClick={() => setSure(false)}>
+            Keep going
+          </button>
+        </p>
       )}
     </section>
   );

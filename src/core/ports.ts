@@ -35,6 +35,7 @@ import type { Outing } from "./outing";
 import type { Encounter } from "./encounter";
 import type { ApiKey } from "./api-key";
 import type { Frame } from "./frame";
+import type { AuditEntry, Block, Report } from "./safety";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -455,6 +456,20 @@ export interface Repos {
     byAgent(agentId: AgentId): Promise<ApiKey[]>;
     get(id: ApiKeyId): Promise<ApiKey | null>;
     save(k: ApiKey): Promise<void>;
+  };
+  audit: {
+    record(e: AuditEntry): Promise<void>;
+    /** Entries involving this user, newest first. */
+    forUser(userId: UserId, limit: number): Promise<AuditEntry[]>;
+  };
+  blocks: {
+    isBlocked(hostId: UserId, ownerId: UserId): Promise<boolean>;
+    byHost(hostId: UserId): Promise<Block[]>;
+    save(b: Block): Promise<void>;
+    remove(hostId: UserId, ownerId: UserId): Promise<void>;
+  };
+  reports: {
+    save(r: Report): Promise<void>;
   };
   accounts: {
     /**

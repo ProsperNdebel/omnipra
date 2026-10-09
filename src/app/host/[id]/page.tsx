@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import type { ManifestationId } from "@/core";
+import { sensorsInWords, type ManifestationId } from "@/core";
 import { access } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
@@ -29,6 +29,7 @@ export default async function HostSessionPage({
       capturePolicy={a.event.capturePolicy}
       initialStatus={a.manifestation.status}
       startedAt={a.manifestation.startedAt}
+      sensors={sensorsInWords(a.mission.requires)}
     />
   );
 }
