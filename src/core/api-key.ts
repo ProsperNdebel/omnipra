@@ -16,6 +16,10 @@ export interface ApiKey {
   createdAt: ISODate;
   lastUsedAt: ISODate | null;
   revokedAt: ISODate | null;
+  /** Where to POST this agent's events. Https only. */
+  webhookUrl: string | null;
+  /** Signs each delivery (HMAC SHA-256) so the receiver knows it came from Omnipra. */
+  webhookSecret: string | null;
 }
 
 export const API_KEY_PREFIX = "omni_";

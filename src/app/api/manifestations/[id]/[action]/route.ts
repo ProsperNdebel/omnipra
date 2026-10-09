@@ -1,6 +1,6 @@
-import { after } from "next/server";
 import type { ManifestationEvent, ManifestationId } from "@/core";
-import { applyTransition, brief, meetOthers, recordSession } from "@/pipeline";
+import { applyTransition, recordSession } from "@/pipeline";
+import { drainSoon, queue } from "@/server/jobs";
 import { authorizeTransition } from "@/services";
 import { getDeps } from "@/server/deps";
 import { badRequest, errorResponse } from "@/server/http";
@@ -53,21 +53,11 @@ export async function POST(
         : undefined,
     );
 
-    if (action === "start") {
-      // Arriving somewhere: meet the other agents already in the room.
-      after(() =>
-        meetOthers(d, manifestationId).catch((e) =>
-          console.error("meet failed", e),
-        ),
-      );
-    }
-    if (event === "end") {
-      after(() =>
-        brief(d, manifestationId).catch((e) =>
-          console.error("brief failed", e),
-        ),
-      );
-    }
+    // Arriving somewhere: meet the other agents already in the room.
+    if (action === "start") await queue(d, "meet", { id: manifestationId });
+    if (event === "end") await queue(d, "brief", { id: manifestationId });
+    // Webhooks for this change.
+    drainSoon(d, 0);
     return Response.json({ manifestation });
   } catch (err) {
     return errorResponse(err);

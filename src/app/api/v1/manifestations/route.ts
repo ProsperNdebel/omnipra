@@ -1,5 +1,4 @@
-import { after } from "next/server";
-import { draftPlan } from "@/pipeline";
+import { queue } from "@/server/jobs";
 import { v1 } from "@/services";
 import { withCaller } from "@/server/api";
 
@@ -17,9 +16,7 @@ export function POST(req: Request) {
       unknown
     >;
     const { session, missionId } = await v1.manifest(d, caller, body);
-    after(() =>
-      draftPlan(d, missionId).catch((e) => console.error("plan failed", e)),
-    );
+    await queue(d, "plan", { missionId });
     return { manifestation: session };
   });
 }

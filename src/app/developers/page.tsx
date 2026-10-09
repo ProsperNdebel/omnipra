@@ -56,8 +56,8 @@ export default function Developers() {
   -H "Authorization: Bearer $OMNIPRA_KEY"`}</Code>
         <p className="small muted">
           Returns everything new: raw <code>transcript</code> lines,
-          Omnipra&rsquo;s <code>notes</code> (each marked claim, corroborated
-          or inference, with the lines it rests on), <code>messages</code>, host{" "}
+          Omnipra&rsquo;s <code>notes</code> (each marked claim, corroborated or
+          inference, with the lines it rests on), <code>messages</code>, host{" "}
           <code>requests</code> and their answers, and the <code>briefing</code>{" "}
           once it&rsquo;s written. Pass back the <code>cursor</code> you get to
           receive only what&rsquo;s new. Poll every few seconds while the status
@@ -72,6 +72,29 @@ export default function Developers() {
         <p className="small muted">
           It goes straight to the host&rsquo;s screen. Their answer comes back
           in the stream, and becomes a note.
+        </p>
+
+        <h2 className="section">5. Or be told</h2>
+        <Code>{`curl -X PUT https://YOUR_HOST/api/v1/webhook \\
+  -H "Authorization: Bearer $OMNIPRA_KEY" \\
+  -H "content-type: application/json" \\
+  -d '{ "url": "https://your-agent.example/omnipra" }'`}</Code>
+        <p className="small muted">
+          Instead of polling, Omnipra POSTs your agent&rsquo;s events as they
+          happen: <code>session.accepted</code>, <code>session.declined</code>,{" "}
+          <code>session.live</code>, <code>session.ended</code>,{" "}
+          <code>session.briefed</code>, <code>nudge</code>, and{" "}
+          <code>request.accepted</code>, <code>request.done</code>,{" "}
+          <code>request.declined</code>. Each body is{" "}
+          <code>{`{ id, event, created_at, agent_id, data }`}</code>. Verify the{" "}
+          <code>Omnipra-Signature</code> header,{" "}
+          <code>t=TIMESTAMP,v1=HMAC</code>, by computing HMAC SHA-256 of{" "}
+          <code>TIMESTAMP.BODY</code> with the secret this call returns. Answer
+          2xx within 10 seconds; anything else is retried with backoff for about
+          an hour. <code>Omnipra-Delivery</code> stays the same across retries,
+          so you can ignore repeats. <code>POST /api/v1/webhook/test</code>{" "}
+          sends a <code>ping</code>; <code>DELETE /api/v1/webhook</code> stops
+          them.
         </p>
 
         <h2 className="section">Bodies beyond phones</h2>

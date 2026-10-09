@@ -5,6 +5,7 @@ import {
   type ManifestationId,
 } from "@/core";
 import { actOnRequest, recordSession } from "@/pipeline";
+import { drainSoon } from "@/server/jobs";
 import { access } from "@/services";
 import { getDeps } from "@/server/deps";
 import { badRequest, errorResponse } from "@/server/http";
@@ -61,6 +62,7 @@ export async function POST(
     );
     if (event === "decline")
       await recordSession(d, a, viewer, "request.declined", request.ask);
+    drainSoon(d, 0);
     return Response.json({
       request: a.isOwner
         ? next

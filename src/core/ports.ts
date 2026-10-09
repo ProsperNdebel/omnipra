@@ -36,6 +36,7 @@ import type { Encounter } from "./encounter";
 import type { ApiKey } from "./api-key";
 import type { Frame } from "./frame";
 import type { AuditEntry, Block, Report } from "./safety";
+import type { Job } from "./job";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -456,6 +457,26 @@ export interface Repos {
     byAgent(agentId: AgentId): Promise<ApiKey[]>;
     get(id: ApiKeyId): Promise<ApiKey | null>;
     save(k: ApiKey): Promise<void>;
+  };
+  jobs: {
+    /** False when a job with the same key is already queued or running. */
+    enqueue(j: Job): Promise<boolean>;
+    /**
+     * Atomically take up to `limit` due jobs (or one by id): queued and due, or running
+     * with an expired lease. Marks them running until `leaseUntil` and counts the attempt.
+     */
+    claim(
+      now: string,
+      limit: number,
+      leaseUntil: string,
+      id?: string,
+    ): Promise<Job[]>;
+    finish(
+      id: string,
+      patch: Pick<Job, "status" | "runAt" | "lastError" | "finishedAt">,
+    ): Promise<void>;
+    /** How many jobs are in each status, for the metrics page. */
+    counts(): Promise<Record<Job["status"], number>>;
   };
   audit: {
     record(e: AuditEntry): Promise<void>;

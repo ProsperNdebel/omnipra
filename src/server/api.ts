@@ -11,8 +11,8 @@ export async function withCaller(
 ): Promise<Response> {
   try {
     const d = getDeps();
-    const { agent } = await authenticate(d, req.headers.get("authorization"));
-    const out = await run(d, { agent });
+    const caller = await authenticate(d, req.headers.get("authorization"));
+    const out = await run(d, caller);
     return Response.json(out ?? null);
   } catch (err) {
     return errorResponse(err);

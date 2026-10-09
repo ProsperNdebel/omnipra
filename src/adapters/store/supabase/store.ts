@@ -516,6 +516,56 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    jobs: {
+      enqueue: async (j) => {
+        const { error } = await this.db.from("jobs").insert(R.job.to(j));
+        if (!error) return true;
+        // 23505: the same key is already queued or running.
+        if (error.code === "23505") return false;
+        throw new Error(`jobs.enqueue: ${error.message}`);
+      },
+      claim: async (now, limit, leaseUntil, id) => {
+        const rows = must(
+          await this.db.rpc("claim_jobs", {
+            p_now: now,
+            p_limit: limit,
+            p_lease: leaseUntil,
+            p_id: id ?? null,
+          }),
+          "jobs.claim",
+        ) as Record<string, unknown>[];
+        return rows.map(R.job.from);
+      },
+      finish: async (id, patch) => {
+        must(
+          await this.db
+            .from("jobs")
+            .update({
+              status: patch.status,
+              run_at: patch.runAt,
+              last_error: patch.lastError,
+              finished_at: patch.finishedAt,
+              locked_until: null,
+            })
+            .eq("id", id),
+          "jobs.finish",
+        );
+      },
+      counts: async () => {
+        const c = { queued: 0, running: 0, done: 0, failed: 0 };
+        await Promise.all(
+          (Object.keys(c) as (keyof typeof c)[]).map(async (status) => {
+            const { count, error } = await this.db
+              .from("jobs")
+              .select("id", { count: "exact", head: true })
+              .eq("status", status);
+            if (error) throw new Error(`jobs.counts: ${error.message}`);
+            c[status] = count ?? 0;
+          }),
+        );
+        return c;
+      },
+    },
     audit: {
       record: async (e) => {
         must(
@@ -586,16 +636,14 @@ export class SupabaseStore implements BlobStore, Memory {
       },
       save: async (b) => {
         must(
-          await this.db
-            .from("blocks")
-            .upsert(
-              {
-                host_id: b.hostId,
-                owner_id: b.ownerId,
-                created_at: b.createdAt,
-              },
-              { onConflict: "host_id,owner_id", ignoreDuplicates: true },
-            ),
+          await this.db.from("blocks").upsert(
+            {
+              host_id: b.hostId,
+              owner_id: b.ownerId,
+              created_at: b.createdAt,
+            },
+            { onConflict: "host_id,owner_id", ignoreDuplicates: true },
+          ),
           "blocks.save",
         );
       },

@@ -2,6 +2,7 @@ import {
   DomainError,
   type Capability,
   type Agent,
+  type ApiKey,
   type EventId,
   type ManifestationId,
   type MissionId,
@@ -18,6 +19,7 @@ import { sendAgent } from "./missions";
  */
 export interface Caller {
   agent: Agent;
+  key: ApiKey;
 }
 
 const MAX_DAYS = 30;

@@ -17,4 +17,5 @@ export * from "./api-key";
 export * from "./frame";
 export * from "./safety";
 export * from "./evidence";
+export * from "./job";
 export * from "./ports";

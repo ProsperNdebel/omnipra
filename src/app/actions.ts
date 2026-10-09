@@ -1,6 +1,5 @@
 "use server";
 
-import { after } from "next/server";
 import { redirect } from "next/navigation";
 import {
   DomainError,
@@ -9,7 +8,8 @@ import {
   type ManifestationId,
   type UserId,
 } from "@/core";
-import { applyTransition, draftPlan, recordSession } from "@/pipeline";
+import { applyTransition, recordSession } from "@/pipeline";
+import { queue } from "@/server/jobs";
 import {
   actOnSuggestion,
   disconnectDevice,
@@ -142,12 +142,7 @@ export async function sendAgentAction(form: FormData) {
     });
     id = m.id;
     // The plan drafts while the owner lands on the session page; it shows when ready.
-    const missionId = m.missionId;
-    after(() =>
-      draftPlan(getDeps(), missionId).catch((e) =>
-        console.error("plan failed", e),
-      ),
-    );
+    await queue(getDeps(), "plan", { missionId: m.missionId });
   } catch (err) {
     fail(`/send/${eventId}/${hostId}`, err);
   }
@@ -308,13 +303,7 @@ export async function outingAction(form: FormData) {
     if (str(form, "op") === "book") {
       const d = getDeps();
       const missions = await bookOuting(d, await viewerId(), id);
-      after(() =>
-        Promise.all(
-          missions.map((m) =>
-            draftPlan(d, m).catch((e) => console.error("plan failed", e)),
-          ),
-        ),
-      );
+      for (const m of missions) await queue(d, "plan", { missionId: m });
     } else {
       await dismissOuting(getDeps(), await viewerId(), id);
     }

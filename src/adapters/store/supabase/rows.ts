@@ -1,4 +1,5 @@
 import type {
+  Job,
   Agent,
   AgentId,
   AgentMessage,
@@ -520,6 +521,8 @@ export const apiKey = {
     createdAt: r.created_at as string,
     lastUsedAt: (r.last_used_at as string | null) ?? null,
     revokedAt: (r.revoked_at as string | null) ?? null,
+    webhookUrl: (r.webhook_url as string | null) ?? null,
+    webhookSecret: (r.webhook_secret as string | null) ?? null,
   }),
   to: (k: ApiKey): Row => ({
     id: k.id,
@@ -531,6 +534,8 @@ export const apiKey = {
     created_at: k.createdAt,
     last_used_at: k.lastUsedAt,
     revoked_at: k.revokedAt,
+    webhook_url: k.webhookUrl,
+    webhook_secret: k.webhookSecret,
   }),
 };
 
@@ -552,5 +557,36 @@ export const frame = {
     at_sec: f.atSec,
     caption: f.caption,
     created_at: f.createdAt,
+  }),
+};
+
+export const job = {
+  from: (r: Row): Job => ({
+    id: r.id as string,
+    kind: r.kind as Job["kind"],
+    key: r.key as string,
+    payload: (r.payload as Record<string, string>) ?? {},
+    status: r.status as Job["status"],
+    attempts: r.attempts as number,
+    maxAttempts: r.max_attempts as number,
+    runAt: r.run_at as string,
+    lockedUntil: (r.locked_until as string | null) ?? null,
+    lastError: (r.last_error as string | null) ?? null,
+    createdAt: r.created_at as string,
+    finishedAt: (r.finished_at as string | null) ?? null,
+  }),
+  to: (j: Job): Row => ({
+    id: j.id,
+    kind: j.kind,
+    key: j.key,
+    payload: j.payload,
+    status: j.status,
+    attempts: j.attempts,
+    max_attempts: j.maxAttempts,
+    run_at: j.runAt,
+    locked_until: j.lockedUntil,
+    last_error: j.lastError,
+    created_at: j.createdAt,
+    finished_at: j.finishedAt,
   }),
 };

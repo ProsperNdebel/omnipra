@@ -14,7 +14,12 @@ export async function brief(
   id: ManifestationId,
 ): Promise<StoredBriefing> {
   const existing = await d.repos.briefings.get(id);
-  if (existing) return existing;
+  if (existing) {
+    // A retry after the briefing saved but before the status moved: finish the move.
+    const m = await d.repos.manifestations.get(id);
+    if (m?.status === "ended") await applyTransition(d, id, "brief");
+    return existing;
+  }
 
   await observe(d, id, { force: true });
   const ctx = await loadContext(d, id);

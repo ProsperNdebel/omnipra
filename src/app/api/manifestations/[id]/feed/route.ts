@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { ABANDONED_AFTER_SEC, type ManifestationId } from "@/core";
 import { sweepAbandoned } from "@/pipeline";
+import { drainSoon } from "@/server/jobs";
 import { access, feed } from "@/services";
 import { getDeps } from "@/server/deps";
 import { errorResponse } from "@/server/http";
@@ -19,6 +20,8 @@ export async function GET(
     const a = await access(d, id as ManifestationId, await viewerId());
     const f = await feed(d, a, a.isOwner);
     // Without a scheduler, whoever is watching notices a vanished host.
+    // And runs retries and webhook deliveries that are due.
+    drainSoon(d);
     if (f.silentSec !== null && f.silentSec >= ABANDONED_AFTER_SEC)
       after(() =>
         sweepAbandoned(d).catch((e) => console.error("sweep failed", e)),

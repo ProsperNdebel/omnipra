@@ -1,5 +1,6 @@
 import type {
   UserId,
+  Job,
   AuditEntry,
   Block,
   Report,
@@ -68,6 +69,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly frames = new Map<FrameId, Frame>();
   readonly accounts = new Map<string, UserId>();
   readonly audit: AuditEntry[] = [];
+  readonly jobs = new Map<string, Job>();
   readonly blocks: Block[] = [];
   readonly reports: Report[] = [];
   readonly attentionClaims = new Map<AgentId, number>();
@@ -247,6 +249,48 @@ export class InMemoryStore implements BlobStore, Memory {
           .reverse(),
       get: async (id) => this.apiKeys.get(id) ?? null,
       save: async (k) => void this.apiKeys.set(k.id, k),
+    },
+    jobs: {
+      enqueue: async (j) => {
+        const busy = [...this.jobs.values()].some(
+          (x) =>
+            x.key === j.key &&
+            (x.status === "queued" || x.status === "running"),
+        );
+        if (busy) return false;
+        this.jobs.set(j.id, j);
+        return true;
+      },
+      claim: async (now, limit, leaseUntil, id) => {
+        const due = [...this.jobs.values()]
+          .filter(
+            (j) =>
+              (!id || j.id === id) &&
+              ((j.status === "queued" && j.runAt <= now) ||
+                (j.status === "running" && (j.lockedUntil ?? "") < now)),
+          )
+          .sort(by((j) => j.runAt))
+          .slice(0, limit);
+        return due.map((j) => {
+          const claimed: Job = {
+            ...j,
+            status: "running",
+            lockedUntil: leaseUntil,
+            attempts: j.attempts + 1,
+          };
+          this.jobs.set(j.id, claimed);
+          return claimed;
+        });
+      },
+      finish: async (id, patch) => {
+        const j = this.jobs.get(id);
+        if (j) this.jobs.set(id, { ...j, ...patch, lockedUntil: null });
+      },
+      counts: async () => {
+        const c = { queued: 0, running: 0, done: 0, failed: 0 };
+        for (const j of this.jobs.values()) c[j.status]++;
+        return c;
+      },
     },
     audit: {
       record: async (e) => void this.audit.push(e),

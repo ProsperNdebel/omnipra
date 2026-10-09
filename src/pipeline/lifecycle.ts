@@ -7,6 +7,7 @@ import {
   type TransitionInput,
 } from "@/core";
 import type { Deps } from "./deps";
+import { emitSession } from "./webhooks";
 
 /** The only way a manifestation changes status. Rejects stale writes instead of overwriting them. */
 export async function applyTransition(
@@ -27,5 +28,6 @@ export async function applyTransition(
       `manifestation ${id} changed while applying ${event}`,
     );
   }
+  await emitSession(d, next);
   return next;
 }

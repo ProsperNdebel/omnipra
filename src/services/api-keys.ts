@@ -36,6 +36,8 @@ export async function createApiKey(
     createdAt: d.now(),
     lastUsedAt: null,
     revokedAt: null,
+    webhookUrl: null,
+    webhookSecret: null,
   };
   await d.repos.apiKeys.save(key);
   await record(d, {
@@ -97,4 +99,50 @@ export async function authenticate(
   )
     await d.repos.apiKeys.save({ ...key, lastUsedAt: now });
   return { key, agent };
+}
+
+/**
+ * Where this key's agent events are POSTed. Returns the signing secret, made on first
+ * use and kept when the URL changes. Null removes the webhook.
+ */
+export async function setWebhook(
+  d: Deps,
+  key: ApiKey,
+  url: string | null,
+): Promise<{ url: string | null; secret: string | null }> {
+  if (url === null) {
+    await d.repos.apiKeys.save({ ...key, webhookUrl: null });
+    return { url: null, secret: null };
+  }
+  const clean = checkWebhookUrl(url);
+  const secret =
+    key.webhookSecret ?? `whsec_${randomBytes(24).toString("base64url")}`;
+  await d.repos.apiKeys.save({
+    ...key,
+    webhookUrl: clean,
+    webhookSecret: secret,
+  });
+  return { url: clean, secret };
+}
+
+const PRIVATE_HOST =
+  /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[?::1\]?$|\[?f[cd])/i;
+
+/** Https to a public host. Plain http to localhost only while developing. */
+function checkWebhookUrl(raw: string): string {
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    throw new DomainError("bad_request", "That isn't a URL.");
+  }
+  const dev = process.env.NODE_ENV !== "production";
+  const local = PRIVATE_HOST.test(u.hostname);
+  if (u.protocol === "https:" && !local) return u.toString();
+  if (dev && local && (u.protocol === "http:" || u.protocol === "https:"))
+    return u.toString();
+  throw new DomainError(
+    "bad_request",
+    "Webhooks need an https URL on a public host.",
+  );
 }

@@ -18,6 +18,7 @@ import {
 import type { Deps, ManifestationContext } from "./deps";
 import { prepareActions, recentActions } from "./act";
 import { proposeLearned, recallMemory } from "./memory";
+import { emit } from "./webhooks";
 
 /** How much of the session the agent sees each time it thinks. */
 const RECENT_NOTES = 20;
@@ -340,6 +341,21 @@ export async function actOnRequest(
       "That request just changed. Refresh and try again.",
     );
   }
+
+  if (
+    next.status === "accepted" ||
+    next.status === "done" ||
+    next.status === "declined"
+  )
+    await emit(d, ctx.agent.id, `request.${next.status}`, next.id, {
+      session_id: ctx.manifestation.id,
+      request: {
+        id: next.id,
+        ask: next.ask,
+        status: next.status,
+        host_note: next.hostNote,
+      },
+    });
 
   const note = next.hostNote ? ` They said: "${next.hostNote}"` : "";
   const line =

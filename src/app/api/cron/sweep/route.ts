@@ -1,13 +1,14 @@
-import { sweepAbandoned } from "@/pipeline";
+import { runJobs, sweepAbandoned } from "@/pipeline";
 import { getDeps } from "@/server/deps";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * GET /api/cron/sweep: ends sessions whose host's device went silent for good and
- * briefs them. Called by the scheduler (vercel.json). Vercel sends
- * `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set, only local calls run.
+ * GET /api/cron/sweep, every minute: ends sessions whose host's device went silent for
+ * good, then runs due background jobs (briefings, plans, retries, webhook deliveries).
+ * Vercel sends `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set, only
+ * non production calls run.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -16,6 +17,8 @@ export async function GET(req: Request) {
     secret ? auth !== `Bearer ${secret}` : process.env.NODE_ENV === "production"
   )
     return Response.json({ error: "Not allowed." }, { status: 401 });
-  const ended = await sweepAbandoned(getDeps());
-  return Response.json({ ended });
+  const d = getDeps();
+  const ended = await sweepAbandoned(d);
+  const jobs = await runJobs(d, { budgetMs: 240_000 });
+  return Response.json({ ended, jobs });
 }

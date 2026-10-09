@@ -1,6 +1,5 @@
-import { after } from "next/server";
 import type { ManifestationId } from "@/core";
-import { brief, meetOthers } from "@/pipeline";
+import { drainSoon, queue } from "@/server/jobs";
 import { deviceTransition } from "@/services";
 import { withDevice } from "@/server/api";
 
@@ -28,12 +27,9 @@ export async function POST(
       body?.capture_confirmed === true,
     );
     const mid = m.id as ManifestationId;
-    if (action === "start")
-      after(() =>
-        meetOthers(d, mid).catch((e) => console.error("meet failed", e)),
-      );
-    if (action === "end")
-      after(() => brief(d, mid).catch((e) => console.error("brief failed", e)));
+    if (action === "start") await queue(d, "meet", { id: mid });
+    if (action === "end") await queue(d, "brief", { id: mid });
+    drainSoon(d, 0);
     return { session: { id: m.id, status: m.status } };
   });
 }

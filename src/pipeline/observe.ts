@@ -12,6 +12,7 @@ import {
 } from "@/core";
 import { loadContext, type Deps } from "./deps";
 import { orchestrate } from "./orchestrate";
+import { emit } from "./webhooks";
 import { fileAsks, message, presenceInput } from "./presence";
 
 /**
@@ -122,7 +123,14 @@ export async function observe(
         atSec: saidAt(n.evidence),
       }),
     );
-  if (nudges.length > 0) await d.repos.messages.append(nudges);
+  if (nudges.length > 0) {
+    await d.repos.messages.append(nudges);
+    for (const n of nudges)
+      await emit(d, ctx.agent.id, "nudge", n.id, {
+        session_id: id,
+        text: n.text,
+      });
+  }
 
   await fileAsks(d, ctx, result.asks.slice(0, 1), {
     origin: "agent",
