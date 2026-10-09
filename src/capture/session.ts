@@ -100,6 +100,8 @@ export class CaptureSession {
   async start(): Promise<void> {
     if (this.state.status !== "idle" && this.state.status !== "error") return;
     this.set({ status: "starting", error: null });
+    // Still inside the tap: the level meter needs that to run on Safari.
+    this.meter.prime();
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -192,8 +194,16 @@ export class CaptureSession {
   }
 
   private onLevel(rms: number): void {
-    const threshold = this.opts.lowAudioThreshold ?? 0.01;
-    const windowMs = (this.opts.lowAudioSec ?? 15) * 1000;
+    // A speaker across a room reads far lower than someone talking into the phone, so
+    // only near silence for a long stretch counts as quiet. And if the browser won't
+    // let us measure (meter suspended), say nothing rather than a false warning.
+    if (!this.meter.running) {
+      this.quietSince = null;
+      if (this.state.warning === "low_audio") this.set({ warning: null });
+      return;
+    }
+    const threshold = this.opts.lowAudioThreshold ?? 0.002;
+    const windowMs = (this.opts.lowAudioSec ?? 30) * 1000;
     const now = Date.now();
     if (rms < threshold) this.quietSince ??= now;
     else this.quietSince = null;

@@ -1,22 +1,42 @@
 /**
  * Rolling input level, 0 to 1. Drives the live indicator and the
- * "audio is low, move closer" hint on the host screen.
+ * "it's quiet, move closer" hint on the host screen.
  */
 export class LevelMeter {
   private ctx: AudioContext | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Make the audio context inside the tap. Safari only lets one run when it's made
+   * during a user gesture; one made later stays suspended and reads silence.
+   */
+  prime(): void {
+    if (this.ctx) return;
+    try {
+      this.ctx = new AudioContext();
+      void this.ctx.resume().catch(() => {});
+    } catch {
+      this.ctx = null;
+    }
+  }
+
+  /** Whether the level is real. When false, a low reading means "unknown", not "quiet". */
+  get running(): boolean {
+    return this.ctx?.state === "running";
+  }
 
   start(
     stream: MediaStream,
     onLevel: (rms: number) => void,
     everyMs = 500,
   ): void {
-    this.ctx = new AudioContext();
-    // Created after an await, outside the tap, so some browsers start it suspended.
-    void this.ctx.resume().catch(() => {});
-    const analyser = this.ctx.createAnalyser();
+    this.prime();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    void ctx.resume().catch(() => {});
+    const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
-    this.ctx.createMediaStreamSource(stream).connect(analyser);
+    ctx.createMediaStreamSource(stream).connect(analyser);
     const buf = new Float32Array(analyser.fftSize);
 
     this.timer = setInterval(() => {
