@@ -234,6 +234,7 @@ export class SupabaseStore implements BlobStore, Memory {
         if (f.endpointIds) q = q.in("endpoint_id", f.endpointIds);
         if (f.eventIds) q = q.in("missions.event_id", f.eventIds);
         if (f.status) q = q.eq("status", f.status);
+        if (f.createdAfter) q = q.gte("created_at", f.createdAfter);
         const rows = must(await q, "manifestations.contexts") as Row[];
         return rows.map((r): SessionContext => {
           const mission = r.missions as Row;
@@ -424,6 +425,18 @@ export class SupabaseStore implements BlobStore, Memory {
         );
         return rows.map(R.hostRequest.from);
       },
+      byManifestations: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db
+            .from("host_requests")
+            .select()
+            .in("manifestation_id", ids)
+            .order("created_at"),
+          "hostRequests.byManifestations",
+        );
+        return rows.map(R.hostRequest.from);
+      },
     },
 
     memories: {
@@ -516,6 +529,17 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    system: {
+      missingMigrations: async () => {
+        const missing = await Promise.all(
+          MIGRATION_PROBES.map(async ([file, table, column]) => {
+            const { error } = await this.db.from(table).select(column).limit(0);
+            return error ? file : null;
+          }),
+        );
+        return missing.filter((f): f is string => f !== null);
+      },
+    },
     jobs: {
       enqueue: async (j) => {
         const { error } = await this.db.from("jobs").insert(R.job.to(j));
@@ -592,18 +616,20 @@ export class SupabaseStore implements BlobStore, Memory {
             .limit(limit),
           "audit.forUser",
         ) as Record<string, unknown>[];
-        return rows.map((r) => ({
-          id: r.id as string,
-          at: r.at as string,
-          actorId: (r.actor_id as UserId | null) ?? null,
-          action: r.action as AuditEntry["action"],
-          subject: {
-            kind: r.subject_kind as AuditEntry["subject"]["kind"],
-            id: r.subject_id as string,
-          },
-          involved: r.involved as UserId[],
-          detail: (r.detail as string | null) ?? null,
-        }));
+        return rows.map(auditFrom);
+      },
+      since: async (at, actions) => {
+        const rows = must(
+          await this.db
+            .from("audit_log")
+            .select()
+            .gte("at", at)
+            .in("action", actions)
+            .order("at")
+            .limit(5000),
+          "audit.since",
+        ) as Record<string, unknown>[];
+        return rows.map(auditFrom);
       },
     },
     blocks: {
@@ -972,3 +998,39 @@ export class SupabaseStore implements BlobStore, Memory {
 function baseType(mime: string): string {
   return mime.split(";")[0]?.trim() || "application/octet-stream";
 }
+
+function auditFrom(r: Record<string, unknown>): AuditEntry {
+  return {
+    id: r.id as string,
+    at: r.at as string,
+    actorId: (r.actor_id as UserId | null) ?? null,
+    action: r.action as AuditEntry["action"],
+    subject: {
+      kind: r.subject_kind as AuditEntry["subject"]["kind"],
+      id: r.subject_id as string,
+    },
+    involved: r.involved as UserId[],
+    detail: (r.detail as string | null) ?? null,
+  };
+}
+
+/** One column each migration added: if selecting it fails, that migration hasn't run. */
+const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
+  ["0005_live_presence", "agent_messages", "id"],
+  ["0006_ask_turns", "ask_turns", "id"],
+  ["0007_agent_memory", "agent_memories", "id"],
+  ["0008_observation_basis", "observations", "basis"],
+  ["0009_plans", "observations", "plan_item"],
+  ["0010_suggestions", "agent_suggestions", "id"],
+  ["0011_actions", "agent_actions", "id"],
+  ["0012_host_actuator", "observations", "host_request_id"],
+  ["0013_attention", "agent_attention", "agent_id"],
+  ["0014_outings", "agent_outings", "id"],
+  ["0015_encounters", "agent_encounters", "id"],
+  ["0016_api_keys", "api_keys", "id"],
+  ["0017_bodies", "frames", "id"],
+  ["0018_last_heard", "manifestations", "last_heard_at"],
+  ["0019_accounts", "accounts", "user_id"],
+  ["0020_safety", "audit_log", "id"],
+  ["0021_jobs_webhooks", "jobs", "id"],
+];

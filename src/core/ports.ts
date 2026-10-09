@@ -437,6 +437,8 @@ export interface Repos {
     ): Promise<boolean>;
     /** Oldest first. */
     byManifestation(id: ManifestationId): Promise<HostRequest[]>;
+    /** For many sessions at once, oldest first. */
+    byManifestations(ids: ManifestationId[]): Promise<HostRequest[]>;
   };
   memories: {
     /** Everything, active and proposed, oldest first. */
@@ -457,6 +459,10 @@ export interface Repos {
     byAgent(agentId: AgentId): Promise<ApiKey[]>;
     get(id: ApiKeyId): Promise<ApiKey | null>;
     save(k: ApiKey): Promise<void>;
+  };
+  system: {
+    /** Database migrations that haven't been run, by file name. Empty when up to date. */
+    missingMigrations(): Promise<string[]>;
   };
   jobs: {
     /** False when a job with the same key is already queued or running. */
@@ -482,6 +488,8 @@ export interface Repos {
     record(e: AuditEntry): Promise<void>;
     /** Entries involving this user, newest first. */
     forUser(userId: UserId, limit: number): Promise<AuditEntry[]>;
+    /** Entries of these kinds since a time, oldest first. For metrics. */
+    since(at: string, actions: AuditEntry["action"][]): Promise<AuditEntry[]>;
   };
   blocks: {
     isBlocked(hostId: UserId, ownerId: UserId): Promise<boolean>;
@@ -564,6 +572,8 @@ export interface SessionFilter {
   endpointIds?: Endpoint["id"][];
   eventIds?: EventId[];
   status?: Manifestation["status"];
+  /** Only sessions requested at or after this time. */
+  createdAfter?: string;
 }
 
 export interface StoredBriefing extends Briefing {

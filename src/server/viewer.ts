@@ -53,3 +53,18 @@ async function accountFor(user: AuthUser, guest: UserId): Promise<UserId> {
   accounts.set(user.id, id);
   return id;
 }
+
+/**
+ * Who may see Omnipra wide numbers (/metrics). With sign in on: emails listed in
+ * OMNIPRA_ADMIN_EMAILS. Without it: anyone, but only while developing.
+ */
+export async function isAdmin(): Promise<boolean> {
+  if (!authEnabled()) return process.env.NODE_ENV !== "production";
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const email = token ? (await userFor(token))?.email : null;
+  const admins = (process.env.OMNIPRA_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return !!email && admins.includes(email.toLowerCase());
+}

@@ -165,6 +165,8 @@ export class InMemoryStore implements BlobStore, Memory {
           if (f.endpointIds && !f.endpointIds.includes(endpoint.id)) continue;
           if (f.eventIds && !f.eventIds.includes(event.id)) continue;
           if (f.status && manifestation.status !== f.status) continue;
+          if (f.createdAfter && manifestation.createdAt < f.createdAfter)
+            continue;
           out.push({ manifestation, mission, agent, event, endpoint });
         }
         return out.sort((a, b) =>
@@ -223,6 +225,10 @@ export class InMemoryStore implements BlobStore, Memory {
         [...this.hostRequests.values()]
           .filter((r) => r.manifestationId === id)
           .sort(by((r) => r.createdAt)),
+      byManifestations: async (ids) =>
+        [...this.hostRequests.values()]
+          .filter((r) => ids.includes(r.manifestationId))
+          .sort(by((r) => r.createdAt)),
     },
     memories: {
       byAgent: async (agentId) =>
@@ -249,6 +255,9 @@ export class InMemoryStore implements BlobStore, Memory {
           .reverse(),
       get: async (id) => this.apiKeys.get(id) ?? null,
       save: async (k) => void this.apiKeys.set(k.id, k),
+    },
+    system: {
+      missingMigrations: async () => [],
     },
     jobs: {
       enqueue: async (j) => {
@@ -294,6 +303,10 @@ export class InMemoryStore implements BlobStore, Memory {
     },
     audit: {
       record: async (e) => void this.audit.push(e),
+      since: async (at, actions) =>
+        this.audit
+          .filter((e) => e.at >= at && actions.includes(e.action))
+          .sort(by((e) => e.at)),
       forUser: async (userId, limit) =>
         this.audit
           .filter((e) => e.involved.includes(userId))

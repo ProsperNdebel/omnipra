@@ -35,9 +35,9 @@ src/
 /agent                    your agent, its sessions, and Ask
 ```
 
-Identity is an anonymous cookie per browser until real sign in lands, so a host lists
-themselves and runs the session from the same phone browser. To test alone: list yourself
-as a host on an event, then use "Send my own agent through me".
+With `OMNIPRA_AUTH=1` people sign in with an emailed code (Supabase Auth). Without it, identity
+is an anonymous cookie per browser, which is fine on your own machine. To test alone: list
+yourself as a host on an event, then use "Send my own agent through me". Deploying: see DEPLOY.md.
 
 ## API
 

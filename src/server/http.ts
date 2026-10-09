@@ -1,4 +1,5 @@
 import { DomainError } from "@/core";
+import { reportError } from "./report-error";
 
 /**
  * Domain errors to HTTP. The capture uploader treats 4xx as permanent (drop the chunk)
@@ -23,7 +24,7 @@ export function errorResponse(err: unknown): Response {
       { status: STATUS[err.code] ?? 400 },
     );
   }
-  console.error(err);
+  reportError(err, "api");
   return Response.json({ error: "internal" }, { status: 500 });
 }
 

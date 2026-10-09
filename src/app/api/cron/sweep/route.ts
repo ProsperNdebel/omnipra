@@ -7,15 +7,16 @@ export const maxDuration = 300;
 /**
  * GET /api/cron/sweep, every minute: ends sessions whose host's device went silent for
  * good, then runs due background jobs (briefings, plans, retries, webhook deliveries).
- * Vercel sends `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set, only
- * non production calls run.
+ * Vercel sends `Authorization: Bearer $CRON_SECRET`; other schedulers can pass
+ * ?secret=. Without CRON_SECRET set, only non production calls run.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization");
-  if (
-    secret ? auth !== `Bearer ${secret}` : process.env.NODE_ENV === "production"
-  )
+  // The header for Vercel; ?secret= for outside schedulers that can't set headers.
+  const given =
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+    new URL(req.url).searchParams.get("secret");
+  if (secret ? given !== secret : process.env.NODE_ENV === "production")
     return Response.json({ error: "Not allowed." }, { status: 401 });
   const d = getDeps();
   const ended = await sweepAbandoned(d);
