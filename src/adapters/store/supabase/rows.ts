@@ -1,5 +1,6 @@
 import type {
   Job,
+  Payment,
   Agent,
   AgentId,
   AgentMessage,
@@ -588,5 +589,34 @@ export const job = {
     last_error: j.lastError,
     created_at: j.createdAt,
     finished_at: j.finishedAt,
+  }),
+};
+
+export const payment = {
+  from: (r: Row): Payment => ({
+    manifestationId: r.manifestation_id as Payment["manifestationId"],
+    ownerId: r.owner_id as Payment["ownerId"],
+    hostId: r.host_id as Payment["hostId"],
+    amountCents: r.amount_cents as number,
+    feeCents: r.fee_cents as number,
+    currency: "usd",
+    status: r.status as Payment["status"],
+    checkoutId: (r.checkout_id as string | null) ?? null,
+    intentId: (r.intent_id as string | null) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  }),
+  to: (p: Payment): Row => ({
+    manifestation_id: p.manifestationId,
+    owner_id: p.ownerId,
+    host_id: p.hostId,
+    amount_cents: p.amountCents,
+    fee_cents: p.feeCents,
+    currency: p.currency,
+    status: p.status,
+    checkout_id: p.checkoutId,
+    intent_id: p.intentId,
+    created_at: p.createdAt,
+    updated_at: p.updatedAt,
   }),
 };

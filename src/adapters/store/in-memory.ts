@@ -1,5 +1,7 @@
 import type {
   UserId,
+  Payment,
+  PayoutAccount,
   Job,
   AuditEntry,
   Block,
@@ -70,6 +72,8 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly accounts = new Map<string, UserId>();
   readonly audit: AuditEntry[] = [];
   readonly jobs = new Map<string, Job>();
+  readonly payments = new Map<string, Payment>();
+  readonly payoutAccounts = new Map<string, PayoutAccount>();
   readonly blocks: Block[] = [];
   readonly reports: Report[] = [];
   readonly attentionClaims = new Map<AgentId, number>();
@@ -255,6 +259,19 @@ export class InMemoryStore implements BlobStore, Memory {
           .reverse(),
       get: async (id) => this.apiKeys.get(id) ?? null,
       save: async (k) => void this.apiKeys.set(k.id, k),
+    },
+    payments: {
+      get: async (id) => this.payments.get(id) ?? null,
+      byManifestations: async (ids) =>
+        ids.flatMap((id) => {
+          const p = this.payments.get(id);
+          return p ? [p] : [];
+        }),
+      save: async (p) => void this.payments.set(p.manifestationId, p),
+    },
+    payoutAccounts: {
+      get: async (userId) => this.payoutAccounts.get(userId) ?? null,
+      save: async (a) => void this.payoutAccounts.set(a.userId, a),
     },
     system: {
       missingMigrations: async () => [],

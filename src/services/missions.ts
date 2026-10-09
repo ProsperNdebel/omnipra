@@ -12,6 +12,7 @@ import {
 } from "@/core";
 import { recordSession, type Deps } from "@/pipeline";
 import { ownedAgent } from "./agents";
+import { assertHostCanBePaid } from "./payments";
 
 /**
  * "Send my agent." Creates the mission and a manifestation request to one host.
@@ -59,6 +60,7 @@ export async function sendAgent(
   // A host who blocked this owner simply isn't available to them.
   if (await d.repos.blocks.isBlocked(input.hostId, input.ownerId))
     throw new DomainError("bad_request", "That host isn't available.");
+  await assertHostCanBePaid(d, input.hostId, listing.priceCents);
 
   const endpoint = await d.repos.endpoints.get(listing.endpointId);
   const requires: Capability[] = input.requires?.length

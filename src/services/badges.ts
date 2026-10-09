@@ -1,5 +1,6 @@
 import type { UserId } from "@/core";
 import type { Deps } from "@/pipeline";
+import { awaitingPayment } from "./payments";
 
 /** How many things are waiting on this person, per side of the app. */
 export interface Badges {
@@ -62,8 +63,11 @@ async function hostCount(d: Deps, hostId: UserId): Promise<number> {
   const sessions = await d.repos.manifestations.contexts({
     endpointIds: endpoints.map((e) => e.id),
   });
+  const unpaid = await awaitingPayment(d, sessions);
   const requested = sessions.filter(
-    (c) => c.manifestation.status === "requested",
+    (c) =>
+      c.manifestation.status === "requested" &&
+      !unpaid.has(c.manifestation.id),
   ).length;
   const live = sessions.filter((c) => c.manifestation.status === "live");
   const asks = (

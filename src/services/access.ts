@@ -1,5 +1,6 @@
 import {
   DomainError,
+  paid,
   type ManifestationEvent,
   type ManifestationId,
   type UserId,
@@ -53,6 +54,12 @@ export async function authorizeTransition(
     role === "system"
   ) {
     throw new DomainError("forbidden", `You can't ${event} this session.`);
+  }
+  // A paid booking only reaches the host once the owner's card is held.
+  if (event === "accept" && d.payments && a.manifestation.priceCents > 0) {
+    const p = await d.repos.payments.get(a.manifestation.id);
+    if (!paid(p, a.manifestation.priceCents))
+      throw new DomainError("bad_request", "Waiting for the owner's payment.");
   }
   return a;
 }

@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { sensorsInWords } from "@/core";
+import { MIN_LIVE_MINUTES_TO_CHARGE, sensorsInWords } from "@/core";
 import { decideAction, unblockAction } from "@/app/actions";
 import {
   hostBlocks,
   hostDevices,
   hostInbox,
+  payoutState,
   type ManifestationRow,
 } from "@/services";
 import { DevicesPanel } from "@/ui/devices-panel";
@@ -23,10 +24,11 @@ export default async function HostInbox({
 }) {
   const { error } = await searchParams;
   const me = await viewerId();
-  const [rows, devices, blocked] = await Promise.all([
+  const [rows, devices, blocked, payouts] = await Promise.all([
     hostInbox(getDeps(), me),
     hostDevices(getDeps(), me),
     hostBlocks(getDeps(), me),
+    payoutState(getDeps(), me),
   ]);
   const requests = rows.filter((r) => r.manifestation.status === "requested");
   const upcoming = rows.filter((r) =>
@@ -129,6 +131,35 @@ export default async function HostInbox({
             lastSeenAt: d.lastSeenAt,
           }))}
         />
+
+        {payouts !== "off" && (
+          <section id="payouts">
+            <h2 className="section">Payouts</h2>
+            {payouts === "ready" ? (
+              <p className="small">
+                Set up. After each session that runs at least{" "}
+                {MIN_LIVE_MINUTES_TO_CHARGE} minutes, you get your price minus
+                Omnipra&rsquo;s fee, paid out by Stripe.
+              </p>
+            ) : (
+              <>
+                <p className="small">
+                  {payouts === "pending"
+                    ? "Stripe is still checking your details, or a step is left."
+                    : "Set up payouts so owners can book you. Stripe handles your bank details; Omnipra never sees them."}{" "}
+                  Until then, owners can&rsquo;t book you for a paid session.
+                </p>
+                <p>
+                  <a className="button quiet" href="/api/payouts/start">
+                    {payouts === "pending"
+                      ? "Finish payout setup"
+                      : "Set up payouts"}
+                  </a>
+                </p>
+              </>
+            )}
+          </section>
+        )}
 
         {blocked.length > 0 && (
           <>

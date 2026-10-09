@@ -22,7 +22,7 @@ export interface Job {
   finishedAt: ISODate | null;
 }
 
-export type JobKind = "brief" | "plan" | "meet" | "webhook";
+export type JobKind = "brief" | "plan" | "meet" | "webhook" | "settle";
 
 /** 30 s, 1 min, 2 min, 4 min... capped at an hour. */
 export function retryDelaySec(attempts: number): number {

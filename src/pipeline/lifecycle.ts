@@ -7,6 +7,7 @@ import {
   type TransitionInput,
 } from "@/core";
 import type { Deps } from "./deps";
+import { enqueue } from "./queue";
 import { emitSession } from "./webhooks";
 
 /** The only way a manifestation changes status. Rejects stale writes instead of overwriting them. */
@@ -29,5 +30,13 @@ export async function applyTransition(
     );
   }
   await emitSession(d, next);
+  // Once the outcome is known, charge or release the held payment (a job, so it retries).
+  if (
+    d.payments &&
+    (next.status === "declined" ||
+      next.status === "cancelled" ||
+      next.status === "ended")
+  )
+    await enqueue(d, "settle", { id: next.id });
   return next;
 }

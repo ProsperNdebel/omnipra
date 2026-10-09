@@ -37,6 +37,7 @@ import type { ApiKey } from "./api-key";
 import type { Frame } from "./frame";
 import type { AuditEntry, Block, Report } from "./safety";
 import type { Job } from "./job";
+import type { Payment, PayoutAccount } from "./payment";
 
 // Everything vendor specific lives behind these. Core and pipeline import only this file.
 
@@ -460,6 +461,16 @@ export interface Repos {
     get(id: ApiKeyId): Promise<ApiKey | null>;
     save(k: ApiKey): Promise<void>;
   };
+  payments: {
+    get(manifestationId: ManifestationId): Promise<Payment | null>;
+    /** For many sessions at once. */
+    byManifestations(ids: ManifestationId[]): Promise<Payment[]>;
+    save(p: Payment): Promise<void>;
+  };
+  payoutAccounts: {
+    get(userId: UserId): Promise<PayoutAccount | null>;
+    save(a: PayoutAccount): Promise<void>;
+  };
   system: {
     /** Database migrations that haven't been run, by file name. Empty when up to date. */
     missingMigrations(): Promise<string[]>;
@@ -605,4 +616,41 @@ export interface Execution {
   file?: { name: string; mime: string; body: string };
   /** Text to put on the clipboard. */
   copy?: string;
+}
+
+/**
+ * A payment provider for a marketplace: hosts onboard to receive money, owners pay
+ * through a hosted checkout, and a held payment is later charged or released.
+ */
+export interface PaymentGateway {
+  /** A new account for a host to receive payouts. Returns its id. */
+  createPayoutAccount(input: { email: string | null }): Promise<string>;
+  /** Where the host finishes setting up payouts with the provider. */
+  payoutOnboardingUrl(
+    accountId: string,
+    urls: { returnUrl: string; refreshUrl: string },
+  ): Promise<string>;
+  payoutReady(accountId: string): Promise<boolean>;
+  /** A hosted checkout that authorizes (holds) the amount, routing it to the host minus the fee. */
+  createCheckout(input: {
+    amountCents: number;
+    feeCents: number;
+    currency: "usd";
+    destinationAccountId: string;
+    description: string;
+    reference: string;
+    successUrl: string;
+    cancelUrl: string;
+  }): Promise<{ id: string; url: string }>;
+  /** The payment behind a finished checkout, and whether its hold is in place. */
+  checkoutResult(
+    checkoutId: string,
+  ): Promise<{ intentId: string | null; held: boolean }>;
+  capture(intentId: string): Promise<void>;
+  release(intentId: string): Promise<void>;
+  /** A verified incoming event, or null if the signature doesn't check out. */
+  verifyWebhook(
+    body: string,
+    signature: string | null,
+  ): { type: string; object: Record<string, unknown> } | null;
 }

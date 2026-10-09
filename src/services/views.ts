@@ -15,6 +15,7 @@ import type {
 } from "@/core";
 import type { Deps } from "@/pipeline";
 import { silentForSec } from "@/core";
+import { awaitingPayment } from "./payments";
 
 /**
  * Read models for screens. Composed from ports; no business rules live here.
@@ -168,7 +169,13 @@ export async function hostInbox(
   const contexts = await d.repos.manifestations.contexts({
     endpointIds: endpoints.map((e) => e.id),
   });
-  return rows(d, contexts, { withContent: false });
+  // Paid bookings reach the host once the owner's card is held.
+  const unpaid = await awaitingPayment(d, contexts);
+  return rows(
+    d,
+    contexts.filter((c) => !unpaid.has(c.manifestation.id)),
+    { withContent: false },
+  );
 }
 
 /** The host's display name for a session, from the event's listings. */

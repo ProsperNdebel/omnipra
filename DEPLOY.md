@@ -67,3 +67,24 @@ open owner page triggers the sweep and retries. The scheduler is the safety net.
 
 Unexpected errors are one JSON line each in Vercel, Logs, searchable by `"level":"error"`,
 and go to `OMNIPRA_ALERT_WEBHOOK` if set.
+
+## Payments (off until you turn them on)
+
+Owners pay through Omnipra and hosts get paid out by Stripe Connect. The card is held when
+the agent is sent, charged when the session ends if it ran at least 10 minutes, and
+released if the host declines, the owner cancels, or it's shorter. Omnipra keeps
+`OMNIPRA_FEE_PERCENT` (default 15) and the rest goes to the host.
+
+1. Stripe dashboard: activate your account, then turn on Connect (Settings, Connect) and
+   choose Express accounts for your connected accounts.
+2. Developers, Webhooks: add an endpoint `https://YOUR_DOMAIN/api/stripe/webhook` with the
+   event `checkout.session.completed`. Copy its signing secret.
+3. Vercel environment: `STRIPE_SECRET_KEY` (start with the test key, `sk_test_...`),
+   `STRIPE_WEBHOOK_SECRET`, then `OMNIPRA_PAYMENTS=1`. Redeploy.
+4. Run migration `0022_payments.sql`. `/api/health` reports anything missing.
+5. Test mode: as a host, Hosting, Set up payouts (Stripe's test data works). As an owner,
+   book that host and pay with card `4242 4242 4242 4242`.
+
+Limits to know: a card hold lasts about 7 days, so a booking made more than a week before
+the event can't be charged when it ends (it shows as failed). Refunds after a charge are
+done in the Stripe dashboard for now.

@@ -33,6 +33,14 @@ export async function GET() {
     problems.push("ANTHROPIC_API_KEY is missing.");
   if (!fake && !env("DEEPGRAM_API_KEY"))
     problems.push("DEEPGRAM_API_KEY is missing.");
+  if (process.env.OMNIPRA_PAYMENTS === "1") {
+    if (!env("STRIPE_SECRET_KEY"))
+      problems.push("STRIPE_SECRET_KEY is missing.");
+    if (!env("STRIPE_WEBHOOK_SECRET"))
+      problems.push(
+        "STRIPE_WEBHOOK_SECRET is missing, so payments can't be confirmed by Stripe.",
+      );
+  }
   if (fake) problems.push("PRESENCE_FAKE_AI=1: the agent is canned, not real.");
   if (process.env.NODE_ENV === "production") {
     if (!authEnabled())
@@ -53,6 +61,7 @@ export async function GET() {
       missing_migrations: missingMigrations,
       ai: fake ? "fake" : "real",
       auth: authEnabled(),
+      payments: process.env.OMNIPRA_PAYMENTS === "1",
       problems,
     },
     {

@@ -16,3 +16,4 @@ export * from "./devices";
 export * from "./safety";
 export * from "./metrics";
 export * from "./badges";
+export * from "./payments";

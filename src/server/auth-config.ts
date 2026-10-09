@@ -47,6 +47,7 @@ export function isPublicPath(path: string): boolean {
     path.startsWith("/api/auth/") ||
     path.startsWith("/api/cron/") ||
     path.startsWith("/api/dev/") ||
+    path.startsWith("/api/stripe/") ||
     path === "/api/health"
   );
 }

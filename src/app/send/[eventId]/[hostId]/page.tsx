@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { sendAgentAction } from "@/app/actions";
-import type { EventId } from "@/core";
-import { eventWithHosts, ownerAgents } from "@/services";
+import { MIN_LIVE_MINUTES_TO_CHARGE, type EventId } from "@/core";
+import { eventWithHosts, needsPayment, ownerAgents } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { fmtDay, fmtRange, money } from "@/ui/format";
@@ -36,6 +36,7 @@ export default async function Send({
 
   // With one agent, speak about it by name. With several, the picker decides.
   const only = agents.length === 1 ? agents[0]! : null;
+  const pay = needsPayment(d, listing.priceCents);
   const it = only?.name ?? "your agent";
 
   return (
@@ -152,13 +153,17 @@ export default async function Send({
           ) : (
             <input type="hidden" name="autonomy" value="ask_first" />
           )}
-          <SubmitButton pending="Sending">
-            Send {only ? only.name : "agent"} for {money(listing.priceCents)}
+          <SubmitButton pending={pay ? "Opening checkout" : "Sending"}>
+            {pay
+              ? `Continue to payment, ${money(listing.priceCents)}`
+              : `Send ${only ? only.name : "agent"} for ${money(listing.priceCents)}`}
           </SubmitButton>
           <small className="muted">
             {listing.displayName} has to accept, and only starts {it} once
-            they&rsquo;re in the room. Payment is settled directly with the host
-            for now.
+            they&rsquo;re in the room.{" "}
+            {pay
+              ? `Your card is held, not charged. You're charged only if the session runs at least ${MIN_LIVE_MINUTES_TO_CHARGE} minutes; if ${listing.displayName} declines or it doesn't happen, the hold is released.`
+              : "Payment is settled directly with the host for now."}
           </small>
           <small>
             <Link href={`/agent/new?next=${encodeURIComponent(here)}`}>

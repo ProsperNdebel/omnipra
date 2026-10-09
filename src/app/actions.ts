@@ -26,6 +26,7 @@ import {
   createAgent,
   createEvent,
   sendAgent,
+  startCheckout,
   unblock,
   editPlan,
   replan,
@@ -34,6 +35,7 @@ import {
   type MemoryReview,
 } from "@/services";
 import { getDeps } from "@/server/deps";
+import { siteOrigin } from "@/server/origin";
 import { viewerId } from "@/server/viewer";
 import { localInputToIso } from "@/ui/format";
 
@@ -146,7 +148,30 @@ export async function sendAgentAction(form: FormData) {
   } catch (err) {
     fail(`/send/${eventId}/${hostId}`, err);
   }
+  // With payments on, a paid booking goes to checkout; the host sees it once it's held.
+  await goPay(id);
   redirect(`/m/${id}`);
+}
+
+/** The owner pays for a session that's waiting on payment. */
+export async function payAction(form: FormData) {
+  await goPay(str(form, "id") as ManifestationId);
+  redirect(`/m/${str(form, "id")}`);
+}
+
+async function goPay(id: ManifestationId): Promise<void> {
+  let url: string | null = null;
+  try {
+    url = await startCheckout(
+      getDeps(),
+      await viewerId(),
+      id,
+      await siteOrigin(),
+    );
+  } catch (err) {
+    fail(`/m/${id}`, err);
+  }
+  if (url) redirect(url);
 }
 
 /** accept, decline (host) and cancel (owner). Start and end happen on the session screen. */

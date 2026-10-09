@@ -5,6 +5,7 @@ import {
   type BlobStore,
   type ManifestationId,
   type Memory,
+  type PaymentGateway,
   type Repos,
   type SessionContext,
   type TranscriptionProvider,
@@ -19,6 +20,8 @@ export interface Deps {
   agent: AgentProvider;
   /** Ways to carry out approved actions, in the order they're offered. */
   executors: ActionExecutor[];
+  /** Null when payments are off: sessions are settled directly with hosts. */
+  payments: PaymentGateway | null;
   now(): string;
   newId(): string;
 }

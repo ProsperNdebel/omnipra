@@ -68,3 +68,10 @@ export async function isAdmin(): Promise<boolean> {
     .filter(Boolean);
   return !!email && admins.includes(email.toLowerCase());
 }
+
+/** The signed in person's email, if sign in is on. */
+export async function viewerEmail(): Promise<string | null> {
+  if (!authEnabled()) return null;
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  return token ? ((await userFor(token))?.email ?? null) : null;
+}

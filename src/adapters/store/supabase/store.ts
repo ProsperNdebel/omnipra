@@ -529,6 +529,69 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    payments: {
+      get: async (id) => {
+        const row = must(
+          await this.db
+            .from("payments")
+            .select()
+            .eq("manifestation_id", id)
+            .maybeSingle(),
+          "payments.get",
+        );
+        return row ? R.payment.from(row) : null;
+      },
+      byManifestations: async (ids) => {
+        if (ids.length === 0) return [];
+        const rows = must(
+          await this.db.from("payments").select().in("manifestation_id", ids),
+          "payments.byManifestations",
+        );
+        return rows.map(R.payment.from);
+      },
+      save: async (p) => {
+        must(
+          await this.db
+            .from("payments")
+            .upsert(R.payment.to(p), { onConflict: "manifestation_id" }),
+          "payments.save",
+        );
+      },
+    },
+    payoutAccounts: {
+      get: async (userId) => {
+        const row = must(
+          await this.db
+            .from("payout_accounts")
+            .select()
+            .eq("user_id", userId)
+            .maybeSingle(),
+          "payoutAccounts.get",
+        ) as Record<string, unknown> | null;
+        return row
+          ? {
+              userId: row.user_id as UserId,
+              providerAccountId: row.provider_account_id as string,
+              ready: row.ready as boolean,
+              updatedAt: row.updated_at as string,
+            }
+          : null;
+      },
+      save: async (a) => {
+        must(
+          await this.db.from("payout_accounts").upsert(
+            {
+              user_id: a.userId,
+              provider_account_id: a.providerAccountId,
+              ready: a.ready,
+              updated_at: a.updatedAt,
+            },
+            { onConflict: "user_id" },
+          ),
+          "payoutAccounts.save",
+        );
+      },
+    },
     system: {
       missingMigrations: async () => {
         const missing = await Promise.all(
@@ -1033,4 +1096,5 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0019_accounts", "accounts", "user_id"],
   ["0020_safety", "audit_log", "id"],
   ["0021_jobs_webhooks", "jobs", "id"],
+  ["0022_payments", "payments", "manifestation_id"],
 ];

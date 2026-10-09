@@ -9,6 +9,7 @@ import { brief } from "./brief";
 import type { Deps } from "./deps";
 import { meetOthers } from "./meet";
 import { draftPlan } from "./plan";
+import { settle } from "./payments";
 import { deliver } from "./webhooks";
 
 const HANDLERS: Record<
@@ -19,6 +20,7 @@ const HANDLERS: Record<
   plan: (d, p) => draftPlan(d, p.missionId as MissionId),
   meet: (d, p) => meetOthers(d, p.id as ManifestationId),
   webhook: (d, p) => deliver(d, p.keyId!, p.body!),
+  settle: (d, p) => settle(d, p.id as ManifestationId),
 };
 
 /** How long a worker holds a job before another may assume it died. */
