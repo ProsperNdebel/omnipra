@@ -21,9 +21,15 @@ export class GoTrue {
     private readonly apiKey: string,
   ) {}
 
-  /** Emails a one time code (and link, if the template includes it). Creates the account if new. */
-  async sendCode(email: string): Promise<void> {
-    await this.call("/otp", { email, create_user: true });
+  /**
+   * Emails a sign in link (and a code, if the template includes one). Creates the
+   * account if new. The link lands on `redirectTo` with the session in the URL hash.
+   */
+  async sendCode(email: string, redirectTo?: string): Promise<void> {
+    const q = redirectTo
+      ? `?redirect_to=${encodeURIComponent(redirectTo)}`
+      : "";
+    await this.call(`/otp${q}`, { email, create_user: true });
   }
 
   /** The 6 digit code from the email. */

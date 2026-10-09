@@ -8,11 +8,12 @@ Vercel and Supabase are assumed; any Node host works the same way.
 1. Run every file in `supabase/migrations` you haven't run yet, in order, in the SQL editor.
    All of them are safe to run twice.
 2. Storage: a private bucket named `audio` (it holds audio and photos).
-3. Auth, Providers, Email: on. Auth, Email Templates: in both "Confirm signup" (first sign
-   in) and "Magic Link" (every later one), make the body include the code, for example
-   `Your Omnipra code is {{ .Token }}`. Optionally add the link too:
-   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
-4. Auth, URL Configuration: Site URL is your domain, for example `https://omnipra.com`.
+3. Auth, Providers, Email: on. The default emails carry a sign in link, which works as is.
+   With custom SMTP (step 5) you can also edit the templates to show a code, handy when
+   someone reads email on another device: add `Your Omnipra code is {{ .Token }}` to both
+   "Confirm signup" and "Magic Link".
+4. Auth, URL Configuration: Site URL is your domain, for example `https://omnipra.io`, and
+   add `https://omnipra.io/**` under Redirect URLs.
 5. Auth, SMTP: set a real sender (Resend, Postmark, SES). The built in one sends only a
    few emails an hour, which is not enough for real users.
 

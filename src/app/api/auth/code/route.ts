@@ -1,20 +1,27 @@
 import { AuthError } from "@/adapters/auth/gotrue";
 import { authEnabled, goTrue } from "@/server/auth-config";
+import { safeNext } from "@/server/session";
 
 export const runtime = "nodejs";
 
-/** POST { email }: emails a sign in code. */
+/** POST { email, next? }: emails a sign in link (and code, if the template has one). */
 export async function POST(req: Request) {
   if (!authEnabled())
     return Response.json({ error: "Sign in is off." }, { status: 404 });
-  const { email } = (await req.json().catch(() => ({}))) as { email?: string };
+  const { email, next } = (await req.json().catch(() => ({}))) as {
+    email?: string;
+    next?: string;
+  };
   const clean = String(email ?? "")
     .trim()
     .toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean))
     return Response.json({ error: "Enter a valid email." }, { status: 400 });
   try {
-    await goTrue().sendCode(clean);
+    // The emailed link comes back to this site, then on to where they were going.
+    const back = new URL("/auth/callback", req.url);
+    back.searchParams.set("next", safeNext(next));
+    await goTrue().sendCode(clean, back.toString());
     return Response.json({ ok: true });
   } catch (e) {
     const status = e instanceof AuthError && e.status === 429 ? 429 : 502;

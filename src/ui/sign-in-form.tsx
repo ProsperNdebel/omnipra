@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-/** Two steps: email, then the code from the email. */
+/** Two steps: email, then the link in the email (or a code, if the template sends one). */
 export function SignInForm({ next }: { next: string }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -29,7 +29,7 @@ export function SignInForm({ next }: { next: string }) {
 
   async function sendCode(e: FormEvent) {
     e.preventDefault();
-    if (await post("/api/auth/code", { email })) setSent(true);
+    if (await post("/api/auth/code", { email, next })) setSent(true);
   }
 
   async function verify(e: FormEvent) {
@@ -58,16 +58,18 @@ export function SignInForm({ next }: { next: string }) {
             />
           </label>
           <button type="submit" className="button" disabled={busy}>
-            {busy ? "Sending" : "Send code"}
+            {busy ? "Sending" : "Email me a sign in link"}
           </button>
         </form>
       ) : (
         <form onSubmit={verify} className="stack">
+          <p>
+            Sent to {email}. Open the email on this device and tap its link.
+            Check spam if it isn&rsquo;t there in a minute.
+          </p>
           <label className="field">
-            <span>Code</span>
-            <small>
-              Sent to {email}. Check spam if it isn&rsquo;t there in a minute.
-            </small>
+            <span>Or enter a code</span>
+            <small>If your email shows a code instead of a link.</small>
             <input
               type="text"
               inputMode="numeric"

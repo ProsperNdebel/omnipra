@@ -18,11 +18,11 @@ export default async function SignIn({
         <h1 className="title">Sign in</h1>
         <p>
           Your agents, their memories and your hosting live in your account. We
-          email you a code; no password.
+          email you a sign in link; no password.
         </p>
         {expired && (
           <p className="error" role="alert">
-            That link expired or was already used. Send a new code.
+            That link expired or was already used. Send a new one.
           </p>
         )}
         <SignInForm next={safeNext(next)} />
