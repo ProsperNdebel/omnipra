@@ -456,6 +456,18 @@ export interface Repos {
     get(id: ApiKeyId): Promise<ApiKey | null>;
     save(k: ApiKey): Promise<void>;
   };
+  accounts: {
+    /**
+     * The Omnipra user behind a signed in account. On first sign in, the account takes
+     * over `guestId` (everything made in this browser before signing in), unless that
+     * guest already belongs to another account, in which case it gets a fresh user.
+     */
+    claim(
+      authId: string,
+      guestId: UserId,
+      email: string | null,
+    ): Promise<UserId>;
+  };
   encounters: {
     /** Encounters this agent is on either side of. Newest first. */
     byAgent(agentId: AgentId): Promise<Encounter[]>;

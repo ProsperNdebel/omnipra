@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { authEnabled } from "@/server/auth-config";
+import { signedIn } from "@/server/viewer";
 import { Nav } from "@/ui/nav";
 import "@/ui/styles.css";
 
@@ -15,7 +17,13 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const signed = await signedIn();
+  const account = authEnabled() ? signed : null;
   return (
     <html lang="en">
       <head>
@@ -32,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       {/* Extensions like Grammarly add attributes to <body> before React hydrates. */}
       <body suppressHydrationWarning>
-        <Nav />
+        <Nav account={account} />
         {children}
       </body>
     </html>

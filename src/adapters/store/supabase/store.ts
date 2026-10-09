@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AgentAttention,
+  UserId,
   AgentId,
   BlobStore,
   Memory,
@@ -514,6 +515,37 @@ export class SupabaseStore implements BlobStore, Memory {
       },
     },
 
+    accounts: {
+      claim: async (authId, guestId, email) => {
+        const find = async () =>
+          (
+            must(
+              await this.db
+                .from("accounts")
+                .select("user_id")
+                .eq("auth_user_id", authId)
+                .maybeSingle(),
+              "accounts.find",
+            ) as { user_id: UserId } | null
+          )?.user_id;
+        const existing = await find();
+        if (existing) return existing;
+        for (const userId of [guestId, authId]) {
+          const { error } = await this.db.from("accounts").insert({
+            auth_user_id: authId,
+            user_id: userId,
+            email,
+          });
+          if (!error) return userId as UserId;
+          // 23505: the guest is someone else's (try a fresh user) or a parallel sign in won.
+          if (error.code !== "23505")
+            throw new Error(`accounts.claim: ${error.message}`);
+          const raced = await find();
+          if (raced) return raced;
+        }
+        throw new Error("accounts.claim: could not create the account");
+      },
+    },
     encounters: {
       byAgent: async (agentId) => {
         const rows = must(

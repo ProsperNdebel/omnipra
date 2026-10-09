@@ -7,7 +7,8 @@ import { usePathname } from "next/navigation";
  * Top bar, rendered once in the layout so it stays put while pages change.
  * Hidden on the host's session screen, which is deliberately full screen.
  */
-export function Nav() {
+/** `account`: null when sign in is off; otherwise whether someone is signed in. */
+export function Nav({ account }: { account: boolean | null }) {
   const path = usePathname();
   if (/^\/host\/[^/]+$/.test(path)) return null;
 
@@ -31,6 +32,19 @@ export function Nav() {
         <Link href="/host" aria-current={cur("host")}>
           Hosting
         </Link>
+        {account === false && <Link href="/signin">Sign in</Link>}
+        {account && (
+          <button
+            type="button"
+            className="linkish"
+            onClick={async () => {
+              await fetch("/api/auth/signout", { method: "POST" });
+              location.assign("/");
+            }}
+          >
+            Sign out
+          </button>
+        )}
       </nav>
     </header>
   );

@@ -1,4 +1,5 @@
 import type {
+  UserId,
   Agent,
   AgentId,
   AgentMessage,
@@ -62,6 +63,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly encounters = new Map<EncounterId, Encounter>();
   readonly apiKeys = new Map<ApiKeyId, ApiKey>();
   readonly frames = new Map<FrameId, Frame>();
+  readonly accounts = new Map<string, UserId>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -239,6 +241,16 @@ export class InMemoryStore implements BlobStore, Memory {
           .reverse(),
       get: async (id) => this.apiKeys.get(id) ?? null,
       save: async (k) => void this.apiKeys.set(k.id, k),
+    },
+    accounts: {
+      claim: async (authId, guestId) => {
+        const existing = this.accounts.get(authId);
+        if (existing) return existing;
+        const taken = [...this.accounts.values()].includes(guestId);
+        const id = taken ? (authId as UserId) : guestId;
+        this.accounts.set(authId, id);
+        return id;
+      },
     },
     encounters: {
       byAgent: async (agentId) =>
