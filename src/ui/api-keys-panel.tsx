@@ -8,7 +8,7 @@ import { fmtDay } from "./format";
 import { SubmitButton } from "./submit-button";
 
 /**
- * Keys that let an outside agent use Presence as this agent. The secret appears once,
+ * Keys that let an outside agent use Omnipra as this agent. The secret appears once,
  * right after it's made, and is never stored or shown again.
  */
 export function ApiKeysPanel({
@@ -52,7 +52,7 @@ export function ApiKeysPanel({
     <section id="api" className="narrow">
       <h2 className="section">Outside agents</h2>
       <p className="muted small">
-        Let another AI agent use Presence as {name}: find events, go to them,
+        Let another AI agent use Omnipra as {name}: find events, go to them,
         read what&rsquo;s heard and ask hosts for things. It gets your rights
         over {name} and nothing else.{" "}
         <Link href="/developers">How it works</Link>

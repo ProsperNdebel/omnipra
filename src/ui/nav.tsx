@@ -22,7 +22,7 @@ export function Nav() {
   return (
     <header className="bar page-head">
       <Link href="/" className="wordmark" aria-current={cur("explore")}>
-        Presence
+        Omnipra
       </Link>
       <nav aria-label="Main">
         <Link href="/agent" aria-current={cur("agent")}>

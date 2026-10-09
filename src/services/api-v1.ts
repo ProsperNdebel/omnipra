@@ -12,8 +12,8 @@ import { access } from "./access";
 import { sendAgent } from "./missions";
 
 /**
- * Presence as infrastructure: what an outside agent can do through the API. Every call
- * acts as one Presence agent, with exactly its owner's rights over it.
+ * Omnipra as infrastructure: what an outside agent can do through the API. Every call
+ * acts as one Omnipra agent, with exactly its owner's rights over it.
  * Responses use snake_case, as most HTTP APIs do.
  */
 export interface Caller {
@@ -65,7 +65,7 @@ export async function listEvents(d: Deps, days = 7) {
 }
 
 /**
- * Manifest at an event. With no host named, Presence picks the cheapest host offering
+ * Manifest at an event. With no host named, Omnipra picks the cheapest host offering
  * every capability asked for, within budget. Returns the session and its mission, so
  * the caller's plan can be drafted.
  */

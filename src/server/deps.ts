@@ -26,7 +26,7 @@ function build(): Deps {
   const fake = process.env.PRESENCE_FAKE_AI === "1";
   if (fake)
     console.warn(
-      "[presence] PRESENCE_FAKE_AI=1: using canned transcripts and notes.",
+      "[omnipra] PRESENCE_FAKE_AI=1: using canned transcripts and notes.",
     );
   return {
     repos: store.repos,
@@ -53,7 +53,7 @@ function buildStore(): BlobStore & Memory & { repos: Repos } {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (url && secret) return new SupabaseStore(createServerClient(url, secret));
   console.warn(
-    "[presence] Supabase env not set; using the in memory store. Data is lost on restart.",
+    "[omnipra] Supabase env not set; using the in memory store. Data is lost on restart.",
   );
   // Only the in memory data needs to survive hot reloads.
   const g = globalThis as unknown as { __presenceMemoryStore?: InMemoryStore };

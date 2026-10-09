@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   API_KEY_PREFIX,
+  LEGACY_API_KEY_PREFIXES,
   DomainError,
   type Agent,
   type ApiKey,
@@ -57,10 +58,15 @@ export async function authenticate(
   authorization: string | null,
 ): Promise<{ key: ApiKey; agent: Agent }> {
   const secret = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
-  if (!secret?.startsWith(API_KEY_PREFIX))
+  if (
+    !secret ||
+    ![API_KEY_PREFIX, ...LEGACY_API_KEY_PREFIXES].some((p) =>
+      secret.startsWith(p),
+    )
+  )
     throw new DomainError(
       "unauthorized",
-      "Send your key as: Authorization: Bearer pres_...",
+      "Send your key as: Authorization: Bearer omni_...",
     );
   const key = await d.repos.apiKeys.byHash(hash(secret));
   const agent = key && (await d.repos.agents.get(key.agentId));

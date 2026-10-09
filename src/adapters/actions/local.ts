@@ -102,9 +102,9 @@ function ics(p: Of<"event">, a: Action): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Presence//Agent//EN",
+    "PRODID:-//Omnipra//Agent//EN",
     "BEGIN:VEVENT",
-    `UID:${a.id}@presence`,
+    `UID:${a.id}@omnipra`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
@@ -151,4 +151,4 @@ const slug = (s: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 40) || "presence";
+    .slice(0, 40) || "omnipra";

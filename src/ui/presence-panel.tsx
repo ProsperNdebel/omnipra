@@ -404,7 +404,7 @@ function useAlerts(
     if (fresh.length === 0) return;
 
     if (document.visibilityState === "hidden") {
-      document.title = `(${fresh.length}) ${agentName}, Presence`;
+      document.title = `(${fresh.length}) ${agentName}, Omnipra`;
     }
     if (
       typeof Notification !== "undefined" &&
@@ -417,7 +417,7 @@ function useAlerts(
 
   useEffect(() => {
     const reset = () => {
-      if (document.visibilityState === "visible") document.title = "Presence";
+      if (document.visibilityState === "visible") document.title = "Omnipra";
     };
     document.addEventListener("visibilitychange", reset);
     return () => document.removeEventListener("visibilitychange", reset);

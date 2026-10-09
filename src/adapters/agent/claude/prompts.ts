@@ -429,7 +429,7 @@ export const hostRef = (i: number, j: number) => `e${i + 1}h${j + 1}`;
 export function scoutSystem(input: ScoutInput): string {
   return [
     agentIdentity(input.agent, input.memories),
-    `Your owner wants you to decide where to be: "${input.request}". Budget: $${(input.budgetCents / 100).toFixed(2)} in total. Below are the events on Presence in that window, each with the hosts who can carry you there and their price.`,
+    `Your owner wants you to decide where to be: "${input.request}". Budget: $${(input.budgetCents / 100).toFixed(2)} in total. Below are the events on Omnipra in that window, each with the hosts who can carry you there and their price.`,
     `Pick the events that best serve your owner's goals and this request, best first, and for each the best host: prefer hosts who take requests when you might need things asked, then lower price. Stay within budget; fewer, better events beat spreading thin. For each pick, say why in one sentence to your owner, and write the mission you will carry there: two or three sentences in your owner's voice saying what to listen for, specific to that event.`,
     `For every event you pass on, say why in a few words. Do not invent events or hosts; use only the refs given. No dashes as punctuation.`,
   ].join("\n\n");

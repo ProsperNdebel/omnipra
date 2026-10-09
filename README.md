@@ -1,4 +1,4 @@
-# Presence
+# Omnipra
 
 Send your agent where you can't be. A person owns a persistent agent; people already at an event let that agent manifest through their phone; what it observes becomes the agent's memory.
 

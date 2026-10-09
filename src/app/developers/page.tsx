@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Presence for agents" };
+export const metadata: Metadata = { title: "Omnipra for agents" };
 
-/** The open manifestation layer: how any AI agent enters the physical world through Presence. */
+/** The open manifestation layer: how any AI agent enters the physical world through Omnipra. */
 export default function Developers() {
   return (
     <main className="page">
       <div className="narrow">
-        <h1 className="title">Presence for any agent</h1>
+        <h1 className="title">Omnipra for any agent</h1>
         <p>
-          Any AI agent can go to a real event through Presence. You ask for an
-          event; Presence finds a person there whose phone carries your agent,
+          Any AI agent can go to a real event through Omnipra. You ask for an
+          event; Omnipra finds a person there whose phone carries your agent,
           captures what is said with their consent, and gives your agent the
           room as it happens. Your agent can ask that person to do things in the
           room.
@@ -19,14 +19,14 @@ export default function Developers() {
         <h2 className="section">Keys</h2>
         <p>
           Make a key on your agent&rsquo;s page, under Outside agents. A key
-          acts as that one Presence agent, with its owner&rsquo;s rights over it
+          acts as that one Omnipra agent, with its owner&rsquo;s rights over it
           and nothing else. Send it on every call:
         </p>
-        <Code>{`Authorization: Bearer pres_...`}</Code>
+        <Code>{`Authorization: Bearer omni_...`}</Code>
 
         <h2 className="section">1. See what&rsquo;s on</h2>
         <Code>{`curl https://YOUR_HOST/api/v1/events?days=7 \\
-  -H "Authorization: Bearer $PRESENCE_KEY"`}</Code>
+  -H "Authorization: Bearer $OMNIPRA_KEY"`}</Code>
         <p className="small muted">
           Each event lists its hosts, their price, and what they can do:{" "}
           <code>audio</code> (it hears), <code>vision</code> (it sees),{" "}
@@ -36,7 +36,7 @@ export default function Developers() {
 
         <h2 className="section">2. Go there</h2>
         <Code>{`curl -X POST https://YOUR_HOST/api/v1/manifestations \\
-  -H "Authorization: Bearer $PRESENCE_KEY" \\
+  -H "Authorization: Bearer $OMNIPRA_KEY" \\
   -H "content-type: application/json" \\
   -d '{
     "event_id": "...",
@@ -45,7 +45,7 @@ export default function Developers() {
     "budget_cents": 4000
   }'`}</Code>
         <p className="small muted">
-          Leave out <code>host_id</code> and Presence picks the cheapest host
+          Leave out <code>host_id</code> and Omnipra picks the cheapest host
           with every capability you asked for, within budget. The host still has
           to accept. A plan is drafted from the agent&rsquo;s goals in the
           background.
@@ -53,10 +53,10 @@ export default function Developers() {
 
         <h2 className="section">3. Follow the room</h2>
         <Code>{`curl "https://YOUR_HOST/api/v1/manifestations/ID/stream?after_sec=0&since=1970-01-01T00:00:00Z" \\
-  -H "Authorization: Bearer $PRESENCE_KEY"`}</Code>
+  -H "Authorization: Bearer $OMNIPRA_KEY"`}</Code>
         <p className="small muted">
           Returns everything new: raw <code>transcript</code> lines,
-          Presence&rsquo;s <code>notes</code> (each marked claim, corroborated
+          Omnipra&rsquo;s <code>notes</code> (each marked claim, corroborated
           or inference, with the lines it rests on), <code>messages</code>, host{" "}
           <code>requests</code> and their answers, and the <code>briefing</code>{" "}
           once it&rsquo;s written. Pass back the <code>cursor</code> you get to
@@ -66,7 +66,7 @@ export default function Developers() {
 
         <h2 className="section">4. Act through the host</h2>
         <Code>{`curl -X POST https://YOUR_HOST/api/v1/manifestations/ID/requests \\
-  -H "Authorization: Bearer $PRESENCE_KEY" \\
+  -H "Authorization: Bearer $OMNIPRA_KEY" \\
   -H "content-type: application/json" \\
   -d '{ "ask": "Could you ask which African languages their API supports?" }'`}</Code>
         <p className="small muted">
@@ -95,7 +95,7 @@ Authorization: Bearer dev_...`}</Code>
           with the next <code>x-seq</code>. Send images whenever the device sees
           something worth reading: a slide, a whiteboard, a badge. The agent
           reads them and its notes cite the image. A reference device lives in{" "}
-          <code>scripts/presence-device.mjs</code>.
+          <code>scripts/omnipra-device.mjs</code>.
         </p>
 
         <h2 className="section">Also</h2>

@@ -84,7 +84,7 @@ export async function scout(
     candidates,
   });
 
-  // Only real hosts at real candidate events, with what Presence knows about them.
+  // Only real hosts at real candidate events, with what Omnipra knows about them.
   const byEvent = new Map(candidates.map((c) => [c.event.id, c]));
   const proposed: OutingPick[] = out.picks.flatMap((p) => {
     const c = byEvent.get(p.eventId);

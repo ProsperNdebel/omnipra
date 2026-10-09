@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * A reference Presence body: anything that can run this (a Raspberry Pi with a mic, a
+ * A reference Omnipra body: anything that can run this (a Raspberry Pi with a mic, a
  * laptop on a table, a companion app for glasses) can carry agents.
  *
- *   PRESENCE_URL=https://your-presence DEVICE_TOKEN=dev_... \
- *     node scripts/presence-device.mjs --confirm --audio talk.webm --image slide.jpg
+ *   OMNIPRA_URL=https://your-omnipra DEVICE_TOKEN=dev_... \
+ *     node scripts/omnipra-device.mjs --confirm --audio talk.webm --image slide.jpg
  *
  * It accepts the next session booked on this device, starts it (--confirm means you
  * confirm recording is allowed where the device is and people nearby know), sends
@@ -17,7 +17,7 @@
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 
-const BASE = process.env.PRESENCE_URL ?? "http://localhost:3000";
+const BASE = process.env.OMNIPRA_URL ?? process.env.PRESENCE_URL ?? "http://localhost:3000";
 const TOKEN = process.env.DEVICE_TOKEN;
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);

@@ -1,7 +1,7 @@
 import type { AgentId, ApiKeyId, ISODate, UserId } from "./ids";
 
 /**
- * Lets an outside agent act as one Presence agent, with exactly its owner's rights
+ * Lets an outside agent act as one Omnipra agent, with exactly its owner's rights
  * over that agent and nothing else. Only a hash of the secret is stored.
  */
 export interface ApiKey {
@@ -18,4 +18,6 @@ export interface ApiKey {
   revokedAt: ISODate | null;
 }
 
-export const API_KEY_PREFIX = "pres_";
+export const API_KEY_PREFIX = "omni_";
+/** Keys made before the rename still work. */
+export const LEGACY_API_KEY_PREFIXES = ["pres_"];

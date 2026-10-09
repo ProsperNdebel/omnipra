@@ -4,7 +4,7 @@ import { Nav } from "@/ui/nav";
 import "@/ui/styles.css";
 
 export const metadata: Metadata = {
-  title: "Presence",
+  title: "Omnipra",
   description:
     "Send your agent to the events you can't make, through people already there.",
 };
