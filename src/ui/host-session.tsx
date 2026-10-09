@@ -122,11 +122,16 @@ export function HostSession({
     setEnding(true);
     // Stop recording and wait for every chunk to reach the server before ending,
     // so the briefing covers the whole session.
-    await session.current?.stop();
+    // A bad connection can't hold the host in the room forever: after a while, end
+    // anyway. Whatever reached the server is still briefed.
+    await Promise.race([
+      session.current?.stop(),
+      new Promise((r) => setTimeout(r, END_DRAIN_MS)),
+    ]);
     const res = await fetch(`/api/manifestations/${id}/end`, {
       method: "POST",
-    });
-    if (res.ok) setStatus("ended");
+    }).catch(() => null);
+    if (res?.ok) setStatus("ended");
     else
       setError(
         "Couldn't end the session. Check your connection and try again.",
@@ -400,15 +405,16 @@ function SnapPhoto({
 
   async function send(file: File) {
     setState("sending");
+    const image = await shrink(file);
     const res = await fetch(`/api/manifestations/${sessionId}/frames`, {
       method: "POST",
       headers: {
-        "content-type": file.type,
+        "content-type": image.type,
         ...(caption.trim()
           ? { "x-caption": encodeURIComponent(caption.trim()) }
           : {}),
       },
-      body: file,
+      body: image,
     }).catch(() => null);
     setState(res?.ok ? "sent" : "error");
     if (res?.ok) setCaption("");
@@ -448,4 +454,36 @@ function SnapPhoto({
       )}
     </div>
   );
+}
+
+/** How long ending waits for the last audio to upload before giving up on it. */
+const END_DRAIN_MS = 30_000;
+/** Longest side of a photo sent to the agent. Plenty to read a slide, small on mobile data. */
+const PHOTO_MAX_PX = 1600;
+
+/**
+ * Phone photos are often 4 to 12 MB. Scale down to a JPEG the agent can still read,
+ * so it uploads quickly on event wifi. Falls back to the original if the browser can't.
+ */
+async function shrink(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(
+      1,
+      PHOTO_MAX_PX / Math.max(bitmap.width, bitmap.height),
+    );
+    if (scale === 1 && file.size < 1_500_000) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas
+      .getContext("2d")!
+      .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((r) =>
+      canvas.toBlob(r, "image/jpeg", 0.85),
+    );
+    return blob ?? file;
+  } catch {
+    return file;
+  }
 }

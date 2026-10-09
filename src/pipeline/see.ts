@@ -60,6 +60,10 @@ export async function ingestFrame(
     createdAt: now,
   };
   await d.blobs.put(frame.blobKey, input.bytes, frame.mimeType);
+  // Liveness only: never let it fail an upload.
+  await d.repos.manifestations
+    .heard(m.id, now)
+    .catch((e) => console.error("heard failed", e));
   await d.repos.frames.save(frame);
 
   const context = await presenceInput(d, ctx, frame.caption ?? "image");

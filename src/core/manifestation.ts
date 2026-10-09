@@ -22,7 +22,24 @@ export interface Manifestation {
   captureConfirmedAt: ISODate | null;
   startedAt: ISODate | null;
   endedAt: ISODate | null;
+  /** When the body last sent anything. Written only by `heard`, so status saves never race it. */
+  lastHeardAt: ISODate | null;
   createdAt: ISODate;
+}
+
+/** No audio or images for this long while live: the owner is told the room went quiet. */
+export const STALE_AFTER_SEC = 90;
+/** No audio or images for this long while live: the session is treated as abandoned and ended. */
+export const ABANDONED_AFTER_SEC = 15 * 60;
+
+/** How long a live session has been without input, or null if it isn't live or hasn't started sending. */
+export function silentForSec(
+  m: Pick<Manifestation, "status" | "lastHeardAt" | "startedAt">,
+  now: ISODate,
+): number | null {
+  if (m.status !== "live") return null;
+  const last = m.lastHeardAt ?? m.startedAt;
+  return last ? Math.max(0, (Date.parse(now) - Date.parse(last)) / 1000) : null;
 }
 
 export type ManifestationStatus =

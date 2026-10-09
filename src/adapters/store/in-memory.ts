@@ -123,7 +123,17 @@ export class InMemoryStore implements BlobStore, Memory {
       save: async (m, expected) => {
         const current = this.manifestations.get(m.id);
         if ((current?.status ?? null) !== expected) return false;
-        this.manifestations.set(m.id, m);
+        // Like the database: the cursor and liveness have their own writers.
+        this.manifestations.set(
+          m.id,
+          current
+            ? {
+                ...m,
+                observedThroughSec: current.observedThroughSec,
+                lastHeardAt: current.lastHeardAt,
+              }
+            : m,
+        );
         return true;
       },
       contexts: async (f) => {
@@ -150,6 +160,10 @@ export class InMemoryStore implements BlobStore, Memory {
         return out.sort((a, b) =>
           b.manifestation.createdAt.localeCompare(a.manifestation.createdAt),
         );
+      },
+      heard: async (id, at) => {
+        const m = this.manifestations.get(id);
+        if (m) this.manifestations.set(id, { ...m, lastHeardAt: at });
       },
       advanceCursor: async (id, from, to) => {
         const m = this.manifestations.get(id);

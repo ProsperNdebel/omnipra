@@ -244,6 +244,15 @@ export class SupabaseStore implements BlobStore, Memory {
           };
         });
       },
+      heard: async (id, at) => {
+        must(
+          await this.db
+            .from("manifestations")
+            .update({ last_heard_at: at })
+            .eq("id", id),
+          "manifestations.heard",
+        );
+      },
       advanceCursor: async (id, from, to) => {
         const rows = must(
           await this.db

@@ -12,6 +12,7 @@ export { prepareActions, recentActions } from "./act";
 export { orchestrate } from "./orchestrate";
 export { meetOthers } from "./meet";
 export { ingestFrame, type FrameInput } from "./see";
+export { sweepAbandoned } from "./sweep";
 export {
   actOnRequest,
   converse,

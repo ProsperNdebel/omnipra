@@ -8,6 +8,7 @@ import type {
   ObservationId,
   ObservationKind,
 } from "@/core";
+import { ABANDONED_AFTER_SEC, STALE_AFTER_SEC } from "@/core";
 import type { Feed } from "@/services/views";
 import { Dot, STATUS_WORDS } from "./bar";
 import { clock, fmtTime, plural } from "./format";
@@ -89,6 +90,16 @@ export function LiveFeed({
         <p className="muted">
           {hostName} accepted. {agentName} goes live when they start the session
           in the room.
+        </p>
+      )}
+      {live && f.silentSec !== null && f.silentSec >= STALE_AFTER_SEC && (
+        <p className="error">
+          Nothing from {hostName}&rsquo;s device for{" "}
+          {f.silentSec < 120
+            ? "over a minute"
+            : `${Math.floor(f.silentSec / 60)} minutes`}
+          . Their phone may be locked, offline or out of battery. The session
+          ends on its own after {ABANDONED_AFTER_SEC / 60} minutes of silence.
         </p>
       )}
       {live && obs.length === 0 && (

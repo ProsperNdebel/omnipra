@@ -4,7 +4,7 @@ import type {
   ObservationId,
   SegmentId,
 } from "@/core";
-import { currentAttention, THINK_EVERY_SEC } from "@/core";
+import { currentAttention, nearDuplicate, THINK_EVERY_SEC } from "@/core";
 import { loadContext, type Deps } from "./deps";
 import { orchestrate } from "./orchestrate";
 import { fileAsks, message, presenceInput } from "./presence";
@@ -16,6 +16,8 @@ import { fileAsks, message, presenceInput } from "./presence";
  * get thought about more often (see THINK_EVERY_SEC).
  */
 const MIN_WINDOW_SEC = THINK_EVERY_SEC.high;
+/** The most transcript the agent reads in one go. */
+const MAX_SLICE_SEC = 120;
 
 /**
  * The agent's loop while present: read new transcript, record notes, interrupt the owner
@@ -30,8 +32,14 @@ export async function observe(
 ): Promise<Observation[]> {
   const ctx = await loadContext(d, id);
   const from = ctx.manifestation.observedThroughSec;
-  const window = await d.repos.segments.since(id, from);
-  if (window.length === 0) return [];
+  const pending = await d.repos.segments.since(id, from);
+  if (pending.length === 0) return [];
+  // After an outage there can be a long backlog. Think about it in slices, so one
+  // prompt never balloons and nothing is skipped.
+  const window = pending.filter(
+    (s, i) => i === 0 || s.endSec <= from + MAX_SLICE_SEC,
+  );
+  const backlog = window.length < pending.length;
 
   const to = Math.max(...window.map((s) => s.endSec));
   if (!opts.force && to - from < MIN_WINDOW_SEC) return [];
@@ -58,9 +66,16 @@ export async function observe(
 
   const createdAt = d.now();
   const planIds = new Set((ctx.mission.plan ?? []).map((p) => p.id));
+  const kept: string[] = input.recent.map((n) => n.text);
   const observations: Observation[] = result.observations
     .map((o) => ({ ...o, evidence: cited(o.evidence) }))
     .filter((o) => o.evidence.length > 0)
+    // Saying again what's already noted adds nothing.
+    .filter((o) => {
+      if (kept.some((k) => nearDuplicate(k, o.text))) return false;
+      kept.push(o.text);
+      return true;
+    })
     .map((o) => ({
       ...o,
       id: d.newId() as ObservationId,
@@ -98,6 +113,15 @@ export async function observe(
     origin: "agent",
     hostTakesRequests: input.hostTakesRequests,
   });
+
+  // Work through the rest of a backlog straight away.
+  if (backlog) {
+    const more = await observe(d, id, opts).catch((e) => {
+      console.error("observe backlog failed", e);
+      return [];
+    });
+    return [...observations, ...more];
+  }
 
   // Something new was heard: a moment to look across all the rooms it's in.
   if (observations.length > 0 && !opts.force) {

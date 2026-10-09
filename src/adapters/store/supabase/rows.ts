@@ -200,9 +200,10 @@ export const manifestation = {
     captureConfirmedAt: (r.capture_confirmed_at as string | null) ?? null,
     startedAt: (r.started_at as string | null) ?? null,
     endedAt: (r.ended_at as string | null) ?? null,
+    lastHeardAt: (r.last_heard_at as string | null) ?? null,
     createdAt: r.created_at as string,
   }),
-  /** observed_through_sec is deliberately absent: only advanceCursor writes it. */
+  /** observed_through_sec and last_heard_at are deliberately absent: only advanceCursor and heard write them. */
   to: (m: Manifestation): Row => ({
     id: m.id,
     mission_id: m.missionId,

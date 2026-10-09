@@ -388,6 +388,8 @@ export interface Repos {
       m: Manifestation,
       expected: Manifestation["status"] | null,
     ): Promise<boolean>;
+    /** Record that the body sent something. Never touches status. */
+    heard(id: ManifestationId, at: string): Promise<void>;
     /** Compare and set on observedThroughSec. Returns false if `from` is stale, so only one worker owns a window. */
     advanceCursor(
       id: ManifestationId,

@@ -19,6 +19,22 @@ export async function brief(
   await observe(d, id, { force: true });
   const ctx = await loadContext(d, id);
   const observations = await d.repos.observations.byManifestation(id);
+  if (observations.length === 0) {
+    // Nothing to brief from: say so plainly instead of asking a model to write about nothing.
+    const empty: StoredBriefing = {
+      headline: [],
+      followUps: [],
+      openQuestions: [],
+      markdown: "Nothing worth noting was captured in this session.",
+      cites: { headline: [], followUps: [] },
+      manifestationId: id,
+      createdAt: d.now(),
+    };
+    await d.repos.briefings.save(empty);
+    if (ctx.manifestation.status === "ended")
+      await applyTransition(d, id, "brief");
+    return empty;
+  }
   const memories = await recallMemory(
     d,
     ctx.agent.id,

@@ -13,6 +13,7 @@ import type {
   UserId,
 } from "@/core";
 import type { Deps } from "@/pipeline";
+import { silentForSec } from "@/core";
 
 /**
  * Read models for screens. Composed from ports; no business rules live here.
@@ -201,6 +202,8 @@ export interface Feed {
   hostTakesRequests: boolean;
   /** Owner only. Null until drafted. */
   plan: PlanItem[] | null;
+  /** Seconds since the host's device last sent anything. Null unless live. */
+  silentSec: number | null;
 }
 
 export async function feed(
@@ -241,5 +244,6 @@ export async function feed(
     hostTakesRequests:
       listings.find((l) => l.hostId === ctx.endpoint.hostId)?.openToRequests ??
       false,
+    silentSec: silentForSec(m, d.now()),
   };
 }

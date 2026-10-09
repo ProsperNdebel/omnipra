@@ -70,3 +70,31 @@ export const OBSERVATION_BASES: readonly ObservationBasis[] = [
   "corroborated",
   "inference",
 ];
+
+const words = (s: string) =>
+  new Set(
+    s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .split(" ")
+      .filter((w) => w.length > 2 || /\d/.test(w)),
+  );
+
+const numbers = (s: string) =>
+  (s.match(/\d+(?:[.,]\d+)?/g) ?? []).sort().join(" ");
+
+/**
+ * Two notes saying the same thing in nearly the same words. Models repeat themselves
+ * across windows; this catches it without trusting them not to. Notes that cite
+ * different numbers are never duplicates.
+ */
+export function nearDuplicate(a: string, b: string, threshold = 0.8): boolean {
+  const x = words(a);
+  const y = words(b);
+  if (x.size === 0 || y.size === 0) return false;
+  // A different figure is a different fact, however similar the wording.
+  if (numbers(a) !== numbers(b)) return false;
+  let shared = 0;
+  for (const w of x) if (y.has(w)) shared++;
+  return shared / (x.size + y.size - shared) >= threshold;
+}
