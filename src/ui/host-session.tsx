@@ -217,7 +217,8 @@ export function HostSession({
       </div>
 
       <div className="center">
-        {capturing && open.length > 0 && (
+        {/* Asks show whenever the session is live, even if the mic dropped and needs Resume. */}
+        {open.length > 0 && (
           <ul className="rows" style={{ marginTop: 0, marginBottom: 32 }}>
             {open.map((r) => (
               <HostAsk
