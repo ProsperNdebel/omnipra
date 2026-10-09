@@ -95,6 +95,10 @@ a {
   text-decoration: underline;
 }
 
+.bar nav .linkish {
+  text-decoration: none;
+}
+
 .wordmark {
   font-weight: 600;
   letter-spacing: -0.03em;
