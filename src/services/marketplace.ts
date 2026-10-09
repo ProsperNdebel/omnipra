@@ -17,13 +17,19 @@ export interface EventSummary {
 }
 
 /** Events that haven't ended, starting within the next week, with their supply. */
+/** How long an ended event stays on the home schedule. */
+const RECENT_HOURS = 12;
+
 export async function upcomingEvents(
   d: Deps,
   now = new Date(),
 ): Promise<EventSummary[]> {
   const to = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  // Events stay on the list for a while after they end, marked as ended, so a talk
+  // someone just attended doesn't vanish the moment its scheduled time is up.
+  const since = new Date(now.getTime() - RECENT_HOURS * 3600 * 1000);
   const events = await d.repos.events.list({
-    from: now.toISOString(),
+    from: since.toISOString(),
     to: to.toISOString(),
   });
   const listings = await d.repos.events.listingsFor(events.map((e) => e.id));

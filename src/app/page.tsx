@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { upcomingEvents, type EventSummary } from "@/services";
 import { getDeps } from "@/server/deps";
+import { Dot } from "@/ui/bar";
 import { dayOf, fmtDay, fmtTime, money, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const events = await upcomingEvents(getDeps());
   const days = groupByDay(events);
+  const now = new Date().toISOString();
 
   return (
     <main className="page">
@@ -31,7 +33,11 @@ export default async function Home() {
             <h2 className="day">{fmtDay(list[0]!.event.startsAt)}</h2>
             <ol className="schedule">
               {list.map(({ event, hosts, fromCents }) => (
-                <li className="slot" key={event.id}>
+                <li
+                  className="slot"
+                  key={event.id}
+                  style={event.endsAt < now ? { opacity: 0.5 } : undefined}
+                >
                   <time className="time" dateTime={event.startsAt}>
                     {fmtTime(event.startsAt)}
                   </time>
@@ -39,11 +45,21 @@ export default async function Home() {
                     <Link href={`/events/${event.id}`}>{event.title}</Link>
                   </div>
                   <div className="meta">
-                    {event.capturePolicy === "none"
-                      ? "No recording allowed"
-                      : hosts === 0
-                        ? "No hosts yet"
-                        : `${plural(hosts, "host")}, from ${money(fromCents!)}`}
+                    {event.endsAt < now ? (
+                      "Ended"
+                    ) : event.startsAt <= now ? (
+                      <>
+                        <Dot on breathe />
+                        Happening now
+                        {hosts > 0 && `, ${plural(hosts, "host")}`}
+                      </>
+                    ) : event.capturePolicy === "none" ? (
+                      "No recording allowed"
+                    ) : hosts === 0 ? (
+                      "No hosts yet"
+                    ) : (
+                      `${plural(hosts, "host")}, from ${money(fromCents!)}`
+                    )}
                   </div>
                 </li>
               ))}

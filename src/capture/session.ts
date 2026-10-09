@@ -63,10 +63,25 @@ export class CaptureSession {
   private clock: ReturnType<typeof setInterval> | null = null;
   private startedAt = 0;
   private quietSince: number | null = null;
-  private readonly onVisibility = () =>
-    this.set({
-      warning: document.visibilityState === "hidden" ? "page_hidden" : null,
-    });
+  private readonly onVisibility = () => {
+    const visible = document.visibilityState === "visible";
+    this.set({ warning: visible ? null : "page_hidden" });
+    if (!visible) return;
+    // Phones often cut the microphone while the screen is off or another app is in
+    // front, without saying so. Give it a moment to come back; if it hasn't, say so,
+    // so the host sees Resume instead of a screen that looks like it's listening.
+    setTimeout(() => {
+      if (this.state.status !== "live") return;
+      const tracks = this.stream?.getAudioTracks() ?? [];
+      const dead =
+        tracks.length === 0 ||
+        tracks.some((t) => t.readyState === "ended" || t.muted);
+      if (dead)
+        this.fail(
+          "Recording stopped while the screen was off or another app was open. Tap Resume to carry on.",
+        );
+    }, 1500);
+  };
 
   constructor(private readonly opts: CaptureOptions) {
     this.uploader = new Uploader(this.queue, opts.transport, {
@@ -125,7 +140,8 @@ export class CaptureSession {
     document.addEventListener("visibilitychange", this.onVisibility);
     this.meter.start(this.stream, (rms) => this.onLevel(rms));
 
-    this.startedAt = Date.now();
+    // The clock counts from the session's start, so a resume carries on rather than restarting at 0:00.
+    this.startedAt = this.opts.anchorMs ?? Date.now();
     this.clock = setInterval(
       () =>
         this.set({

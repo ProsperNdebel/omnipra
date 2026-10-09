@@ -38,6 +38,8 @@ export async function sendAgent(
 
   const event = await d.repos.events.get(input.eventId);
   if (!event) throw new DomainError("not_found", "event not found");
+  if (event.endsAt < d.now())
+    throw new DomainError("bad_request", "This event has already ended.");
   if (event.capturePolicy === "none") {
     throw new DomainError(
       "bad_request",

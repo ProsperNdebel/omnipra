@@ -6,8 +6,14 @@ export class LevelMeter {
   private ctx: AudioContext | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  start(stream: MediaStream, onLevel: (rms: number) => void, everyMs = 500): void {
+  start(
+    stream: MediaStream,
+    onLevel: (rms: number) => void,
+    everyMs = 500,
+  ): void {
     this.ctx = new AudioContext();
+    // Created after an await, outside the tap, so some browsers start it suspended.
+    void this.ctx.resume().catch(() => {});
     const analyser = this.ctx.createAnalyser();
     analyser.fftSize = 2048;
     this.ctx.createMediaStreamSource(stream).connect(analyser);
