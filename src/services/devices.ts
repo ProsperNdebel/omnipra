@@ -12,7 +12,13 @@ import {
   type ManifestationId,
   type UserId,
 } from "@/core";
-import { applyTransition, record, type Deps } from "@/pipeline";
+import {
+  applyTransition,
+  loadContext,
+  record,
+  recordSession,
+  type Deps,
+} from "@/pipeline";
 
 const hash = (secret: string) =>
   createHash("sha256").update(secret).digest("hex");
@@ -154,7 +160,16 @@ export async function deviceTransition(
       "Action must be accept, decline, start or end.",
     );
   const m = await deviceSession(d, device, id);
-  return applyTransition(d, m.id, action as ManifestationEvent, {
+  const next = await applyTransition(d, m.id, action as ManifestationEvent, {
     captureConfirmed,
   });
+  const ctx = await loadContext(d, m.id);
+  await recordSession(
+    d,
+    ctx,
+    device.hostId,
+    `session.${action as "accept" | "decline" | "start" | "end"}`,
+    `From ${device.name}.`,
+  );
+  return next;
 }
