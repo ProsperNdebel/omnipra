@@ -4,7 +4,12 @@ import type {
   ObservationId,
   SegmentId,
 } from "@/core";
-import { currentAttention, nearDuplicate, THINK_EVERY_SEC } from "@/core";
+import {
+  currentAttention,
+  groundBasis,
+  nearDuplicate,
+  THINK_EVERY_SEC,
+} from "@/core";
 import { loadContext, type Deps } from "./deps";
 import { orchestrate } from "./orchestrate";
 import { fileAsks, message, presenceInput } from "./presence";
@@ -59,6 +64,7 @@ export async function observe(
 
   // The agent may only cite transcript it was shown. Anything uncited is dropped.
   const startOf = new Map(window.map((s) => [s.id, s.startSec]));
+  const textOf = new Map(window.map((s) => [s.id, s.text]));
   const cited = (evidence: SegmentId[]) =>
     evidence.filter((e) => startOf.has(e));
   const saidAt = (evidence: SegmentId[]) =>
@@ -70,6 +76,15 @@ export async function observe(
   const observations: Observation[] = result.observations
     .map((o) => ({ ...o, evidence: cited(o.evidence) }))
     .filter((o) => o.evidence.length > 0)
+    // A figure or quote that isn't in the cited lines can't be presented as said.
+    .map((o) => ({
+      ...o,
+      basis: groundBasis(
+        o.text,
+        o.basis,
+        o.evidence.map((e) => textOf.get(e)!),
+      ).basis,
+    }))
     // Saying again what's already noted adds nothing.
     .filter((o) => {
       if (kept.some((k) => nearDuplicate(k, o.text))) return false;

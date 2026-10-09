@@ -16,4 +16,5 @@ export * from "./encounter";
 export * from "./api-key";
 export * from "./frame";
 export * from "./safety";
+export * from "./evidence";
 export * from "./ports";
