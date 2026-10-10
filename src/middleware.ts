@@ -76,5 +76,8 @@ function withCookies(res: NextResponse, set: [string, string, number?][]) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Icons, the app manifest and share images are public files: no session needed.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico|webmanifest|txt)$).*)",
+  ],
 };

@@ -6,10 +6,25 @@ import { HashSession } from "@/ui/hash-session";
 import { Nav } from "@/ui/nav";
 import "@/ui/styles.css";
 
+const description =
+  "Send your agent to the events you can't make, through people already there.";
+
 export const metadata: Metadata = {
+  // Absolute links for the preview image when a page is shared.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://omnipra.io",
+  ),
   title: "Omnipra",
-  description:
-    "Send your agent to the events you can't make, through people already there.",
+  description,
+  applicationName: "Omnipra",
+  appleWebApp: { title: "Omnipra", capable: true, statusBarStyle: "default" },
+  openGraph: {
+    title: "Omnipra",
+    description,
+    siteName: "Omnipra",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "Omnipra", description },
 };
 
 export const viewport: Viewport = {

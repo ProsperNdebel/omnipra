@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LogoMark } from "./logo";
 
 const POLL_MS = 20_000;
 
@@ -72,6 +73,7 @@ export function Nav({ account }: { account: boolean | null }) {
   return (
     <header className="bar page-head">
       <Link href="/" className="wordmark" aria-current={cur("explore")}>
+        <LogoMark />
         Omnipra
       </Link>
       <nav aria-label="Main">

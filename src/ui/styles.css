@@ -119,6 +119,9 @@ a {
 .wordmark {
   font-weight: 600;
   letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .narrow {
