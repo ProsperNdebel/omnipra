@@ -137,7 +137,8 @@ export class ClaudeAgentProvider implements AgentProvider {
     event,
     observations,
   }: BriefInput): Promise<BriefResult> {
-    const out = (await this.json(this.models.brief, 4096, {
+    // Long events make long briefings; 4096 ran out on a three hour session.
+    const out = (await this.json(this.models.brief, 12000, {
       system: P.briefSystem(agent, memories, mission, event),
       user: P.briefUser(observations, mission.plan),
       schema: BRIEFING_SCHEMA,

@@ -202,7 +202,7 @@ export function briefSystem(
     mission.orders.length
       ? `During the session your owner also told you:\n${mission.orders.map((o) => `- ${o}`).join("\n")}`
       : "",
-    `Write the briefing your owner reads afterward. They are busy: lead with what matters to them specifically, not a summary of the event. Use only your observations; do not add facts. If the session yielded little of value, say so plainly in one line rather than padding it.`,
+    `Write the briefing your owner reads afterward. They are busy: lead with what matters to them specifically, not a summary of the event. Use only your observations; do not add facts. If the session yielded little of value, say so plainly in one line rather than padding it. However long the event, keep it tight: at most 7 headline points, at most 10 follow ups, and markdown under about 700 words.`,
     EVIDENCE_RULES,
     `Every headline point and follow up must cite the refs of the observations it rests on (like n3). Your owner can open each one to see exactly what was said, so never cite a note that does not support the claim.`,
     `Finally, pick at most three things from this session worth remembering at future events: durable facts about people, companies or the market that bear on your owner's goals and interests. Write each one self contained, naming who said it and where ("At ${event.title}, the founder of X said they need Shona speech recognition"). Record them as what was said, not as verified truth, and cite the notes each rests on. Skip anything already in your experiences. Often nothing qualifies; then return none.`,
