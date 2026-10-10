@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { leadChatLabel, leadIntentLabel } from "@/core";
+import { leadChatLabel, leadIntentLabel, leadTwinLabel } from "@/core";
 import { listLeads } from "@/services";
 import { getDeps } from "@/server/deps";
 import { isAdmin } from "@/server/viewer";
@@ -37,7 +37,8 @@ export default async function Leads() {
               </div>
               <div className="full small muted">
                 {leadIntentLabel(l.intent)}
-                {l.note && `: ${l.note}`} · Up for a chat: {leadChatLabel(l.chat)}
+                {l.note && `: ${l.note}`} · Entwin: {leadTwinLabel(l.twin)} · Up for
+                a chat: {leadChatLabel(l.chat)}
                 {l.source && ` · from ${l.source}`} · {fmtDay(l.createdAt)}
               </div>
             </li>

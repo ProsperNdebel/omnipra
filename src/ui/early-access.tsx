@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { LEAD_CHAT, LEAD_INTENTS, type LeadChat, type LeadIntent } from "@/core/lead";
+import {
+  LEAD_CHAT,
+  LEAD_INTENTS,
+  LEAD_TWIN,
+  type LeadChat,
+  type LeadIntent,
+} from "@/core/lead";
 
-type Step = "name" | "email" | "intent" | "chat" | "done";
-const ORDER: Step[] = ["name", "email", "intent", "chat"];
+type Step = "name" | "email" | "intent" | "twin" | "chat" | "done";
+const ORDER: Step[] = ["name", "email", "intent", "twin", "chat"];
 
 /**
  * The early access list, one question at a time: name, how to reach them, what they'd
- * use it for, and whether they're up for a chat.
+ * use it for, whether they want an Entwin built, and whether they're up for a chat.
  * Short steps keep it light on a phone, and nothing is saved until the last one.
  */
 export function EarlyAccess() {
@@ -19,6 +25,7 @@ export function EarlyAccess() {
   const [phone, setPhone] = useState("");
   const [intent, setIntent] = useState<LeadIntent | null>(null);
   const [note, setNote] = useState("");
+  const [twin, setTwin] = useState<LeadChat | null>(null);
   const [chat, setChat] = useState<LeadChat | null>(null);
   const [website, setWebsite] = useState(""); // honeypot
   const [busy, setBusy] = useState(false);
@@ -33,14 +40,14 @@ export function EarlyAccess() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!intent || !chat) return setError("Pick one.");
+    if (!intent || !twin || !chat) return setError("Pick one.");
     setBusy(true);
     setError(null);
     const source = new URLSearchParams(location.search).get("src");
     const res = await fetch("/api/leads", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, email, phone, intent, chat, note, source, website }),
+      body: JSON.stringify({ firstName, lastName, email, phone, intent, twin, chat, note, source, website }),
     }).catch(() => null);
     setBusy(false);
     if (res?.ok) return setStep("done");
@@ -174,6 +181,33 @@ export function EarlyAccess() {
         </form>
       )}
 
+      {step === "twin" && (
+        <form
+          onSubmit={(e) => (twin ? next(e) : (e.preventDefault(), setError("Pick one.")))}
+          className="stack"
+        >
+          <h2 className="early-q">Want us to build your Entwin?</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Your AI twin: it acts as you across your inbox, calendar and messages, and in
+            the rooms where you build relationships.
+          </p>
+          <Choices name="twin" options={LEAD_TWIN} value={twin} onChange={setTwin} />
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="actions">
+            <button type="submit" className="button" disabled={!twin}>
+              Next
+            </button>
+            <button type="button" className="button quiet" onClick={() => setStep("intent")}>
+              Back
+            </button>
+          </div>
+        </form>
+      )}
+
       {step === "chat" && (
         <form onSubmit={submit} className="stack">
           <h2 className="early-q">Up for a quick chat about it?</h2>
@@ -200,7 +234,7 @@ export function EarlyAccess() {
             <button type="submit" className="button" disabled={busy || !chat}>
               {busy ? "Joining" : "Join the list"}
             </button>
-            <button type="button" className="button quiet" onClick={() => setStep("intent")}>
+            <button type="button" className="button quiet" onClick={() => setStep("twin")}>
               Back
             </button>
           </div>

@@ -19,6 +19,13 @@ export const LEAD_CHAT: { value: LeadChat; label: string }[] = [
   { value: "no", label: "No way" },
 ];
 
+/** Whether they want us to build their Entwin, their AI twin. Same answers, own wording. */
+export const LEAD_TWIN: { value: LeadChat; label: string }[] = [
+  { value: "yes", label: "Hell yeah" },
+  { value: "maybe", label: "Maybe" },
+  { value: "no", label: "Uh, no way" },
+];
+
 /** Someone interested who isn't using Omnipra yet. One per email; signing up again updates it. */
 export interface Lead {
   id: string;
@@ -28,6 +35,8 @@ export interface Lead {
   /** Optional, as they typed it. */
   phone: string;
   intent: LeadIntent;
+  /** Want us to build their Entwin? */
+  twin: LeadChat;
   chat: LeadChat;
   /** In their words, mostly for "Something else". */
   note: string;
@@ -38,7 +47,7 @@ export interface Lead {
 
 export type LeadInput = Pick<
   Lead,
-  "firstName" | "lastName" | "email" | "phone" | "intent" | "chat" | "note" | "source"
+  "firstName" | "lastName" | "email" | "phone" | "intent" | "twin" | "chat" | "note" | "source"
 >;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,6 +63,7 @@ export function cleanLead(raw: Record<string, unknown>): LeadInput {
   const email = str("email", 200).toLowerCase();
   const phone = str("phone", 30);
   const intent = str("intent", 10) as LeadIntent;
+  const twin = str("twin", 10) as LeadChat;
   const chat = str("chat", 10) as LeadChat;
   const note = str("note", 500);
   const source = str("source", 60).replace(/[^\w.-]/g, "") || null;
@@ -66,9 +76,11 @@ export function cleanLead(raw: Record<string, unknown>): LeadInput {
     throw new DomainError("bad_request", "That phone number doesn't look right.");
   if (!LEAD_INTENTS.some((i) => i.value === intent))
     throw new DomainError("bad_request", "Pick what you'd use Omnipra for.");
+  if (!LEAD_TWIN.some((c) => c.value === twin))
+    throw new DomainError("bad_request", "Pick whether you'd like an Entwin.");
   if (!LEAD_CHAT.some((c) => c.value === chat))
     throw new DomainError("bad_request", "Pick whether we can reach out.");
-  return { firstName, lastName, email, phone, intent, chat, note, source };
+  return { firstName, lastName, email, phone, intent, twin, chat, note, source };
 }
 
 export const leadIntentLabel = (i: LeadIntent) =>
@@ -76,3 +88,6 @@ export const leadIntentLabel = (i: LeadIntent) =>
 
 export const leadChatLabel = (c: LeadChat) =>
   LEAD_CHAT.find((x) => x.value === c)?.label ?? c;
+
+export const leadTwinLabel = (c: LeadChat) =>
+  LEAD_TWIN.find((x) => x.value === c)?.label ?? c;

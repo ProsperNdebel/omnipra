@@ -784,6 +784,7 @@ export class SupabaseStore implements BlobStore, Memory {
               last_name: l.lastName,
               phone: l.phone,
               intent: l.intent,
+              twin: l.twin,
               chat: l.chat,
               note: l.note,
               source: l.source,
@@ -812,6 +813,7 @@ export class SupabaseStore implements BlobStore, Memory {
           email: r.email!,
           phone: r.phone ?? "",
           intent: r.intent as LeadIntent,
+          twin: (r.twin ?? "maybe") as LeadChat,
           chat: (r.chat ?? "maybe") as LeadChat,
           note: r.note ?? "",
           source: r.source ?? null,
@@ -1156,4 +1158,5 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0022_payments", "payments", "manifestation_id"],
   ["0023_leads", "leads", "intent"],
   ["0024_lead_contact", "leads", "chat"],
+  ["0025_lead_twin", "leads", "twin"],
 ];
