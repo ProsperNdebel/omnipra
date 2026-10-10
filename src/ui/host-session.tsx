@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CaptureSession, type CaptureState } from "@/capture";
+import { Alerter, CaptureSession, type CaptureState } from "@/capture";
 import { HttpChunkTransport } from "@/client/http-chunk-transport";
 import type { CapturePolicy, ManifestationStatus } from "@/core";
 import type { HostRequestView } from "@/services/views";
@@ -91,15 +91,18 @@ export function HostSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, status]);
 
-  // A new ask buzzes the phone where the browser allows it (Android; iOS ignores this).
+  // A new ask buzzes and chimes: vibrate on Android, a switch haptic and chime on iPhone.
+  const alerter = useRef<Alerter | null>(null);
+  useEffect(() => {
+    alerter.current = new Alerter();
+    return () => void alerter.current?.close();
+  }, []);
   const open = requests.filter(
     (r) => r.status === "sent" || r.status === "accepted",
   );
   const seenOpen = useRef(0);
   useEffect(() => {
-    if (open.length > seenOpen.current && "vibrate" in navigator) {
-      navigator.vibrate([120, 80, 120]);
-    }
+    if (open.length > seenOpen.current) alerter.current?.notify();
     seenOpen.current = open.length;
   }, [open.length]);
 
@@ -107,7 +110,8 @@ export function HostSession({
     setError(null);
     const s = session.current;
     if (!s) return;
-    // Start the mic inside the tap (browsers require a gesture), tell the server in parallel.
+    // Start the mic and the alert sound inside the tap (browsers require a gesture).
+    alerter.current?.prime();
     const capturing = s.start();
     if (status === "accepted") {
       const res = await fetch(`/api/manifestations/${id}/start`, {
