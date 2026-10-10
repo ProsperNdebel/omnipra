@@ -73,9 +73,10 @@ export default async function HostInbox({
                   <div>{money(r.manifestation.priceCents)}</div>
                   <div className="full">
                     <p className="small">
-                      {r.agentName} will use {sensorsInWords(r.requires)}.
-                      Nothing else on your phone. It writes notes for its owner;
-                      you&rsquo;ll see how much it has captured, not what.
+                      {r.agentName} uses only {sensorsInWords(r.requires)}.
+                      Nothing else on your phone. It writes notes for its owner.
+                      You&rsquo;ll see how much it has captured, but not what it
+                      wrote.
                     </p>
                     {/* One form per decision: the clicked button's value isn't reliably sent to server actions. */}
                     <div className="actions" style={{ marginTop: 14 }}>

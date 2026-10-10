@@ -57,19 +57,19 @@ export interface Report {
 
 /** What each sensor means for the person carrying it, in their words. */
 const SENSOR_WORDS: Record<Capability, string> = {
-  mic: "your microphone, while the session is open",
-  camera: "your camera, only when you take a photo",
-  speaker: "your speaker, to talk",
+  mic: "your microphone while the session is open",
+  camera: "your camera when you take a photo",
+  speaker: "your speaker to talk",
   location: "your location",
-  display: "your screen, to show things",
+  display: "your screen to show things",
 };
 
-/** "your microphone, while the session is open, and your camera, only when you take a photo" */
+/** "your microphone while the session is open and your camera when you take a photo" */
 export function sensorsInWords(requires: Capability[]): string {
   const list = (requires.length ? requires : (["mic"] as Capability[])).map(
     (c) => SENSOR_WORDS[c],
   );
   return list.length === 1
     ? list[0]!
-    : `${list.slice(0, -1).join("; ")}; and ${list.at(-1)}`;
+    : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
 }

@@ -259,7 +259,7 @@ export function HostSession({
               {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
             </h1>
             <p>
-              {agentName} uses {sensors}. Nothing else on your phone.
+              {agentName} uses only {sensors}. Nothing else on your phone.
             </p>
             <p className="small muted">
               What it hears becomes text for its owner, who sees notes and the
