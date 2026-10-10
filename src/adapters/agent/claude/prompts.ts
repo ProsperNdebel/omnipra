@@ -26,7 +26,28 @@ import type {
  * wording after the first real event without touching code that talks to the API.
  */
 
-export function agentIdentity(agent: Agent, memories: AgentMemory[]): string {
+/** One piece of a system prompt. `cache` marks the end of the part that stays the same call after call. */
+export interface SystemPart {
+  text: string;
+  cache?: boolean;
+}
+
+/** What the agent remembers from earlier events: picked per call, so kept out of cached prompt text. */
+export function experiencesText(memories: AgentMemory[]): string {
+  const lines = memories
+    .filter((m) => m.kind === "experience")
+    .map((m) => `- ${m.text}`)
+    .join("\n");
+  return lines
+    ? `What you remember from earlier events. These are things people said in rooms: claims by speakers, not facts about your owner and not verified. Use them to connect what you hear now:\n<experiences>\n${lines}\n</experiences>`
+    : "";
+}
+
+export function agentIdentity(
+  agent: Agent,
+  memories: AgentMemory[],
+  opts: { experiences?: boolean } = {},
+): string {
   const of = (kind: AgentMemory["kind"]) =>
     memories
       .filter((m) => m.kind === kind)
@@ -46,9 +67,7 @@ export function agentIdentity(agent: Agent, memories: AgentMemory[]): string {
     of("goal")
       ? `Your owner's standing goals. Weigh everything against these; a discovery that clearly advances one is worth interrupting them for:\n<goals>\n${of("goal")}\n</goals>`
       : "",
-    of("experience")
-      ? `What you remember from earlier events. These are things people said in rooms: claims by speakers, not facts about your owner and not verified. Use them to connect what you hear now:\n<experiences>\n${of("experience")}\n</experiences>`
-      : "",
+    opts.experiences === false ? "" : experiencesText(memories),
     `On every mission you look for: ${agent.lookFor.join(", ").replaceAll("_", " ")}.`,
   ]
     .filter(Boolean)
@@ -86,12 +105,23 @@ function situation(input: PresenceInput): string {
     .join("\n\n");
 }
 
-export function observeSystem(input: ObserveInput): string {
+/**
+ * Runs every 20 seconds or so, so the part that doesn't change between calls (who the
+ * agent is, the mission, the rules) comes first and is cached; only the memories picked
+ * for this window follow it.
+ */
+export function observeSystem(input: ObserveInput): SystemPart[] {
   return [
-    agentIdentity(input.agent, input.memories),
-    situation(input),
-    OBSERVE_RULES,
-  ].join("\n\n");
+    {
+      text: [
+        agentIdentity(input.agent, input.memories, { experiences: false }),
+        situation(input),
+        OBSERVE_RULES,
+      ].join("\n\n"),
+      cache: true,
+    },
+    { text: experiencesText(input.memories) },
+  ].filter((p) => p.text);
 }
 
 const OBSERVE_RULES = `How to record observations:

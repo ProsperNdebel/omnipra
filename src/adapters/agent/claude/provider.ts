@@ -428,7 +428,7 @@ export class ClaudeAgentProvider implements AgentProvider {
     model: string,
     maxTokens: number,
     args: {
-      system: string;
+      system: string | P.SystemPart[];
       user: string | Anthropic.ContentBlockParam[];
       schema: Record<string, unknown>;
       history?: Anthropic.MessageParam[];
@@ -437,10 +437,22 @@ export class ClaudeAgentProvider implements AgentProvider {
     const res = await this.client.messages.create({
       model,
       max_tokens: maxTokens,
-      system: args.system,
+      system:
+        typeof args.system === "string"
+          ? args.system
+          : args.system.map((p) => ({
+              type: "text" as const,
+              text: p.text,
+              ...(p.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+            })),
       messages: [...(args.history ?? []), { role: "user", content: args.user }],
       output_config: { format: { type: "json_schema", schema: args.schema } },
     });
+    // One line per call, so cost and cache hits show in the logs.
+    const u = res.usage;
+    console.log(
+      `claude ${model} in=${u.input_tokens} cached=${u.cache_read_input_tokens ?? 0} written=${u.cache_creation_input_tokens ?? 0} out=${u.output_tokens}`,
+    );
     // Both of these can produce output that doesn't match the schema.
     if (res.stop_reason === "max_tokens")
       throw new Error(`Claude ran out of tokens (max_tokens ${maxTokens})`);
