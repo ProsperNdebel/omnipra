@@ -10,11 +10,11 @@ import {
 } from "@/core/lead";
 
 type Step = "name" | "email" | "intent" | "twin" | "chat" | "done";
-const ORDER: Step[] = ["name", "email", "intent", "twin", "chat"];
+const ORDER: Step[] = ["name", "email", "intent", "chat", "twin"];
 
 /**
  * The early access list, one question at a time: name, how to reach them, what they'd
- * use it for, whether they want help creating their AI twin, and whether they're up for a chat.
+ * use it for, whether they're up for a chat, and whether they want to hear about an AI twin.
  * Short steps keep it light on a phone, and nothing is saved until the last one.
  */
 export function EarlyAccess() {
@@ -181,25 +181,23 @@ export function EarlyAccess() {
         </form>
       )}
 
-      {step === "twin" && (
+      {step === "chat" && (
         <form
-          onSubmit={(e) => (twin ? next(e) : (e.preventDefault(), setError("Pick one.")))}
+          onSubmit={(e) => (chat ? next(e) : (e.preventDefault(), setError("Pick one.")))}
           className="stack"
         >
-          <p style={{ margin: 0, lineHeight: 1.5 }}>
-            We can also help you create your AI twin: a deeply personal version of you
-            that acts as you across your inbox, calendar and every room you&rsquo;re
-            in. Private by design.
+          <h2 className="early-q">Up for a quick chat about it?</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            We&rsquo;d love to hear what you&rsquo;d use it for.
           </p>
-          <h2 className="early-q">Wanna know more?</h2>
-          <Choices name="twin" options={LEAD_TWIN} value={twin} onChange={setTwin} />
+          <Choices name="chat" options={LEAD_CHAT} value={chat} onChange={setChat} />
           {error && (
             <p className="error" role="alert">
               {error}
             </p>
           )}
           <div className="actions">
-            <button type="submit" className="button" disabled={!twin}>
+            <button type="submit" className="button" disabled={!chat}>
               Next
             </button>
             <button type="button" className="button quiet" onClick={() => setStep("intent")}>
@@ -209,13 +207,15 @@ export function EarlyAccess() {
         </form>
       )}
 
-      {step === "chat" && (
+      {step === "twin" && (
         <form onSubmit={submit} className="stack">
-          <h2 className="early-q">Up for a quick chat about it?</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            We&rsquo;d love to hear what you&rsquo;d use it for.
+          <p style={{ margin: 0, lineHeight: 1.5 }}>
+            We can also help you create your AI twin: a deeply personal version of you
+            that acts as you across your inbox, calendar and every room you&rsquo;re
+            in. Private by design.
           </p>
-          <Choices name="chat" options={LEAD_CHAT} value={chat} onChange={setChat} />
+          <h2 className="early-q">Wanna know more?</h2>
+          <Choices name="twin" options={LEAD_TWIN} value={twin} onChange={setTwin} />
           <input
             type="text"
             name="website"
@@ -232,10 +232,10 @@ export function EarlyAccess() {
             </p>
           )}
           <div className="actions">
-            <button type="submit" className="button" disabled={busy || !chat}>
+            <button type="submit" className="button" disabled={busy || !twin}>
               {busy ? "Joining" : "Join the list"}
             </button>
-            <button type="button" className="button quiet" onClick={() => setStep("twin")}>
+            <button type="button" className="button quiet" onClick={() => setStep("chat")}>
               Back
             </button>
           </div>
