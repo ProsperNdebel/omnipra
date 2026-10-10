@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const { lead, isNew } = await joinEarlyAccess(getDeps(), body);
     if (isNew) {
       notifyTeam(
-        `New early access: ${lead.firstName} ${lead.lastName} <${lead.email}>${lead.phone ? ` ${lead.phone}` : ""}, ${leadIntentLabel(lead.intent)}, wants an Entwin: ${leadTwinLabel(lead.twin)}, up for a chat: ${leadChatLabel(lead.chat)}${lead.note ? `: "${lead.note}"` : ""}${lead.source ? ` (from ${lead.source})` : ""}`,
+        `New early access: ${lead.firstName} ${lead.lastName} <${lead.email}>${lead.phone ? ` ${lead.phone}` : ""}, ${leadIntentLabel(lead.intent)}, wants an AI twin: ${leadTwinLabel(lead.twin)}, up for a chat: ${leadChatLabel(lead.chat)}${lead.note ? `: "${lead.note}"` : ""}${lead.source ? ` (from ${lead.source})` : ""}`,
       );
     }
     return Response.json({ ok: true, firstName: lead.firstName });
@@ -51,7 +51,7 @@ export async function GET() {
 
 function toCsv(leads: Lead[]): string {
   const cell = (v: string | null) => `"${(v ?? "").replaceAll('"', '""')}"`;
-  const head = ["First name", "Last name", "Email", "Phone", "Wants to", "Wants an Entwin", "Up for a chat", "Note", "Source", "Signed up"];
+  const head = ["First name", "Last name", "Email", "Phone", "Wants to", "Wants an AI twin", "Up for a chat", "Note", "Source", "Signed up"];
   const rows = leads.map((l) =>
     [l.firstName, l.lastName, l.email, l.phone, leadIntentLabel(l.intent), leadTwinLabel(l.twin), leadChatLabel(l.chat), l.note, l.source, l.createdAt]
       .map(cell)

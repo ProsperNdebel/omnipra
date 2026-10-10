@@ -14,7 +14,7 @@ const ORDER: Step[] = ["name", "email", "intent", "twin", "chat"];
 
 /**
  * The early access list, one question at a time: name, how to reach them, what they'd
- * use it for, whether they want an Entwin built, and whether they're up for a chat.
+ * use it for, whether they want help creating their AI twin, and whether they're up for a chat.
  * Short steps keep it light on a phone, and nothing is saved until the last one.
  */
 export function EarlyAccess() {
@@ -186,10 +186,10 @@ export function EarlyAccess() {
           onSubmit={(e) => (twin ? next(e) : (e.preventDefault(), setError("Pick one.")))}
           className="stack"
         >
-          <h2 className="early-q">Want us to build your Entwin?</h2>
+          <h2 className="early-q">Want help creating your AI twin?</h2>
           <p className="muted" style={{ margin: 0 }}>
-            Your AI twin: it acts as you across your inbox, calendar and messages, and in
-            the rooms where you build relationships.
+            A deeply personal version of you that acts as you across your inbox, calendar
+            and every room you&rsquo;re in.
           </p>
           <Choices name="twin" options={LEAD_TWIN} value={twin} onChange={setTwin} />
           {error && (

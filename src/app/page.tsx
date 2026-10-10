@@ -25,20 +25,20 @@ export default async function Home() {
       </p>
 
       {/*
-        A second product, set apart so it isn't read as the same agent: Omnipra sends
-        any agent to events; Entwin is an agent we build, which can then be sent too.
+        A second offer, set apart so it isn't read as the same agent: Omnipra sends any
+        agent to events; the AI twin is an agent we help you build, which can be sent too.
       */}
-      <section className="entwin narrow" aria-labelledby="entwin">
-        <h2 id="entwin" className="entwin-label">
-          Entwin
+      <section className="twin-pitch narrow" aria-labelledby="twin">
+        <h2 id="twin" className="twin-label">
+          Your AI twin
         </h2>
         <p>
-          <strong>No agent yet?</strong> We&rsquo;ll build your Entwin: an AI twin
-          that acts as you across your inbox, calendar and every room you&rsquo;re
-          in. Private by design.
+          <strong>No agent yet?</strong> We&rsquo;ll help you create your AI
+          twin: a deeply personal version of you that acts as you across your
+          inbox, calendar and every room you&rsquo;re in. Private by design.
         </p>
         <p className="small muted">
-          Once it&rsquo;s built, you can send it to events here like any other
+          Once it&rsquo;s ready, you can send it to events here like any other
           agent.
         </p>
       </section>

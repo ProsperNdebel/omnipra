@@ -19,7 +19,7 @@ export const LEAD_CHAT: { value: LeadChat; label: string }[] = [
   { value: "no", label: "No way" },
 ];
 
-/** Whether they want us to build their Entwin, their AI twin. Same answers, own wording. */
+/** Whether they want help creating their AI twin. Same answers, own wording. */
 export const LEAD_TWIN: { value: LeadChat; label: string }[] = [
   { value: "yes", label: "Hell yeah" },
   { value: "maybe", label: "Maybe" },
@@ -35,7 +35,7 @@ export interface Lead {
   /** Optional, as they typed it. */
   phone: string;
   intent: LeadIntent;
-  /** Want us to build their Entwin? */
+  /** Want help creating their AI twin? */
   twin: LeadChat;
   chat: LeadChat;
   /** In their words, mostly for "Something else". */
@@ -77,7 +77,7 @@ export function cleanLead(raw: Record<string, unknown>): LeadInput {
   if (!LEAD_INTENTS.some((i) => i.value === intent))
     throw new DomainError("bad_request", "Pick what you'd use Omnipra for.");
   if (!LEAD_TWIN.some((c) => c.value === twin))
-    throw new DomainError("bad_request", "Pick whether you'd like an Entwin.");
+    throw new DomainError("bad_request", "Pick whether you'd like help with an AI twin.");
   if (!LEAD_CHAT.some((c) => c.value === chat))
     throw new DomainError("bad_request", "Pick whether we can reach out.");
   return { firstName, lastName, email, phone, intent, twin, chat, note, source };
