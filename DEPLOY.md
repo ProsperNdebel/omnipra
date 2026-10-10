@@ -9,13 +9,19 @@ Vercel and Supabase are assumed; any Node host works the same way.
    All of them are safe to run twice.
 2. Storage: a private bucket named `audio` (it holds audio and photos).
 3. Auth, Providers, Email: on. The default emails carry a sign in link, which works as is.
-   With custom SMTP (step 5) you can also edit the templates to show a code, handy when
-   someone reads email on another device: add `Your Omnipra code is {{ .Token }}` to both
-   "Confirm signup" and "Magic Link".
 4. Auth, URL Configuration: Site URL is your domain, for example `https://omnipra.io`, and
    add `https://omnipra.io/**` under Redirect URLs.
-5. Auth, SMTP: set a real sender (Resend, Postmark, SES). The built in one sends only a
-   few emails an hour, which is not enough for real users.
+5. Email sender (Resend). The built in sender says "Supabase" and allows a few emails an hour.
+   1. Resend, Domains, add `omnipra.io`, and add the DNS records it lists at your registrar
+      (on Porkbun, the Host field is only the part before `omnipra.io`). Wait for Verified.
+   2. Resend, API Keys, create one with sending access.
+   3. Supabase, Authentication, Emails, SMTP Settings: on. Sender `login@omnipra.io`, name
+      `Omnipra`, host `smtp.resend.com`, port `465`, username `resend`, password the key.
+   4. Supabase, Authentication, Rate Limits: raise emails per hour (30 is a fine start).
+   5. Supabase, Authentication, Emails, Templates: paste `supabase/templates/sign-in.html`
+      into both "Magic Link" and "Confirm signup", subject `Sign in to Omnipra`. Its button
+      is verified on the server, so it works in any browser, and it shows a code for
+      signing in on another device.
 
 ## 2. Environment (Vercel, Project Settings, Environment Variables)
 

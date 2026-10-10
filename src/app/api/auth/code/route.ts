@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       {
         error:
           status === 429
-            ? "Too many codes sent. Wait a minute and try again."
+            ? "Too many sign in emails just now. Try again in a few minutes."
             : "Couldn't send the code. Try again.",
       },
       { status },

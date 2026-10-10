@@ -1,0 +1,49 @@
+<!-- Omnipra sign in email. Paste into Supabase, Authentication, Emails, for both
+     "Magic Link" and "Confirm signup". Subject: Sign in to Omnipra -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+  <tr>
+    <td align="center" style="padding:48px 24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#111111;">
+        <tr>
+          <td style="padding-bottom:40px;">
+            <img src="https://omnipra.io/icon-192.png" width="28" height="28" alt="" style="vertical-align:middle;border:0;">
+            <span style="font-size:18px;font-weight:600;letter-spacing:-0.01em;vertical-align:middle;padding-left:8px;">Omnipra</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:28px;font-weight:600;letter-spacing:-0.02em;line-height:1.2;padding-bottom:16px;">
+            Sign in
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:16px;line-height:1.5;color:#444444;padding-bottom:28px;">
+            Tap the button to sign in. It works once and expires in an hour.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:32px;">
+            <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email"
+               style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:14px 24px;">
+              Sign in to Omnipra
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;line-height:1.5;color:#444444;padding-bottom:8px;">
+            Signing in on another device? Enter this code there:
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:28px;font-weight:600;letter-spacing:0.2em;padding-bottom:40px;">
+            {{ .Token }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border-top:1px solid #e5e5e5;padding-top:20px;font-size:12px;line-height:1.5;color:#888888;">
+            If you didn't ask to sign in, ignore this email. Nobody can get in without it.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
