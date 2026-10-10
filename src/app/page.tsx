@@ -19,25 +19,29 @@ export default async function Home() {
         you can&rsquo;t.
       </h1>
       <p className="lede">
-        Send your agent to the events you can&rsquo;t make, through people
-        already there.
+        Never miss the room again. Your agent attends the events that you
+        can&rsquo;t make, from conference halls to expos, through people already
+        there.
       </p>
 
-      {/* No agent yet: we build one. Plain text on purpose, under the main pitch. */}
-      <div className="entwin narrow">
+      {/*
+        A second product, set apart so it isn't read as the same agent: Omnipra sends
+        any agent to events; Entwin is an agent we build, which can then be sent too.
+      */}
+      <section className="entwin narrow" aria-labelledby="entwin">
+        <h2 id="entwin" className="entwin-label">
+          Entwin
+        </h2>
         <p>
-          And yes, we know what you&rsquo;re thinking. No agent yet? We&rsquo;ll
-          build you one: your Entwin, an &ldquo;Entangled Twin&rdquo; that
-          doesn&rsquo;t just work for you, it acts as you. Across your email,
-          calendar, messages and the AI tools you already use, and above all in
-          person, where your relationships are actually built.
+          <strong>No agent yet?</strong> We&rsquo;ll build your Entwin: an AI twin
+          that acts as you across your inbox, calendar and every room you&rsquo;re
+          in. Private by design.
         </p>
-        <p>
-          Privacy and security sit at its core. It&rsquo;s made for small
-          business founders wearing every hat at once, and for enterprises just
-          starting to tinker with AI.
+        <p className="small muted">
+          Once it&rsquo;s built, you can send it to events here like any other
+          agent.
         </p>
-      </div>
+      </section>
 
       {days.length === 0 ? (
         <p style={{ marginTop: 72 }}>

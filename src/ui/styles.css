@@ -783,12 +783,22 @@ input[type="radio"] {
   opacity: 0;
 }
 
-/* Landing: the Entwin pitch under the headline. */
+/* Landing: Entwin, a separate product, set off under the main pitch. */
 .entwin {
-  margin-top: 56px;
+  margin-top: 64px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ink);
+}
+
+.entwin-label {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
 }
 
 .entwin p {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   line-height: 1.5;
 }
