@@ -408,6 +408,10 @@ function Briefing({
   return (
     <section className="briefing narrow">
       <h2 className="section">Briefing</h2>
+      {/* No lists means a one line briefing (an empty session): show its text. */}
+      {b.headline.length === 0 &&
+        b.followUps.length === 0 &&
+        b.openQuestions.length === 0 && <p>{b.markdown}</p>}
       {b.headline.length > 0 && (
         <ol>
           {b.headline.map((h, i) => (

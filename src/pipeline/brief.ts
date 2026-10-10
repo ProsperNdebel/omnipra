@@ -25,12 +25,15 @@ export async function brief(
   const ctx = await loadContext(d, id);
   const observations = await d.repos.observations.byManifestation(id);
   if (observations.length === 0) {
-    // Nothing to brief from: say so plainly instead of asking a model to write about nothing.
+    // Nothing to brief from: say so plainly, and why, instead of asking a model to write about nothing.
+    const heard = (await d.repos.segments.since(id, -1)).length > 0;
     const empty: StoredBriefing = {
       headline: [],
       followUps: [],
       openQuestions: [],
-      markdown: "Nothing worth noting was captured in this session.",
+      markdown: heard
+        ? "Audio came through, but nothing in it was worth a note."
+        : "No audio reached Omnipra during this session, so there was nothing to note. The host's phone may have locked, lost signal, or had the mic blocked.",
       cites: { headline: [], followUps: [] },
       manifestationId: id,
       createdAt: d.now(),
