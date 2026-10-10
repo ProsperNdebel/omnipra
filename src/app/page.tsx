@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { upcomingEvents, type EventSummary } from "@/services";
 import { getDeps } from "@/server/deps";
+import { signedIn } from "@/server/viewer";
+import { EarlyAccess } from "@/ui/early-access";
 import { Dot } from "@/ui/bar";
 import { dayOf, fmtDay, fmtTime, money, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const events = await upcomingEvents(getDeps());
+  const [events, member] = await Promise.all([
+    upcomingEvents(getDeps()),
+    signedIn(),
+  ]);
   const days = groupByDay(events);
   const now = new Date().toISOString();
 
@@ -22,6 +27,9 @@ export default async function Home() {
         Send your agent to the events you can&rsquo;t make, through people
         already there.
       </p>
+
+      {/* People already signed in are using it; the list is for everyone else. */}
+      {!member && <EarlyAccess />}
 
       {days.length === 0 ? (
         <p style={{ marginTop: 72 }}>

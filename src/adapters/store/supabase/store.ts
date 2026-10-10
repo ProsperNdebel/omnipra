@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AgentAttention,
   AuditEntry,
+  Lead,
+  LeadIntent,
   UserId,
   AgentId,
   BlobStore,
@@ -762,6 +764,56 @@ export class SupabaseStore implements BlobStore, Memory {
         );
       },
     },
+    leads: {
+      save: async (l) => {
+        const had = must(
+          await this.db
+            .from("leads")
+            .select("id, created_at")
+            .eq("email", l.email)
+            .maybeSingle(),
+          "leads.find",
+        ) as { id: string; created_at: string } | null;
+        must(
+          await this.db.from("leads").upsert(
+            {
+              id: had?.id ?? l.id,
+              email: l.email,
+              first_name: l.firstName,
+              last_name: l.lastName,
+              intent: l.intent,
+              note: l.note,
+              source: l.source,
+              created_at: had?.created_at ?? l.createdAt,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "email" },
+          ),
+          "leads.save",
+        );
+        return { isNew: !had };
+      },
+      list: async () => {
+        const rows = must(
+          await this.db
+            .from("leads")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(5000),
+          "leads.list",
+        ) as Record<string, string | null>[];
+        return rows.map((r) => ({
+          id: r.id!,
+          firstName: r.first_name ?? "",
+          lastName: r.last_name ?? "",
+          email: r.email!,
+          intent: r.intent as LeadIntent,
+          note: r.note ?? "",
+          source: r.source ?? null,
+          createdAt: r.created_at!,
+        }));
+      },
+    },
     accounts: {
       claim: async (authId, guestId, email) => {
         const find = async () =>
@@ -1097,4 +1149,5 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0020_safety", "audit_log", "id"],
   ["0021_jobs_webhooks", "jobs", "id"],
   ["0022_payments", "payments", "manifestation_id"],
+  ["0023_leads", "leads", "intent"],
 ];

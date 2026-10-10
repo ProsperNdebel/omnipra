@@ -19,4 +19,5 @@ export * from "./safety";
 export * from "./evidence";
 export * from "./job";
 export * from "./payment";
+export * from "./lead";
 export * from "./ports";

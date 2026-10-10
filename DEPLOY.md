@@ -35,7 +35,7 @@ Vercel and Supabase are assumed; any Node host works the same way.
 | `OMNIPRA_AUTH` | `1` |
 | `CRON_SECRET` | any long random string |
 | `OMNIPRA_ADMIN_EMAILS` | your email, to open `/metrics` |
-| `OMNIPRA_ALERT_WEBHOOK` | optional: Slack or Discord incoming webhook for errors |
+| `OMNIPRA_ALERT_WEBHOOK` | optional: Slack or Discord incoming webhook for errors and new early access signups |
 
 Leave `PRESENCE_FAKE_AI` and `OMNIPRA_DEV_CHECKS` unset in production.
 

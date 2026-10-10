@@ -6,6 +6,7 @@ import type {
   AuditEntry,
   Block,
   Report,
+  Lead,
   Agent,
   AgentId,
   AgentMessage,
@@ -76,6 +77,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly payoutAccounts = new Map<string, PayoutAccount>();
   readonly blocks: Block[] = [];
   readonly reports: Report[] = [];
+  readonly leads = new Map<string, Lead>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -352,6 +354,15 @@ export class InMemoryStore implements BlobStore, Memory {
     },
     reports: {
       save: async (r) => void this.reports.push(r),
+    },
+    leads: {
+      save: async (l) => {
+        const had = this.leads.get(l.email);
+        this.leads.set(l.email, had ? { ...l, id: had.id, createdAt: had.createdAt } : l);
+        return { isNew: !had };
+      },
+      list: async () =>
+        [...this.leads.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     },
     accounts: {
       claim: async (authId, guestId) => {

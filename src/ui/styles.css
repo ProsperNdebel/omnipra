@@ -633,3 +633,68 @@ details.change > summary {
 details.change > summary::-webkit-details-marker {
   display: none;
 }
+
+/* Early access ------------------------------------------------------------ */
+
+.early {
+  margin-top: 72px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ink);
+}
+
+.early form.stack {
+  margin-top: 16px;
+}
+
+.early-q {
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.pair {
+  display: grid;
+  gap: 28px;
+}
+
+@media (min-width: 560px) {
+  .pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.choices {
+  display: grid;
+  border-top: 1px solid var(--rule);
+}
+
+.choices label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.choices label.on {
+  font-weight: 600;
+}
+
+input[type="radio"] {
+  accent-color: var(--ink);
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0;
+}
+
+.hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}

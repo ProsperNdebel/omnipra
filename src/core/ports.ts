@@ -36,6 +36,7 @@ import type { Encounter } from "./encounter";
 import type { ApiKey } from "./api-key";
 import type { Frame } from "./frame";
 import type { AuditEntry, Block, Report } from "./safety";
+import type { Lead } from "./lead";
 import type { Job } from "./job";
 import type { Payment, PayoutAccount } from "./payment";
 
@@ -510,6 +511,12 @@ export interface Repos {
   };
   reports: {
     save(r: Report): Promise<void>;
+  };
+  leads: {
+    /** Upsert by email: signing up again updates the details. Returns whether it was new. */
+    save(l: Lead): Promise<{ isNew: boolean }>;
+    /** Newest first. */
+    list(): Promise<Lead[]>;
   };
   accounts: {
     /**

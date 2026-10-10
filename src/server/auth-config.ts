@@ -48,6 +48,8 @@ export function isPublicPath(path: string): boolean {
     path.startsWith("/api/cron/") ||
     path.startsWith("/api/dev/") ||
     path.startsWith("/api/stripe/") ||
-    path === "/api/health"
+    path === "/api/health" ||
+    // The early access form (GET, the CSV export, checks for an admin itself).
+    path === "/api/leads"
   );
 }
