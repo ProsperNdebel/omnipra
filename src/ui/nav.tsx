@@ -60,6 +60,15 @@ const Count = ({ n, what }: { n: number; what: string }) =>
 export function Nav({ account }: { account: boolean | null }) {
   const path = usePathname();
   const b = useBadges(account !== false);
+  const [open, setOpen] = useState(false);
+  // A tap on a link (or anywhere that changes the page) closes the phone menu.
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
   if (/^\/host\/[^/]+$/.test(path)) return null;
 
   const here =
@@ -67,8 +76,11 @@ export function Nav({ account }: { account: boolean | null }) {
       ? "agent"
       : path.startsWith("/host")
         ? "host"
-        : "explore";
+        : path.startsWith("/notify")
+          ? "notify"
+          : "explore";
   const cur = (w: string) => (here === w ? ("page" as const) : undefined);
+  const waiting = b.agents + b.hosting;
 
   return (
     <header className="bar page-head">
@@ -76,7 +88,21 @@ export function Nav({ account }: { account: boolean | null }) {
         <LogoMark />
         Omnipra
       </Link>
-      <nav aria-label="Main">
+      <button
+        type="button"
+        className="menu-toggle"
+        aria-expanded={open}
+        aria-controls="main-nav"
+        aria-label={open ? "Close menu" : "Open menu"}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={open ? "burger x" : "burger"} aria-hidden="true">
+          <span />
+          <span />
+        </span>
+        {!open && <Count n={waiting} what="waiting on you" />}
+      </button>
+      <nav aria-label="Main" id="main-nav" className={open ? "main open" : "main"}>
         <Link href="/agent" aria-current={cur("agent")}>
           Your agents
           <Count n={b.agents} what="waiting on you" />
@@ -85,6 +111,12 @@ export function Nav({ account }: { account: boolean | null }) {
           Hosting
           <Count n={b.hosting} what="waiting on you" />
         </Link>
+        {/* The early access list is for people not using Omnipra yet. */}
+        {!account && (
+          <Link href="/notify" aria-current={cur("notify")} className="strong">
+            Notify me
+          </Link>
+        )}
         {account === false && <Link href="/signin">Sign in</Link>}
         {account && (
           <button

@@ -40,6 +40,7 @@ export function isPublicPath(path: string): boolean {
   return (
     path === "/" ||
     path === "/signin" ||
+    path === "/notify" ||
     path.startsWith("/auth/") ||
     path === "/developers" ||
     // Machines: API keys, device tokens, the scheduler and dev checks bring their own auth.

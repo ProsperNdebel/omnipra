@@ -75,6 +75,7 @@ a {
 }
 
 .bar {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -85,6 +86,90 @@ a {
 .bar nav {
   display: flex;
   gap: 20px;
+}
+
+.bar nav .strong {
+  font-weight: 600;
+}
+
+/* Phone menu: the links fold behind a two line button. */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 6px 0 6px 12px;
+  cursor: pointer;
+}
+
+.burger {
+  display: grid;
+  gap: 6px;
+  width: 22px;
+}
+
+.burger > span {
+  display: block;
+  height: 2px;
+  background: var(--ink);
+  transition: transform 0.15s ease;
+}
+
+.burger.x > span:first-child {
+  transform: translateY(4px) rotate(45deg);
+}
+
+.burger.x > span:last-child {
+  transform: translateY(-4px) rotate(-45deg);
+}
+
+.menu-toggle .badge {
+  margin-left: 0;
+}
+
+@media (max-width: 640px) {
+  .bar {
+    align-items: center;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  .bar nav.main {
+    display: none;
+  }
+
+  .bar nav.main.open {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    margin-top: 12px;
+    padding: 0 var(--gutter);
+    background: var(--paper);
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .bar nav.main.open > a,
+  .bar nav.main.open > button {
+    font-size: var(--t-md);
+    text-align: left;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .bar nav.main.open > :last-child {
+    border-bottom: 0;
+  }
 }
 
 .bar a {
@@ -638,9 +723,7 @@ details.change > summary::-webkit-details-marker {
 /* Early access ------------------------------------------------------------ */
 
 .early {
-  margin-top: 72px;
-  padding-top: 24px;
-  border-top: 1px solid var(--ink);
+  margin-top: 40px;
 }
 
 .early form.stack {
