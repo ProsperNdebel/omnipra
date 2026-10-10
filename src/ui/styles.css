@@ -331,6 +331,7 @@ form.stack {
 
 input[type="text"],
 input[type="email"],
+input[type="tel"],
 input[type="number"],
 input[type="url"],
 input[type="datetime-local"],

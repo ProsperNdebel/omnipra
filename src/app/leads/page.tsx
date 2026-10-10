@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { leadIntentLabel } from "@/core";
+import { leadChatLabel, leadIntentLabel } from "@/core";
 import { listLeads } from "@/services";
 import { getDeps } from "@/server/deps";
 import { isAdmin } from "@/server/viewer";
@@ -28,10 +28,16 @@ export default async function Leads() {
                   {l.firstName} {l.lastName}
                 </strong>{" "}
                 <a href={`mailto:${l.email}`}>{l.email}</a>
+                {l.phone && (
+                  <>
+                    {" "}
+                    <a href={`tel:${l.phone.replace(/[^\d+]/g, "")}`}>{l.phone}</a>
+                  </>
+                )}
               </div>
               <div className="full small muted">
                 {leadIntentLabel(l.intent)}
-                {l.note && `: ${l.note}`}
+                {l.note && `: ${l.note}`} · Up for a chat: {leadChatLabel(l.chat)}
                 {l.source && ` · from ${l.source}`} · {fmtDay(l.createdAt)}
               </div>
             </li>

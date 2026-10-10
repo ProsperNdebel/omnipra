@@ -10,13 +10,25 @@ export const LEAD_INTENTS: { value: LeadIntent; label: string }[] = [
   { value: "other", label: "Something else" },
 ];
 
+/** Whether they're up for a call to talk it through. */
+export type LeadChat = "yes" | "maybe" | "no";
+
+export const LEAD_CHAT: { value: LeadChat; label: string }[] = [
+  { value: "yes", label: "Hell yeah" },
+  { value: "maybe", label: "Maybe" },
+  { value: "no", label: "No way" },
+];
+
 /** Someone interested who isn't using Omnipra yet. One per email; signing up again updates it. */
 export interface Lead {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
+  /** Optional, as they typed it. */
+  phone: string;
   intent: LeadIntent;
+  chat: LeadChat;
   /** In their words, mostly for "Something else". */
   note: string;
   /** Where they came from, from ?src= on the link (a QR code at an event, a post). */
@@ -26,10 +38,12 @@ export interface Lead {
 
 export type LeadInput = Pick<
   Lead,
-  "firstName" | "lastName" | "email" | "intent" | "note" | "source"
+  "firstName" | "lastName" | "email" | "phone" | "intent" | "chat" | "note" | "source"
 >;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Loose on purpose: digits with the usual separators, any country. */
+const PHONE = /^\+?[\d\s().-]{7,25}$/;
 
 /** Trims and checks what the form sent. Throws a DomainError the person can read. */
 export function cleanLead(raw: Record<string, unknown>): LeadInput {
@@ -38,7 +52,9 @@ export function cleanLead(raw: Record<string, unknown>): LeadInput {
   const firstName = str("firstName", 80);
   const lastName = str("lastName", 80);
   const email = str("email", 200).toLowerCase();
+  const phone = str("phone", 30);
   const intent = str("intent", 10) as LeadIntent;
+  const chat = str("chat", 10) as LeadChat;
   const note = str("note", 500);
   const source = str("source", 60).replace(/[^\w.-]/g, "") || null;
 
@@ -46,10 +62,17 @@ export function cleanLead(raw: Record<string, unknown>): LeadInput {
   if (!lastName) throw new DomainError("bad_request", "Add your last name.");
   if (!EMAIL.test(email))
     throw new DomainError("bad_request", "That email doesn't look right.");
+  if (phone && !PHONE.test(phone))
+    throw new DomainError("bad_request", "That phone number doesn't look right.");
   if (!LEAD_INTENTS.some((i) => i.value === intent))
     throw new DomainError("bad_request", "Pick what you'd use Omnipra for.");
-  return { firstName, lastName, email, intent, note, source };
+  if (!LEAD_CHAT.some((c) => c.value === chat))
+    throw new DomainError("bad_request", "Pick whether we can reach out.");
+  return { firstName, lastName, email, phone, intent, chat, note, source };
 }
 
 export const leadIntentLabel = (i: LeadIntent) =>
   LEAD_INTENTS.find((x) => x.value === i)?.label ?? i;
+
+export const leadChatLabel = (c: LeadChat) =>
+  LEAD_CHAT.find((x) => x.value === c)?.label ?? c;
