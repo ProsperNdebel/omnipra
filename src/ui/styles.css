@@ -782,23 +782,3 @@ input[type="radio"] {
   height: 1px;
   opacity: 0;
 }
-
-/* Landing: the AI twin offer, set off under the main pitch. */
-.twin-pitch {
-  margin-top: 64px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ink);
-}
-
-.twin-label {
-  font-size: var(--t-sm);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin: 0 0 12px;
-}
-
-.twin-pitch p {
-  margin: 0 0 12px;
-  line-height: 1.5;
-}

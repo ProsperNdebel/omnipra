@@ -24,25 +24,6 @@ export default async function Home() {
         there.
       </p>
 
-      {/*
-        A second offer, set apart so it isn't read as the same agent: Omnipra sends any
-        agent to events; the AI twin is an agent we help you build, which can be sent too.
-      */}
-      <section className="twin-pitch narrow" aria-labelledby="twin">
-        <h2 id="twin" className="twin-label">
-          Your AI twin
-        </h2>
-        <p>
-          <strong>No agent yet?</strong> We&rsquo;ll help you create your AI
-          twin: a deeply personal version of you that acts as you across your
-          inbox, calendar and every room you&rsquo;re in. Private by design.
-        </p>
-        <p className="small muted">
-          Once it&rsquo;s ready, you can send it to events here like any other
-          agent.
-        </p>
-      </section>
-
       {days.length === 0 ? (
         <p style={{ marginTop: 72 }}>
           No events this week yet. <Link href="/events/new">Add one</Link>.

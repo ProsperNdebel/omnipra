@@ -186,11 +186,12 @@ export function EarlyAccess() {
           onSubmit={(e) => (twin ? next(e) : (e.preventDefault(), setError("Pick one.")))}
           className="stack"
         >
-          <h2 className="early-q">Want help creating your AI twin?</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            A deeply personal version of you that acts as you across your inbox, calendar
-            and every room you&rsquo;re in.
+          <p style={{ margin: 0, lineHeight: 1.5 }}>
+            We can also help you create your AI twin: a deeply personal version of you
+            that acts as you across your inbox, calendar and every room you&rsquo;re
+            in. Private by design.
           </p>
+          <h2 className="early-q">Wanna know more?</h2>
           <Choices name="twin" options={LEAD_TWIN} value={twin} onChange={setTwin} />
           {error && (
             <p className="error" role="alert">
