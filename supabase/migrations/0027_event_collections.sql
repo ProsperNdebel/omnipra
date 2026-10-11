@@ -9,7 +9,7 @@ with tech_week as (
     lower(substring(source_url from '/calendar/([^/]+)')) as city
   from events
   where collection is null
-    and source_url ~ 'https?://([^/]+\\.)?tech-week\\.com/calendar/[^/]+'
+    and source_url like '%tech-week.com/calendar/%'
 )
 update events e
 set collection = case tech_week.city
