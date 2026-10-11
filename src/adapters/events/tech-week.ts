@@ -53,10 +53,20 @@ export async function readTechWeek(
   const page = async (params: Record<string, string>) => {
     const u = new URL(url.pathname, url.origin);
     for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-    requests++;
-    const res = await fetchFn(u, { headers: { RSC: "1" }, cache: "no-store" });
-    if (!res.ok) throw new Error(`Tech Week answered ${res.status} for ${u}`);
-    return res.text();
+    // Tech Week rate limits; when it says slow down, wait as asked (or back off) and retry.
+    for (let attempt = 0; ; attempt++) {
+      requests++;
+      const res = await fetchFn(u, { headers: { RSC: "1" }, cache: "no-store" });
+      if (res.ok) return res.text();
+      if (res.status !== 429 || attempt >= 3)
+        throw new Error(
+          res.status === 429
+            ? "Tech Week is rate limiting this server. Use the file upload below instead."
+            : `Tech Week answered ${res.status} for ${u}`,
+        );
+      const wait = Number(res.headers.get("retry-after")) || 5 * 2 ** attempt;
+      await new Promise((r) => setTimeout(r, Math.min(wait, 30) * 1000));
+    }
   };
 
   const first = await page({});
@@ -75,12 +85,8 @@ export async function readTechWeek(
     if (take(await page({ day })) < PAGE_SIZE) continue;
     for (const time of TIMES) {
       if (take(await page({ day, time })) < PAGE_SIZE) continue;
-      // The narrowest slices: a few at a time, politely.
-      for (let i = 0; i < locations.length; i += 6) {
-        const batch = locations.slice(i, i + 6);
-        for (const txt of await Promise.all(batch.map((location) => page({ day, time, location }))))
-          take(txt);
-      }
+      // The narrowest slices, one at a time so as not to trip the rate limit.
+      for (const location of locations) take(await page({ day, time, location }));
     }
   }
 

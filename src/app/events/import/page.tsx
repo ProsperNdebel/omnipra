@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { isAdmin } from "@/server/viewer";
+import { ImportFile } from "@/ui/import-file";
 import { SubmitButton } from "@/ui/submit-button";
 import { importTechWeekAction } from "./actions";
 
@@ -57,6 +58,12 @@ export default async function ImportEvents({
           </label>
           <SubmitButton pending="Importing, about a minute">Import</SubmitButton>
         </form>
+
+        <h2 className="section">Or upload a file</h2>
+        <p className="small muted">
+          If Tech Week refuses this server, a file of the same events works too.
+        </p>
+        <ImportFile />
       </div>
     </main>
   );
