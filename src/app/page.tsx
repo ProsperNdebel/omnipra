@@ -6,89 +6,107 @@ import { dayOf, fmtDay, fmtTime, money, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
 
-/** Past this many, show one day at a time (a whole tech week is hundreds). */
+/** Past this many, open a category on one day at a time instead of rendering hundreds. */
 const ALL_AT_ONCE = 60;
+
+interface EventGroup {
+  key: string;
+  label: string;
+  events: EventSummary[];
+}
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string; q?: string }>;
+  searchParams: Promise<{ group?: string; day?: string; q?: string }>;
 }) {
-  const [all, { day, q }] = await Promise.all([
+  const [all, { group, day, q }] = await Promise.all([
     upcomingEvents(getDeps()),
     searchParams,
   ]);
+  const groups = groupEvents(all);
+  const selected = groups.find((g) => g.key === group) ?? null;
+
+  if (!selected) return <GroupIndex groups={groups} total={all.length} />;
+
   const now = new Date().toISOString();
   const query = (q ?? "").trim().toLowerCase();
-  const allDays = groupByDay(all);
-  const keys = allDays.map(([k]) => k);
-  const paged = all.length > ALL_AT_ONCE && !query;
-  // One day at a time: the one asked for, else today, else the first with events.
-  const today = dayOf(now);
-  const current = paged
-    ? keys.includes(day ?? "")
-      ? day!
-      : keys.includes(today)
-        ? today
-        : keys[0]
-    : null;
   const events = query
-    ? all.filter(({ event }) =>
+    ? selected.events.filter(({ event }) =>
         `${event.title} ${event.venue ?? ""}`.toLowerCase().includes(query),
       )
-    : all;
-  const days = paged
-    ? allDays.filter(([k]) => k === current)
-    : groupByDay(events);
+    : selected.events;
+
+  const allDays = groupByDay(selected.events);
+  const resultDays = groupByDay(events);
+  const keys = allDays.map(([k]) => k);
+  const paged = selected.events.length > ALL_AT_ONCE && !query;
+  const today = dayOf(now);
+  // A large category opens on today (or its first day). "All" is still one click away.
+  const current =
+    paged && day !== "all"
+      ? keys.includes(day ?? "")
+        ? day!
+        : keys.includes(today)
+          ? today
+          : (keys[0] ?? null)
+      : null;
+  const days = current
+    ? resultDays.filter(([k]) => k === current)
+    : resultDays;
 
   return (
     <main className="page">
-      <h1 className="display">
-        Be where
-        <br />
-        you can&rsquo;t.
+      <p className="small muted" style={{ marginTop: 64 }}>
+        <Link href="/">All event groups</Link>
+      </p>
+      <h1 className="title" style={{ marginTop: 16 }}>
+        {selected.label}
       </h1>
-      <p className="lede">
-        Never miss the room again. Your agent attends the events that you
-        can&rsquo;t make, from conference halls to expos, through people already
-        there.
+      <p className="muted">
+        {query
+          ? plural(events.length, "matching event")
+          : plural(selected.events.length, "event")}
       </p>
 
-      {all.length > ALL_AT_ONCE && (
-        <nav className="day-nav" aria-label="Days">
-          <form action="/" className="day-search">
-            <input
-              type="search"
-              name="q"
-              defaultValue={q ?? ""}
-              placeholder={`Search ${all.length} events`}
-              aria-label="Search events"
+      <nav className="day-nav" aria-label="Event days">
+        <form action="/" className="day-search">
+          <input type="hidden" name="group" value={selected.key} />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder={`Search ${selected.events.length} events`}
+            aria-label={`Search ${selected.label}`}
+          />
+        </form>
+
+        <div className="day-links">
+          <DayLink
+            href={groupHref(selected.key, "all")}
+            active={current === null && !query}
+            label="All"
+            count={selected.events.length}
+          />
+          {allDays.map(([k, list]) => (
+            <DayLink
+              key={k}
+              href={groupHref(selected.key, k)}
+              active={!query && k === current}
+              label={fmtDayTab(list[0]!.event.startsAt)}
+              count={list.length}
             />
-          </form>
-          <div className="day-links">
-            {allDays.map(([k, list]) => (
-              <Link
-                key={k}
-                href={`/?day=${k}`}
-                aria-current={!query && k === current ? "page" : undefined}
-              >
-                {fmtDay(list[0]!.event.startsAt).split(",")[0]!.slice(0, 3)}{" "}
-                {Number(k.slice(8))}
-                <span className="muted"> {list.length}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
-      )}
+          ))}
+        </div>
+      </nav>
 
       {query && days.length === 0 ? (
         <p style={{ marginTop: 40 }}>
-          Nothing matches &ldquo;{q}&rdquo;. <Link href="/">Clear the search</Link>.
+          Nothing matches &ldquo;{q}&rdquo;.{" "}
+          <Link href={groupHref(selected.key, "all")}>Clear the search</Link>.
         </p>
       ) : days.length === 0 ? (
-        <p style={{ marginTop: 72 }}>
-          No events this week yet. <Link href="/events/new">Add one</Link>.
-        </p>
+        <p style={{ marginTop: 72 }}>No events here yet.</p>
       ) : (
         days.map(([key, list]) => (
           <section key={key} aria-label={fmtDay(list[0]!.event.startsAt)}>
@@ -135,6 +153,169 @@ export default async function Home({
       </p>
     </main>
   );
+}
+
+function GroupIndex({
+  groups,
+  total,
+}: {
+  groups: EventGroup[];
+  total: number;
+}) {
+  return (
+    <main className="page">
+      <h1 className="display">
+        Be where
+        <br />
+        you can&rsquo;t.
+      </h1>
+      <p className="lede">
+        Never miss the room again. Your agent attends the events that you
+        can&rsquo;t make, from conference halls to expos, through people already
+        there.
+      </p>
+
+      <h2 className="section">What&rsquo;s on</h2>
+      <p className="muted">{plural(total, "event")}</p>
+
+      {groups.length === 0 ? (
+        <p style={{ marginTop: 40 }}>
+          No events this week yet. <Link href="/events/new">Add one</Link>.
+        </p>
+      ) : (
+        <ol className="rows">
+          {groups.map((g) => (
+            <li className="proposal" key={g.key}>
+              <div>
+                <Link
+                  href={`/?group=${encodeURIComponent(g.key)}`}
+                  style={{
+                    fontSize: "var(--t-md)",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  {g.label}
+                </Link>
+                <p className="small muted">{groupRange(g.events)}</p>
+              </div>
+              <span className="muted">{g.events.length}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <p className="small muted" style={{ marginTop: 40 }}>
+        Missing an event? <Link href="/events/new">Add it</Link>.
+      </p>
+    </main>
+  );
+}
+
+function DayLink({
+  href,
+  active,
+  label,
+  count,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  count: number;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      style={{
+        border: `1px solid ${active ? "var(--ink)" : "var(--rule)"}`,
+        padding: "10px 14px",
+        fontWeight: active ? 600 : 400,
+        textDecoration: "none",
+      }}
+    >
+      {label} <span className="muted">{count}</span>
+    </Link>
+  );
+}
+
+/**
+ * The source already tells us which imported calendar an event belongs to.
+ * A manually added event has no known collection, so it lives in Miscellaneous.
+ */
+function groupEvents(events: EventSummary[]): EventGroup[] {
+  const map = new Map<string, EventGroup>();
+  for (const summary of events) {
+    const category = categoryOf(summary);
+    const found = map.get(category.key);
+    if (found) found.events.push(summary);
+    else map.set(category.key, { ...category, events: [summary] });
+  }
+  return [...map.values()].sort((a, b) => {
+    if (a.key === "miscellaneous") return 1;
+    if (b.key === "miscellaneous") return -1;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function categoryOf({ event }: EventSummary): Pick<EventGroup, "key" | "label"> {
+  if (event.sourceUrl) {
+    try {
+      const url = new URL(event.sourceUrl);
+      const match =
+        /(^|\.)tech-week\.com$/.test(url.hostname) &&
+        url.pathname.match(/^\/calendar\/([^/]+)/);
+      if (match) {
+        const city = match[1]!.toLowerCase();
+        return {
+          key: `tech-week:${city}`,
+          label: `${cityName(city)} Tech Week`,
+        };
+      }
+    } catch {
+      // A bad source link shouldn't make the schedule disappear.
+    }
+  }
+  return { key: "miscellaneous", label: "Miscellaneous" };
+}
+
+function cityName(slug: string): string {
+  const short: Record<string, string> = {
+    la: "LA",
+    sf: "SF",
+    nyc: "NYC",
+  };
+  return (
+    short[slug] ??
+    slug
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part[0]!.toUpperCase() + part.slice(1))
+      .join(" ")
+  );
+}
+
+function groupHref(group: string, day: string): string {
+  const q = new URLSearchParams({ group, day });
+  return `/?${q}`;
+}
+
+function fmtDayTab(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(iso));
+}
+
+function groupRange(events: EventSummary[]): string {
+  const first = events[0];
+  const last = events.at(-1);
+  if (!first || !last) return "";
+  const start = fmtDayTab(first.event.startsAt);
+  const end = fmtDayTab(last.event.startsAt);
+  return start === end ? start : `${start} — ${end}`;
 }
 
 function groupByDay(events: EventSummary[]): [string, EventSummary[]][] {
