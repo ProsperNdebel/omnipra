@@ -1220,6 +1220,7 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0024_lead_contact", "leads", "chat"],
   ["0025_lead_twin", "leads", "twin"],
   ["0026_wishes", "wishes", "max_price_cents"],
+  ["0027_event_collections", "events", "collection"],
 ];
 
 function wishFrom(r: Record<string, unknown>): Wish {

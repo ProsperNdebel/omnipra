@@ -19,9 +19,12 @@ export async function POST(req: Request) {
     if (!(await isAdmin()))
       throw new DomainError("forbidden", "Only admins can import events.");
     const body = (await req.json().catch(() => null)) as unknown;
-    const list = Array.isArray(body)
-      ? body
-      : (body as { events?: unknown[] } | null)?.events;
+    const upload =
+      body && !Array.isArray(body) && typeof body === "object"
+        ? (body as { collection?: unknown; events?: unknown[] })
+        : null;
+    const list = Array.isArray(body) ? body : upload?.events;
+    const uploadCollection = cleanCollection(upload?.collection);
     if (!Array.isArray(list) || list.length === 0)
       throw new DomainError("bad_request", "That file has no events in it.");
     if (list.length > 5000)
@@ -35,13 +38,16 @@ export async function POST(req: Request) {
         !Number.isNaN(Date.parse(str("startsAt"))) &&
         !Number.isNaN(Date.parse(str("endsAt")));
       if (!ok) throw new DomainError("bad_request", `Event ${i + 1} is missing an id, title or times.`);
+      const sourceUrl = /^https:\/\//.test(str("sourceUrl")) ? str("sourceUrl") : null;
       return {
         id: str("id") as EventId,
         title: str("title").slice(0, 200),
         startsAt: new Date(str("startsAt")).toISOString(),
         endsAt: new Date(str("endsAt")).toISOString(),
         venue: str("venue") || null,
-        sourceUrl: /^https:\/\//.test(str("sourceUrl")) ? str("sourceUrl") : null,
+        sourceUrl,
+        collection:
+          cleanCollection(e.collection) ?? uploadCollection ?? collectionFromSource(sourceUrl),
         capturePolicy: POLICIES.includes(e.capturePolicy as CapturePolicy)
           ? (e.capturePolicy as CapturePolicy)
           : "public_talk",
@@ -50,5 +56,33 @@ export async function POST(req: Request) {
     return Response.json(await importEvents(getDeps(), events));
   } catch (err) {
     return errorResponse(err);
+  }
+}
+
+function cleanCollection(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim().replace(/\s+/g, " ");
+  return name ? name.slice(0, 80) : null;
+}
+
+/** Backward compatibility for calendar files downloaded before collections were stored. */
+function collectionFromSource(sourceUrl: string | null): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const url = new URL(sourceUrl);
+    if (!/(^|\.)tech-week\.com$/.test(url.hostname)) return null;
+    const city = url.pathname.match(/^\/calendar\/([^/]+)/)?.[1];
+    if (!city) return null;
+    const short: Record<string, string> = { la: "LA", sf: "SF", nyc: "NYC" };
+    const name =
+      short[city.toLowerCase()] ??
+      city
+        .split("-")
+        .filter(Boolean)
+        .map((part) => part[0]!.toUpperCase() + part.slice(1))
+        .join(" ");
+    return `${name} Tech Week`;
+  } catch {
+    return null;
   }
 }

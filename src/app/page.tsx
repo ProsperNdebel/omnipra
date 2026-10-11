@@ -239,10 +239,7 @@ function DayLink({
   );
 }
 
-/**
- * The source already tells us which imported calendar an event belongs to.
- * A manually added event has no known collection, so it lives in Miscellaneous.
- */
+/** Event grouping is explicit and independent of how the event entered Omnipra. */
 function groupEvents(events: EventSummary[]): EventGroup[] {
   const map = new Map<string, EventGroup>();
   for (const summary of events) {
@@ -259,40 +256,10 @@ function groupEvents(events: EventSummary[]): EventGroup[] {
 }
 
 function categoryOf({ event }: EventSummary): Pick<EventGroup, "key" | "label"> {
-  if (event.sourceUrl) {
-    try {
-      const url = new URL(event.sourceUrl);
-      const match =
-        /(^|\.)tech-week\.com$/.test(url.hostname) &&
-        url.pathname.match(/^\/calendar\/([^/]+)/);
-      if (match) {
-        const city = match[1]!.toLowerCase();
-        return {
-          key: `tech-week:${city}`,
-          label: `${cityName(city)} Tech Week`,
-        };
-      }
-    } catch {
-      // A bad source link shouldn't make the schedule disappear.
-    }
-  }
-  return { key: "miscellaneous", label: "Miscellaneous" };
-}
-
-function cityName(slug: string): string {
-  const short: Record<string, string> = {
-    la: "LA",
-    sf: "SF",
-    nyc: "NYC",
-  };
-  return (
-    short[slug] ??
-    slug
-      .split("-")
-      .filter(Boolean)
-      .map((part) => part[0]!.toUpperCase() + part.slice(1))
-      .join(" ")
-  );
+  const label = event.collection?.trim();
+  return label
+    ? { key: `collection:${label.toLowerCase()}`, label }
+    : { key: "miscellaneous", label: "Miscellaneous" };
 }
 
 function groupHref(group: string, day: string): string {

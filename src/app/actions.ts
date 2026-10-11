@@ -67,6 +67,7 @@ export async function createEventAction(form: FormData) {
       endsAt: localInputToIso(str(form, "endsAt")),
       venue: str(form, "venue") || null,
       sourceUrl: str(form, "sourceUrl") || null,
+      collection: str(form, "collection") || null,
       capturePolicy: str(form, "capturePolicy") as CapturePolicy,
     });
     id = event.id;

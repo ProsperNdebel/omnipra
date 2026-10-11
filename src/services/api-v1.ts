@@ -51,6 +51,7 @@ export async function listEvents(d: Deps, days = 7) {
     starts_at: e.startsAt,
     ends_at: e.endsAt,
     venue: e.venue,
+    collection: e.collection,
     capture_policy: e.capturePolicy,
     hosts: listings
       .filter((l) => l.eventId === e.id)

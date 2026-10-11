@@ -108,6 +108,7 @@ function toEvent(e: TechWeekEvent, origin: string, city: string, timeZone: strin
     endsAt: Date.parse(endsAt) > Date.parse(startsAt) ? endsAt : new Date(Date.parse(startsAt) + DEFAULT_HOURS * 3600_000).toISOString(),
     venue: e.location === "Virtual" ? "Online" : e.location || null,
     sourceUrl: `${origin}/calendar/${city}/events/${slug(e.name)}-${e.id}`,
+    collection: techWeekName(city),
     // On stage talks may be heard; hosts still confirm recording is fine before starting.
     capturePolicy: "public_talk",
   };
@@ -184,6 +185,18 @@ function facetKeys(txt: string, facet: string): string[] {
   } catch {
     return [];
   }
+}
+
+function techWeekName(city: string): string {
+  const short: Record<string, string> = { la: "LA", sf: "SF", nyc: "NYC" };
+  const name =
+    short[city.toLowerCase()] ??
+    city
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part[0]!.toUpperCase() + part.slice(1))
+      .join(" ");
+  return `${name} Tech Week`;
 }
 
 const slug = (s: string) =>

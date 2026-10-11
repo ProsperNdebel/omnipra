@@ -8,6 +8,8 @@ export interface PresenceEvent {
   endsAt: ISODate;
   venue: string | null;
   sourceUrl: string | null;
+  /** Related events share a collection. Null means it appears under Miscellaneous. */
+  collection: string | null;
   /** What the organizer allows. Capture is only offered when this is not "none". */
   capturePolicy: CapturePolicy;
 }

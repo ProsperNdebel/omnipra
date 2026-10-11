@@ -30,6 +30,18 @@ export default async function NewEvent({
             />
           </label>
           <label className="field">
+            <span>Event group</span>
+            <input
+              type="text"
+              name="collection"
+              maxLength={80}
+              placeholder="LA Tech Week"
+            />
+            <small>
+              Give related events the same group. Leave it blank for Miscellaneous.
+            </small>
+          </label>
+          <label className="field">
             <span>Starts</span>
             <input type="datetime-local" name="startsAt" required />
           </label>

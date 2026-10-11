@@ -64,6 +64,7 @@ export interface NewEvent {
   endsAt: string;
   venue: string | null;
   sourceUrl: string | null;
+  collection: string | null;
   capturePolicy: CapturePolicy;
 }
 
@@ -79,10 +80,14 @@ export async function createEvent(
       "The event has to end after it starts.",
     );
   }
+  const collection = input.collection?.trim() || null;
+  if (collection && collection.length > 80)
+    throw new DomainError("bad_request", "Keep the event group under 80 characters.");
   const event: PresenceEvent = {
     id: d.newId() as EventId,
     ...input,
     title: input.title.trim(),
+    collection,
   };
   await d.repos.events.save(event);
   return event;

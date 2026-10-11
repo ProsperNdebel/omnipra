@@ -103,6 +103,7 @@ export const event = {
     endsAt: r.ends_at as string,
     venue: (r.venue as string | null) ?? null,
     sourceUrl: (r.source_url as string | null) ?? null,
+    collection: (r.collection as string | null) ?? null,
     capturePolicy: r.capture_policy as CapturePolicy,
   }),
   to: (e: PresenceEvent): Row => ({
@@ -112,6 +113,7 @@ export const event = {
     ends_at: e.endsAt,
     venue: e.venue,
     source_url: e.sourceUrl,
+    collection: e.collection,
     capture_policy: e.capturePolicy,
   }),
 };
