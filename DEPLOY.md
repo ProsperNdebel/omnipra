@@ -94,3 +94,12 @@ released if the host declines, the owner cancels, or it's shorter. Omnipra keeps
 Limits to know: a card hold lasts about 7 days, so a booking made more than a week before
 the event can't be charged when it ends (it shows as failed). Refunds after a charge are
 done in the Stripe dashboard for now.
+
+## Importing a Tech Week
+
+Signed in as an admin (`OMNIPRA_ADMIN_EMAILS`), open `/events/import`, paste a Tech Week
+calendar link (for example `https://www.tech-week.com/calendar/la`) and import. It takes
+about a minute, keeps Tech Week's own ids so running it again updates instead of
+duplicating, and lists nobody as a host. Owners can then post open requests on events
+with no host yet (`/request/<event>`), and hosts going to that event can take them.
+Needs migration `0026_wishes`.

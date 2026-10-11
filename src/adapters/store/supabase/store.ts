@@ -3,6 +3,8 @@ import type {
   AgentAttention,
   AuditEntry,
   Lead,
+  HostListing,
+  Wish,
   LeadChat,
   LeadIntent,
   UserId,
@@ -71,6 +73,14 @@ export class SupabaseStore implements BlobStore, Memory {
       save: async (e) => {
         must(await this.db.from("events").upsert(R.event.to(e)), "events.save");
       },
+      saveMany: async (es) => {
+        for (let i = 0; i < es.length; i += 200) {
+          must(
+            await this.db.from("events").upsert(es.slice(i, i + 200).map(R.event.to)),
+            "events.saveMany",
+          );
+        }
+      },
       list: async ({ from, to }) => {
         const rows = must(
           await this.db
@@ -95,13 +105,25 @@ export class SupabaseStore implements BlobStore, Memory {
         return rows.map(R.listing.from);
       },
       listingsFor: async (ids) => {
-        if (ids.length === 0) return [];
-        const rows = must(
-          await this.db.from("host_listings").select().in("event_id", ids),
-          "events.listingsFor",
-        );
-        return rows.map(R.listing.from);
+        // Chunked: hundreds of ids (a whole tech week) would overflow the request URL.
+        const out: HostListing[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const rows = must(
+            await this.db
+              .from("host_listings")
+              .select()
+              .in("event_id", ids.slice(i, i + 100)),
+            "events.listingsFor",
+          );
+          out.push(...rows.map(R.listing.from));
+        }
+        return out;
       },
+      listingsByHost: async (hostId) =>
+        must(
+          await this.db.from("host_listings").select().eq("host_id", hostId),
+          "events.listingsByHost",
+        ).map(R.listing.from),
       saveListing: async (l) => {
         must(
           await this.db.from("host_listings").upsert(R.listing.to(l)),
@@ -765,6 +787,44 @@ export class SupabaseStore implements BlobStore, Memory {
         );
       },
     },
+    wishes: {
+      get: async (id) => {
+        const row = must(
+          await this.db.from("wishes").select().eq("id", id).maybeSingle(),
+          "wishes.get",
+        );
+        return row ? wishFrom(row) : null;
+      },
+      save: async (w) => {
+        must(await this.db.from("wishes").upsert(wishTo(w)), "wishes.save");
+      },
+      openFor: async (ids) => {
+        const out: Wish[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const rows = must(
+            await this.db
+              .from("wishes")
+              .select()
+              .eq("status", "open")
+              .in("event_id", ids.slice(i, i + 100))
+              .order("created_at"),
+            "wishes.openFor",
+          );
+          out.push(...rows.map(wishFrom));
+        }
+        return out;
+      },
+      byOwner: async (ownerId) =>
+        must(
+          await this.db
+            .from("wishes")
+            .select()
+            .eq("owner_id", ownerId)
+            .order("created_at", { ascending: false })
+            .limit(200),
+          "wishes.byOwner",
+        ).map(wishFrom),
+    },
     leads: {
       save: async (l) => {
         const had = must(
@@ -1159,4 +1219,37 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0023_leads", "leads", "intent"],
   ["0024_lead_contact", "leads", "chat"],
   ["0025_lead_twin", "leads", "twin"],
+  ["0026_wishes", "wishes", "max_price_cents"],
 ];
+
+function wishFrom(r: Record<string, unknown>): Wish {
+  return {
+    id: r.id as string,
+    ownerId: r.owner_id as Wish["ownerId"],
+    agentId: r.agent_id as Wish["agentId"],
+    eventId: r.event_id as Wish["eventId"],
+    instructions: (r.instructions as string) ?? "",
+    alerts: (r.alerts as string[]) ?? [],
+    autonomy: r.autonomy as Wish["autonomy"],
+    maxPriceCents: Number(r.max_price_cents),
+    status: r.status as Wish["status"],
+    manifestationId: (r.manifestation_id as Wish["manifestationId"]) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+function wishTo(w: Wish) {
+  return {
+    id: w.id,
+    owner_id: w.ownerId,
+    agent_id: w.agentId,
+    event_id: w.eventId,
+    instructions: w.instructions,
+    alerts: w.alerts,
+    autonomy: w.autonomy,
+    max_price_cents: w.maxPriceCents,
+    status: w.status,
+    manifestation_id: w.manifestationId,
+    created_at: w.createdAt,
+  };
+}

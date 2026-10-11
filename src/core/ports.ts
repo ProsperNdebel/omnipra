@@ -37,6 +37,7 @@ import type { ApiKey } from "./api-key";
 import type { Frame } from "./frame";
 import type { AuditEntry, Block, Report } from "./safety";
 import type { Lead } from "./lead";
+import type { Wish } from "./wish";
 import type { Job } from "./job";
 import type { Payment, PayoutAccount } from "./payment";
 
@@ -354,10 +355,14 @@ export interface Repos {
   events: {
     get(id: EventId): Promise<PresenceEvent | null>;
     save(e: PresenceEvent): Promise<void>;
+    /** Upsert many at once, by id (imports). */
+    saveMany(e: PresenceEvent[]): Promise<void>;
     list(range: { from: string; to: string }): Promise<PresenceEvent[]>;
     listings(id: EventId): Promise<HostListing[]>;
     /** Listings for many events in one round trip. */
     listingsFor(ids: EventId[]): Promise<HostListing[]>;
+    /** Every event this host has listed for. */
+    listingsByHost(hostId: UserId): Promise<HostListing[]>;
     saveListing(l: HostListing): Promise<void>;
   };
   endpoints: {
@@ -511,6 +516,14 @@ export interface Repos {
   };
   reports: {
     save(r: Report): Promise<void>;
+  };
+  wishes: {
+    get(id: string): Promise<Wish | null>;
+    save(w: Wish): Promise<void>;
+    /** Open ones on these events, oldest first. */
+    openFor(eventIds: EventId[]): Promise<Wish[]>;
+    /** An owner's, newest first. */
+    byOwner(ownerId: UserId): Promise<Wish[]>;
   };
   leads: {
     /** Upsert by email: signing up again updates the details. Returns whether it was new. */

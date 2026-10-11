@@ -20,4 +20,5 @@ export * from "./evidence";
 export * from "./job";
 export * from "./payment";
 export * from "./lead";
+export * from "./wish";
 export * from "./ports";

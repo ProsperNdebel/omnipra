@@ -7,6 +7,7 @@ import type {
   Block,
   Report,
   Lead,
+  Wish,
   Agent,
   AgentId,
   AgentMessage,
@@ -78,6 +79,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly blocks: Block[] = [];
   readonly reports: Report[] = [];
   readonly leads = new Map<string, Lead>();
+  readonly wishes = new Map<string, Wish>();
   readonly attentionClaims = new Map<AgentId, number>();
   readonly blobs = new Map<string, { bytes: Uint8Array; mimeType: string }>();
 
@@ -93,6 +95,9 @@ export class InMemoryStore implements BlobStore, Memory {
     events: {
       get: async (id) => this.events.get(id) ?? null,
       save: async (e) => void this.events.set(e.id, e),
+      saveMany: async (es) => {
+        for (const e of es) this.events.set(e.id, e);
+      },
       list: async ({ from, to }) =>
         [...this.events.values()]
           .filter((e) => e.endsAt >= from && e.startsAt <= to)
@@ -100,6 +105,8 @@ export class InMemoryStore implements BlobStore, Memory {
       listings: async (id) => this.listings.filter((l) => l.eventId === id),
       listingsFor: async (ids) =>
         this.listings.filter((l) => ids.includes(l.eventId)),
+      listingsByHost: async (hostId) =>
+        this.listings.filter((l) => l.hostId === hostId),
       saveListing: async (l) => {
         const i = this.listings.findIndex(
           (x) => x.eventId === l.eventId && x.hostId === l.hostId,
@@ -354,6 +361,19 @@ export class InMemoryStore implements BlobStore, Memory {
     },
     reports: {
       save: async (r) => void this.reports.push(r),
+    },
+    wishes: {
+      get: async (id) => this.wishes.get(id) ?? null,
+      save: async (w) => void this.wishes.set(w.id, w),
+      openFor: async (ids) =>
+        [...this.wishes.values()]
+          .filter((w) => w.status === "open" && ids.includes(w.eventId))
+          .sort(by((w) => w.createdAt)),
+      byOwner: async (ownerId) =>
+        [...this.wishes.values()]
+          .filter((w) => w.ownerId === ownerId)
+          .sort(by((w) => w.createdAt))
+          .reverse(),
     },
     leads: {
       save: async (l) => {

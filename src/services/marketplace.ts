@@ -24,7 +24,8 @@ export async function upcomingEvents(
   d: Deps,
   now = new Date(),
 ): Promise<EventSummary[]> {
-  const to = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  // Far enough ahead to show a whole conference week coming up.
+  const to = new Date(now.getTime() + 10 * 24 * 3600 * 1000);
   // Events stay on the list for a while after they end, marked as ended, so a talk
   // someone just attended doesn't vanish the moment its scheduled time is up.
   const since = new Date(now.getTime() - RECENT_HOURS * 3600 * 1000);

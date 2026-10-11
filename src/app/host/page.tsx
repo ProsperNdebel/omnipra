@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { MIN_LIVE_MINUTES_TO_CHARGE, sensorsInWords } from "@/core";
 import { decideAction, unblockAction } from "@/app/actions";
+import { takeWishAction } from "@/app/wish-actions";
 import {
   hostBlocks,
   hostDevices,
   hostInbox,
+  openRequestsForHost,
   payoutState,
   type ManifestationRow,
 } from "@/services";
@@ -24,11 +26,12 @@ export default async function HostInbox({
 }) {
   const { error } = await searchParams;
   const me = await viewerId();
-  const [rows, devices, blocked, payouts] = await Promise.all([
+  const [rows, devices, blocked, payouts, open] = await Promise.all([
     hostInbox(getDeps(), me),
     hostDevices(getDeps(), me),
     hostBlocks(getDeps(), me),
     payoutState(getDeps(), me),
+    openRequestsForHost(getDeps(), me),
   ]);
   const requests = rows.filter((r) => r.manifestation.status === "requested");
   const upcoming = rows.filter((r) =>
@@ -48,7 +51,39 @@ export default async function HostInbox({
           </p>
         )}
 
-        {rows.length === 0 && (
+        {open.length > 0 && (
+          <>
+            <h2 className="section">Agents looking for a host</h2>
+            <p className="small muted">
+              At events you&rsquo;re going to. Take one and it&rsquo;s booked
+              with you.
+            </p>
+            <ul className="rows">
+              {open.map(({ wish, agentName, event }) => (
+                <li key={wish.id}>
+                  <div>
+                    <div>
+                      {agentName} at{" "}
+                      <Link href={`/events/${event.id}`}>{event.title}</Link>
+                    </div>
+                    <div className="small muted">
+                      {fmtDay(event.startsAt)},{" "}
+                      {fmtRange(event.startsAt, event.endsAt)}. Up to{" "}
+                      {money(wish.maxPriceCents)}
+                    </div>
+                  </div>
+                  <form action={takeWishAction}>
+                    <input type="hidden" name="id" value={wish.id} />
+                    <input type="hidden" name="back" value="/host" />
+                    <SubmitButton pending="Taking it">Take it</SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {rows.length === 0 && open.length === 0 && (
           <p>
             No requests yet. Say you&rsquo;re attending an event on its page and
             requests will show up here. <Link href="/">Find an event</Link>.

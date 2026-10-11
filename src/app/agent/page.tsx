@@ -1,18 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ownerAgents, ownerOverview } from "@/services";
+import { cancelWishAction } from "@/app/wish-actions";
+import { ownerAgents, ownerOverview, ownerWishes } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AutoRefresh } from "@/ui/auto-refresh";
 import { Dot } from "@/ui/bar";
-import { fmtTime, plural } from "@/ui/format";
+import { SubmitButton } from "@/ui/submit-button";
+import { fmtDay, fmtTime, money, plural } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
 
 /** All of the viewer's agents, and everywhere they are present right now. */
 export default async function Agents() {
   const d = getDeps();
-  const agents = await ownerAgents(d, await viewerId());
+  const me = await viewerId();
+  const [agents, waiting] = await Promise.all([
+    ownerAgents(d, me),
+    ownerWishes(d, me),
+  ]);
   if (agents.length === 0) redirect("/agent/new");
 
   // One joined query for every agent's sessions, plus notes and hosts for the live ones.
@@ -85,6 +91,34 @@ export default async function Agents() {
       )}
 
       <div className="narrow">
+        {waiting.length > 0 && (
+          <>
+            <h2 className="section">Waiting for a host</h2>
+            <ul className="rows">
+              {waiting.map(({ wish, agentName, event }) => (
+                <li key={wish.id}>
+                  <div>
+                    <div>
+                      {agentName} at{" "}
+                      <Link href={`/events/${event.id}`}>{event.title}</Link>
+                    </div>
+                    <div className="small muted">
+                      {fmtDay(event.startsAt)}, up to {money(wish.maxPriceCents)}
+                    </div>
+                  </div>
+                  <form action={cancelWishAction}>
+                    <input type="hidden" name="id" value={wish.id} />
+                    <input type="hidden" name="back" value="/agent" />
+                    <SubmitButton quiet pending="Withdrawing">
+                      Withdraw
+                    </SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         <h2 className="section">Agents</h2>
         <ul className="rows">
           {rows.map(({ agent, live, total }) => (

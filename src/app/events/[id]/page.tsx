@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { attendAction } from "@/app/actions";
+import { takeWishAction } from "@/app/wish-actions";
 import { DomainError, type EventId } from "@/core";
-import { eventWithHosts, hostDevices } from "@/services";
+import { eventWishes, eventWithHosts, hostDevices } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { fmtDay, fmtRange, money } from "@/ui/format";
@@ -22,16 +23,22 @@ export default async function EventPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; listed?: string }>;
+  searchParams: Promise<{ error?: string; listed?: string; requested?: string }>;
 }) {
-  const [{ id }, { error, listed }] = await Promise.all([params, searchParams]);
+  const [{ id }, { error, listed, requested }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const data = await eventWithHosts(getDeps(), id as EventId).catch((e) => {
     if (e instanceof DomainError && e.code === "not_found") notFound();
     throw e;
   });
   const { event, listings } = data;
   const me = await viewerId();
-  const devices = await hostDevices(getDeps(), me);
+  const [devices, wishes] = await Promise.all([
+    hostDevices(getDeps(), me),
+    eventWishes(getDeps(), event.id),
+  ]);
   const mine = listings.find((l) => l.hostId === me);
   const others = listings.filter((l) => l.hostId !== me);
   const open = event.capturePolicy !== "none";
@@ -61,8 +68,21 @@ export default async function EventPage({
         {open && (
           <>
             <h2 className="section">People hosting agents</h2>
+            {requested && (
+              <p>
+                Request posted. When someone going takes it, it shows up under{" "}
+                <Link href="/agent">Your agents</Link>.
+              </p>
+            )}
             {others.length === 0 ? (
-              <p className="muted">Nobody here is hosting yet.</p>
+              <>
+                <p className="muted">Nobody here is hosting yet.</p>
+                <p>
+                  <Link className="button quiet" href={`/request/${event.id}`}>
+                    Ask for a host
+                  </Link>
+                </p>
+              </>
             ) : (
               <ul className="rows">
                 {others.map((l) => (
@@ -87,6 +107,47 @@ export default async function EventPage({
                   </li>
                 ))}
               </ul>
+            )}
+
+            {others.length > 0 && (
+              <p className="small muted" style={{ marginTop: 16 }}>
+                None of these work?{" "}
+                <Link href={`/request/${event.id}`}>Post a request</Link> and
+                let a host come to you.
+              </p>
+            )}
+
+            {wishes.length > 0 && (
+              <>
+                <h2 className="section">Agents looking for a host</h2>
+                <ul className="rows">
+                  {wishes.map(({ wish, agentName }) => {
+                    const own = wish.ownerId === me;
+                    const tooHigh = !!mine && mine.priceCents > wish.maxPriceCents;
+                    return (
+                      <li key={wish.id}>
+                        <div>
+                          <div>{own ? `${agentName} (yours)` : agentName}</div>
+                          <div className="small muted">
+                            Up to {money(wish.maxPriceCents)}
+                            {tooHigh && ", below your price"}
+                          </div>
+                        </div>
+                        {!own &&
+                          (mine ? (
+                            <form action={takeWishAction}>
+                              <input type="hidden" name="id" value={wish.id} />
+                              <input type="hidden" name="back" value={`/events/${event.id}`} />
+                              <SubmitButton pending="Taking it">Take it</SubmitButton>
+                            </form>
+                          ) : (
+                            <span className="small muted">List yourself below to take it</span>
+                          ))}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
 
             <h2 className="section">
