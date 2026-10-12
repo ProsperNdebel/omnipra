@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cancelWishAction } from "@/app/wish-actions";
 import { askHistory } from "@/pipeline";
 import {
   agentActions,
@@ -12,12 +13,13 @@ import {
   agentSuggestions,
   goalProgress,
   ownedAgent,
+  ownerWishes,
 } from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { AskBox } from "@/ui/ask-box";
 import { Dot, STATUS_WORDS } from "@/ui/bar";
-import { fmtDay, fmtTime, plural } from "@/ui/format";
+import { fmtDay, fmtTime, money, plural } from "@/ui/format";
 import { ApiKeysPanel } from "@/ui/api-keys-panel";
 import { EncountersPanel } from "@/ui/encounters-panel";
 import { MemoryPanel } from "@/ui/memory-panel";
@@ -25,6 +27,7 @@ import { MultiPresence } from "@/ui/multi-presence";
 import { OutingsPanel } from "@/ui/outings-panel";
 import { ActionsPanel } from "@/ui/actions-panel";
 import { SuggestionsPanel } from "@/ui/suggestions-panel";
+import { SubmitButton } from "@/ui/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +41,8 @@ export default async function AgentPage({
 }) {
   const [{ id }, { saved, error }] = await Promise.all([params, searchParams]);
   const d = getDeps();
-  const agent = await ownedAgent(d, await viewerId(), id).catch(() =>
-    notFound(),
-  );
+  const me = await viewerId();
+  const agent = await ownedAgent(d, me, id).catch(() => notFound());
 
   const [
     rows,
@@ -53,6 +55,7 @@ export default async function AgentPage({
     outings,
     met,
     keys,
+    waiting,
   ] = await Promise.all([
     agentHome(d, agent),
     askHistory(d, agent.id),
@@ -64,9 +67,11 @@ export default async function AgentPage({
     agentOutings(d, agent.id),
     agentEncounters(d, agent),
     agentApiKeys(d, agent),
+    ownerWishes(d, me),
   ]);
   const live = rows.filter((r) => r.manifestation.status === "live");
   const rest = rows.filter((r) => r.manifestation.status !== "live");
+  const hostRequests = waiting.filter(({ wish }) => wish.agentId === agent.id);
 
   return (
     <main className="page">
@@ -90,6 +95,33 @@ export default async function AgentPage({
             remember
           </a>
         </p>
+      )}
+
+      {hostRequests.length > 0 && (
+        <div className="narrow">
+          <h2 className="section">Waiting for a host</h2>
+          <ul className="rows">
+            {hostRequests.map(({ wish, event }) => (
+              <li key={wish.id}>
+                <div>
+                  <div>
+                    <Link href={`/events/${event.id}`}>{event.title}</Link>
+                  </div>
+                  <div className="small muted">
+                    {fmtDay(event.startsAt)}, up to {money(wish.maxPriceCents)}
+                  </div>
+                </div>
+                <form action={cancelWishAction}>
+                  <input type="hidden" name="id" value={wish.id} />
+                  <input type="hidden" name="back" value={`/agent/${agent.id}`} />
+                  <SubmitButton quiet pending="Withdrawing">
+                    Withdraw request
+                  </SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <SuggestionsPanel agentId={agent.id} open={suggestions} />
