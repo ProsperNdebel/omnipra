@@ -43,6 +43,7 @@ export async function provisionAccountAction(form: FormData) {
   const d = getDeps();
   let created = 0;
   let ownerId: UserId;
+  const emailed = form.get("sendLink") === "on";
 
   try {
     const existing = await d.repos.accounts.byEmail(email);
@@ -65,17 +66,16 @@ export async function provisionAccountAction(form: FormData) {
       created += 1;
     }
 
-    const emailed = form.get("sendLink") === "on";
     if (emailed) {
       const callback = new URL("/auth/callback", await siteOrigin());
       callback.searchParams.set("next", "/agent");
       await goTrue().sendCode(email, callback.toString(), false);
     }
-
-    redirect(
-      `/admin?created=${encodeURIComponent(email)}&agents=${created}&emailed=${emailed ? "1" : "0"}`,
-    );
   } catch (err) {
     backError(err instanceof Error ? err.message : "Could not provision account.");
   }
+
+  redirect(
+    `/admin?created=${encodeURIComponent(email)}&agents=${created}&emailed=${emailed ? "1" : "0"}`,
+  );
 }
