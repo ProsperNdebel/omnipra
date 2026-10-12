@@ -61,15 +61,6 @@ export function Nav({ account }: { account: boolean | null }) {
   const path = usePathname();
   const b = useBadges(account !== false);
   const [open, setOpen] = useState(false);
-  const mode =
-    path.startsWith("/host")
-      ? "host"
-      : path.startsWith("/agent") ||
-          path.startsWith("/m/") ||
-          path.startsWith("/send/") ||
-          path.startsWith("/request/")
-        ? "owner"
-        : "neutral";
   // A tap on a link (or anywhere that changes the page) closes the phone menu.
   useEffect(() => setOpen(false), [path]);
   useEffect(() => {
@@ -78,9 +69,6 @@ export function Nav({ account }: { account: boolean | null }) {
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [open]);
-  useEffect(() => {
-    document.documentElement.dataset.mode = mode;
-  }, [mode]);
   if (/^\/host\/[^/]+$/.test(path)) return null;
 
   const here =
