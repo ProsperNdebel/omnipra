@@ -104,7 +104,7 @@ export default async function Send({
             <textarea
               name="instructions"
               required
-              placeholder="Track pricing and founders to meet."
+              placeholder="Find founders and pricing."
             />
             <small>
               {only ? only.name : "Your agent"} already knows what you care
@@ -117,7 +117,7 @@ export default async function Send({
               name="alerts"
               style={{ minHeight: "5rem" }}
               placeholder={
-                "They mention a partnership\nThey're hiring"
+                "They're hiring\nThey mention funding"
               }
             />
             <small>One per line. Optional.</small>
