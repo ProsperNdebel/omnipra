@@ -1,11 +1,12 @@
 "use server";
 
 import { notFound, redirect } from "next/navigation";
-import { ensureAuthUser } from "@/adapters/auth/supabase-admin";
-import { LOOK_FOR, type UserId } from "@/core";
-import { createAgent } from "@/services";
+import {
+  adminMagicLink,
+  ensureAuthUser,
+} from "@/adapters/auth/supabase-admin";
+import type { UserId } from "@/core";
 import { getDeps } from "@/server/deps";
-import { goTrue } from "@/server/auth-config";
 import { siteOrigin } from "@/server/origin";
 import { isAdmin } from "@/server/viewer";
 
@@ -16,66 +17,52 @@ function backError(message: string): never {
   redirect(`/admin?error=${encodeURIComponent(message)}`);
 }
 
+function validEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Create only the user's login + Omnipra owner identity. No agents yet. */
 export async function provisionAccountAction(form: FormData) {
   if (!(await isAdmin())) notFound();
 
   const email = value(form, "email").toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    backError("Enter a valid email.");
-
-  const starters = [1, 2, 3]
-    .map((n) => ({
-      name: value(form, `agent${n}Name`),
-      profile: value(form, `agent${n}Profile`),
-      style: value(form, `agent${n}Style`),
-    }))
-    .filter((a) => a.name || a.profile || a.style);
-
-  if (starters.length === 0)
-    backError("Add at least one starter agent.");
-  for (const a of starters) {
-    if (!a.name || !a.profile)
-      backError("Each starter agent needs a name and brief.");
-    if (a.profile.length < 60)
-      backError(`${a.name}'s brief needs a few more details.`);
-  }
-
-  const d = getDeps();
-  let created = 0;
-  let ownerId: UserId;
-  const emailed = form.get("sendLink") === "on";
+  if (!validEmail(email)) backError("Enter a valid email.");
 
   try {
+    const d = getDeps();
     const existing = await d.repos.accounts.byEmail(email);
-    if (existing) {
-      ownerId = existing.userId;
-    } else {
+    if (!existing) {
       const authId = await ensureAuthUser(email);
-      ownerId = crypto.randomUUID() as UserId;
+      const ownerId = crypto.randomUUID() as UserId;
       await d.repos.accounts.provision(authId, ownerId, email);
     }
-
-    for (const starter of starters) {
-      await createAgent(d, ownerId, {
-        name: starter.name,
-        profile: starter.profile,
-        style: starter.style,
-        lookFor: [...LOOK_FOR],
-        card: null,
-      });
-      created += 1;
-    }
-
-    if (emailed) {
-      const callback = new URL("/auth/callback", await siteOrigin());
-      callback.searchParams.set("next", "/agent");
-      await goTrue().sendCode(email, callback.toString(), false);
-    }
   } catch (err) {
-    backError(err instanceof Error ? err.message : "Could not provision account.");
+    backError(err instanceof Error ? err.message : "Could not create account.");
   }
 
-  redirect(
-    `/admin?created=${encodeURIComponent(email)}&agents=${created}&emailed=${emailed ? "1" : "0"}`,
-  );
+  redirect(`/admin?created=${encodeURIComponent(email)}`);
+}
+
+/**
+ * Admin convenience for setting up a non-technical user's account.
+ * This replaces the current browser session with that user's session, so the
+ * normal /agent/new flow can be used exactly as they would use it.
+ */
+export async function openAccountAction(form: FormData) {
+  if (!(await isAdmin())) notFound();
+
+  const email = value(form, "email").toLowerCase();
+  if (!validEmail(email)) backError("Enter a valid email.");
+
+  try {
+    const account = await getDeps().repos.accounts.byEmail(email);
+    if (!account) backError("Create that account first.");
+
+    const callback = new URL("/auth/callback", await siteOrigin());
+    callback.searchParams.set("next", "/agent");
+    const link = await adminMagicLink(email, callback.toString());
+    redirect(link);
+  } catch (err) {
+    backError(err instanceof Error ? err.message : "Could not open account.");
+  }
 }

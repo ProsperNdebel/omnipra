@@ -42,3 +42,21 @@ export async function ensureAuthUser(email: string): Promise<string> {
   }
   throw new Error("That auth user exists but could not be found.");
 }
+
+
+/** Create a one-time sign-in link for an existing user without emailing it. */
+export async function adminMagicLink(
+  email: string,
+  redirectTo: string,
+): Promise<string> {
+  const db = client();
+  const generated = await db.auth.admin.generateLink({
+    type: "magiclink",
+    email: email.trim().toLowerCase(),
+    options: { redirectTo },
+  });
+  if (generated.error) throw new Error(generated.error.message);
+  const link = generated.data.properties?.action_link;
+  if (!link) throw new Error("Could not create sign-in link.");
+  return link;
+}

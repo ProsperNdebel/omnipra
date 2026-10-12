@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { provisionAccountAction } from "@/app/admin/actions";
+import {
+  openAccountAction,
+  provisionAccountAction,
+} from "@/app/admin/actions";
 import { isAdmin } from "@/server/viewer";
 import { SubmitButton } from "@/ui/submit-button";
 
@@ -9,15 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function Admin({
   searchParams,
 }: {
-  searchParams: Promise<{
-    created?: string;
-    agents?: string;
-    emailed?: string;
-    error?: string;
-  }>;
+  searchParams: Promise<{ created?: string; error?: string }>;
 }) {
   if (!(await isAdmin())) notFound();
-  const { created, agents, emailed, error } = await searchParams;
+  const { created, error } = await searchParams;
 
   return (
     <main className="page">
@@ -29,24 +27,33 @@ export default async function Admin({
         </p>
 
         {created && (
-          <p>
-            {created} is ready with {agents ?? "0"} starter{" "}
-            {agents === "1" ? "agent" : "agents"}.
-            {emailed === "1"
-              ? " A sign-in link was emailed."
-              : " They can sign in at Omnipra with that email."}
-          </p>
+          <section>
+            <p>
+              Account ready for <strong>{created}</strong>.
+            </p>
+            <p className="muted small">
+              Open it to create their agents using the normal Omnipra screens.
+              This browser will temporarily become that user.
+            </p>
+            <form action={openAccountAction} style={{ marginTop: 16 }}>
+              <input type="hidden" name="email" value={created} />
+              <SubmitButton pending="Opening account">
+                Open their account
+              </SubmitButton>
+            </form>
+          </section>
         )}
+
         {error && (
           <p className="error" role="alert">
             {error}
           </p>
         )}
 
-        <h2 className="section">Provision account</h2>
+        <h2 className="section">Create account</h2>
         <p className="muted">
-          Create the account and its agents before the person ever signs in.
-          They only need their email.
+          Create their Omnipra account first. Then open it and set up their
+          agents for them.
         </p>
 
         <form action={provisionAccountAction} className="stack">
@@ -60,53 +67,28 @@ export default async function Admin({
               placeholder="person@example.com"
             />
           </label>
-
-          {[1, 2, 3].map((n) => (
-            <fieldset
-              className="field"
-              key={n}
-              style={{ border: 0, padding: 0, margin: 0 }}
-            >
-              <span>Starter agent {n}{n === 1 ? "" : " (optional)"}</span>
-              <input
-                type="text"
-                name={`agent${n}Name`}
-                required={n === 1}
-                maxLength={60}
-                placeholder={n === 1 ? "Scout" : "Agent name"}
-              />
-              <textarea
-                name={`agent${n}Profile`}
-                required={n === 1}
-                minLength={60}
-                placeholder="Who this person is, what they care about, what the agent should find, and what to ignore."
-              />
-              <input
-                type="text"
-                name={`agent${n}Style`}
-                maxLength={1000}
-                placeholder="How it talks to them (optional)"
-              />
-            </fieldset>
-          ))}
-
-          <label style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <input
-              type="checkbox"
-              name="sendLink"
-              defaultChecked
-              style={{ marginTop: 4, flex: "none" }}
-            />
-            <span>
-              Email them a sign-in link now
-              <span className="small muted" style={{ display: "block" }}>
-                It opens Your agents. No password or setup.
-              </span>
-            </span>
-          </label>
-
           <SubmitButton pending="Creating account">
-            Create ready account
+            Create account
+          </SubmitButton>
+        </form>
+
+        <h2 className="section">Open an existing account</h2>
+        <p className="muted small">
+          Use this when the account already exists and you want to configure it.
+        </p>
+        <form action={openAccountAction} className="stack">
+          <label className="field">
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              required
+              autoComplete="off"
+              placeholder="person@example.com"
+            />
+          </label>
+          <SubmitButton quiet pending="Opening account">
+            Open account
           </SubmitButton>
         </form>
       </div>
