@@ -2,8 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { attendAction } from "@/app/actions";
 import { takeWishAction } from "@/app/wish-actions";
-import { DomainError, type EventId } from "@/core";
-import { eventWishes, eventWithHosts, hostDevices } from "@/services";
+import { DomainError, type EventId, type ManifestationStatus } from "@/core";
+import {
+  eventHostRequests,
+  eventWishes,
+  eventWithHosts,
+  hostDevices,
+} from "@/services";
 import { getDeps } from "@/server/deps";
 import { viewerId } from "@/server/viewer";
 import { fmtDay, fmtRange, money } from "@/ui/format";
@@ -35,12 +40,14 @@ export default async function EventPage({
   });
   const { event, listings } = data;
   const me = await viewerId();
-  const [devices, wishes] = await Promise.all([
+  const [devices, wishes, requests] = await Promise.all([
     hostDevices(getDeps(), me),
     eventWishes(getDeps(), event.id),
+    eventHostRequests(getDeps(), event.id, me),
   ]);
   const mine = listings.find((l) => l.hostId === me);
   const others = listings.filter((l) => l.hostId !== me);
+  const requestByHost = new Map(requests.map((r) => [r.hostId, r]));
   const open = event.capturePolicy !== "none";
 
   return (
@@ -85,27 +92,34 @@ export default async function EventPage({
               </>
             ) : (
               <ul className="rows">
-                {others.map((l) => (
-                  <li key={l.hostId}>
-                    <div>
-                      <div>{l.displayName}</div>
-                      <div className="small muted">
-                        {l.openToRequests
-                          ? "Microphone, takes requests in the room"
-                          : "Microphone"}
+                {others.map((l) => {
+                  const request = requestByHost.get(l.hostId);
+                  return (
+                    <li key={l.hostId}>
+                      <div>
+                        <div>{l.displayName}</div>
+                        <div className="small muted">
+                          {l.openToRequests
+                            ? "Microphone, takes requests in the room"
+                            : "Microphone"}
+                        </div>
                       </div>
-                    </div>
-                    <div className="actions" style={{ alignItems: "baseline" }}>
-                      <span>{money(l.priceCents)}</span>
-                      <Link
-                        className="button"
-                        href={`/send/${event.id}/${l.hostId}`}
-                      >
-                        Send my agent
-                      </Link>
-                    </div>
-                  </li>
-                ))}
+                      <div className="actions" style={{ alignItems: "baseline" }}>
+                        <span>{money(l.priceCents)}</span>
+                        <Link
+                          className={request ? "button quiet" : "button"}
+                          href={
+                            request
+                              ? `/m/${request.manifestationId}`
+                              : `/send/${event.id}/${l.hostId}`
+                          }
+                        >
+                          {request ? requestWord(request.status) : "Send my agent"}
+                        </Link>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
@@ -250,4 +264,10 @@ export default async function EventPage({
       </div>
     </main>
   );
+}
+
+function requestWord(status: ManifestationStatus): string {
+  if (status === "requested") return "Request pending";
+  if (status === "declined" || status === "cancelled") return "Request cancelled";
+  return "Request confirmed";
 }

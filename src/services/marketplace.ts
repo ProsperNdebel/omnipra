@@ -5,6 +5,8 @@ import {
   type EndpointId,
   type EventId,
   type HostListing,
+  type ManifestationId,
+  type ManifestationStatus,
   type PresenceEvent,
   type UserId,
 } from "@/core";
@@ -56,6 +58,33 @@ export async function eventWithHosts(
   ]);
   if (!event) throw new DomainError("not_found", "event not found");
   return { event, listings };
+}
+
+export interface EventHostRequestState {
+  hostId: UserId;
+  manifestationId: ManifestationId;
+  status: ManifestationStatus;
+}
+
+/** Latest request this owner made to each host at one event, for the marketplace buttons. */
+export async function eventHostRequests(
+  d: Deps,
+  eventId: EventId,
+  ownerId: UserId,
+): Promise<EventHostRequestState[]> {
+  const contexts = await d.repos.manifestations.contexts({ eventIds: [eventId] });
+  const latest = new Map<string, EventHostRequestState>();
+  for (const c of [...contexts].sort((a, b) =>
+    b.manifestation.createdAt.localeCompare(a.manifestation.createdAt),
+  )) {
+    if (c.agent.ownerId !== ownerId || latest.has(c.endpoint.hostId)) continue;
+    latest.set(c.endpoint.hostId, {
+      hostId: c.endpoint.hostId,
+      manifestationId: c.manifestation.id,
+      status: c.manifestation.status,
+    });
+  }
+  return [...latest.values()];
 }
 
 export interface NewEvent {
