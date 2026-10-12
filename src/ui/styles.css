@@ -9,6 +9,9 @@
   --muted: #8a8a8a;
   --rule: #e6e6e6;
   --danger: #000000; /* errors are ink too; the words carry the meaning */
+  --owner-accent: #175cd3;
+  --host-accent: #a83f00;
+  --accent: var(--ink);
 
   --font: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
@@ -64,6 +67,58 @@ a {
 :focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
+}
+
+
+/* Role color: owners/renters are cool blue; hosts are warm orange. The page stays
+   mostly monochrome so the accent is orientation, not decoration. */
+html[data-mode="owner"] {
+  --accent: var(--owner-accent);
+}
+
+html[data-mode="host"] {
+  --accent: var(--host-accent);
+}
+
+html[data-mode="owner"] .bar nav a[aria-current="page"],
+html[data-mode="host"] .bar nav a[aria-current="page"] {
+  color: var(--accent);
+}
+
+html[data-mode="owner"] .badge,
+html[data-mode="host"] .badge,
+html[data-mode="owner"] .button:not(.quiet),
+html[data-mode="host"] .button:not(.quiet) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+html[data-mode="owner"] .button.quiet,
+html[data-mode="host"] .button.quiet {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+html[data-mode="owner"] input[type="checkbox"],
+html[data-mode="owner"] input[type="radio"],
+html[data-mode="host"] input[type="checkbox"],
+html[data-mode="host"] input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+html[data-mode="owner"] .dot.on,
+html[data-mode="host"] .dot.on {
+  color: var(--accent);
+}
+
+html[data-mode="owner"] .loading > i,
+html[data-mode="host"] .loading > i {
+  background: var(--accent);
+}
+
+html[data-mode="owner"] :focus-visible,
+html[data-mode="host"] :focus-visible {
+  outline-color: var(--accent);
 }
 
 /* Layout ------------------------------------------------------------------ */
