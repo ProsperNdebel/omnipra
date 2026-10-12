@@ -72,7 +72,7 @@ export default async function RequestHost({
             <textarea
               name="instructions"
               required
-              placeholder="Find investors and what they fund."
+              placeholder="Find investors and pricing."
             />
           </label>
           <label className="field">
@@ -80,7 +80,7 @@ export default async function RequestHost({
             <textarea
               name="alerts"
               style={{ minHeight: "5rem" }}
-              placeholder={"They're hiring\nThey mention seed funding"}
+              placeholder={"They're hiring\nThey mention funding"}
             />
             <small>One per line. Optional.</small>
           </label>
