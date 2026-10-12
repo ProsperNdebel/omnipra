@@ -542,6 +542,14 @@ export interface Repos {
       guestId: UserId,
       email: string | null,
     ): Promise<UserId>;
+    /** Admin provisioning: find an already prepared account by email. */
+    byEmail(email: string): Promise<{ authId: string; userId: UserId } | null>;
+    /** Admin provisioning: attach a Supabase Auth user to an Omnipra owner id. */
+    provision(
+      authId: string,
+      userId: UserId,
+      email: string,
+    ): Promise<void>;
   };
   encounters: {
     /** Encounters this agent is on either side of. Newest first. */

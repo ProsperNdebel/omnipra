@@ -911,6 +911,50 @@ export class SupabaseStore implements BlobStore, Memory {
         }
         throw new Error("accounts.claim: could not create the account");
       },
+      byEmail: async (email) => {
+        const row = must(
+          await this.db
+            .from("accounts")
+            .select("auth_user_id,user_id")
+            .eq("email", email.toLowerCase())
+            .limit(1)
+            .maybeSingle(),
+          "accounts.byEmail",
+        ) as { auth_user_id: string; user_id: UserId } | null;
+        return row
+          ? { authId: row.auth_user_id, userId: row.user_id }
+          : null;
+      },
+      provision: async (authId, userId, email) => {
+        const existing = must(
+          await this.db
+            .from("accounts")
+            .select("user_id")
+            .eq("auth_user_id", authId)
+            .maybeSingle(),
+          "accounts.provision.find",
+        ) as { user_id: UserId } | null;
+        if (existing) {
+          if (existing.user_id !== userId)
+            throw new Error("accounts.provision: auth user already has an owner");
+          must(
+            await this.db
+              .from("accounts")
+              .update({ email: email.toLowerCase() })
+              .eq("auth_user_id", authId),
+            "accounts.provision.email",
+          );
+          return;
+        }
+        must(
+          await this.db.from("accounts").insert({
+            auth_user_id: authId,
+            user_id: userId,
+            email: email.toLowerCase(),
+          }),
+          "accounts.provision",
+        );
+      },
     },
     encounters: {
       byAgent: async (agentId) => {

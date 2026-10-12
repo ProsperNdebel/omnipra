@@ -57,7 +57,13 @@ const Count = ({ n, what }: { n: number; what: string }) =>
  * Hidden on the host's session screen, which is deliberately full screen.
  */
 /** `account`: null when sign in is off; otherwise whether someone is signed in. */
-export function Nav({ account }: { account: boolean | null }) {
+export function Nav({
+  account,
+  admin = false,
+}: {
+  account: boolean | null;
+  admin?: boolean;
+}) {
   const path = usePathname();
   const b = useBadges(account !== false);
   const [open, setOpen] = useState(false);
@@ -76,9 +82,13 @@ export function Nav({ account }: { account: boolean | null }) {
       ? "agent"
       : path.startsWith("/host")
         ? "host"
-        : path.startsWith("/notify")
-          ? "notify"
-          : "explore";
+        : path.startsWith("/admin") ||
+            path.startsWith("/metrics") ||
+            path.startsWith("/leads")
+          ? "admin"
+          : path.startsWith("/notify")
+            ? "notify"
+            : "explore";
   const cur = (w: string) => (here === w ? ("page" as const) : undefined);
   const waiting = b.agents + b.hosting;
 
@@ -111,6 +121,11 @@ export function Nav({ account }: { account: boolean | null }) {
           Hosting
           <Count n={b.hosting} what="waiting on you" />
         </Link>
+        {admin && (
+          <Link href="/admin" aria-current={cur("admin")}>
+            Admin
+          </Link>
+        )}
         {/* The early access list is for people not using Omnipra yet. */}
         {!account && (
           <Link href="/notify" aria-current={cur("notify")} className="strong">

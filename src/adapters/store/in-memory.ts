@@ -72,6 +72,7 @@ export class InMemoryStore implements BlobStore, Memory {
   readonly apiKeys = new Map<ApiKeyId, ApiKey>();
   readonly frames = new Map<FrameId, Frame>();
   readonly accounts = new Map<string, UserId>();
+  readonly accountEmails = new Map<string, string>();
   readonly audit: AuditEntry[] = [];
   readonly jobs = new Map<string, Job>();
   readonly payments = new Map<string, Payment>();
@@ -385,13 +386,36 @@ export class InMemoryStore implements BlobStore, Memory {
         [...this.leads.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     },
     accounts: {
-      claim: async (authId, guestId) => {
+      claim: async (authId, guestId, email) => {
         const existing = this.accounts.get(authId);
-        if (existing) return existing;
+        if (existing) {
+          if (email) this.accountEmails.set(authId, email.toLowerCase());
+          return existing;
+        }
         const taken = [...this.accounts.values()].includes(guestId);
         const id = taken ? (authId as UserId) : guestId;
         this.accounts.set(authId, id);
+        if (email) this.accountEmails.set(authId, email.toLowerCase());
         return id;
+      },
+      byEmail: async (email) => {
+        const clean = email.toLowerCase();
+        for (const [authId, known] of this.accountEmails) {
+          if (known === clean) {
+            const userId = this.accounts.get(authId);
+            if (userId) return { authId, userId };
+          }
+        }
+        return null;
+      },
+      provision: async (authId, userId, email) => {
+        const existing = this.accounts.get(authId);
+        if (existing && existing !== userId)
+          throw new Error("accounts.provision: auth user already has an owner");
+        if ([...this.accounts.entries()].some(([id, owner]) => id !== authId && owner === userId))
+          throw new Error("accounts.provision: owner already belongs to another auth user");
+        this.accounts.set(authId, userId);
+        this.accountEmails.set(authId, email.toLowerCase());
       },
     },
     encounters: {

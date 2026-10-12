@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { authEnabled } from "@/server/auth-config";
-import { signedIn } from "@/server/viewer";
+import { isAdmin, signedIn } from "@/server/viewer";
 import { HashSession } from "@/ui/hash-session";
 import { Nav } from "@/ui/nav";
 import "@/ui/styles.css";
@@ -40,6 +40,7 @@ export default async function RootLayout({
 }) {
   const signed = await signedIn();
   const account = authEnabled() ? signed : null;
+  const admin = signed ? await isAdmin() : false;
   return (
     <html lang="en">
       <head>
@@ -56,7 +57,7 @@ export default async function RootLayout({
       </head>
       {/* Extensions like Grammarly add attributes to <body> before React hydrates. */}
       <body suppressHydrationWarning>
-        <Nav account={account} />
+        <Nav account={account} admin={admin} />
         {account !== null && <HashSession />}
         {children}
       </body>
