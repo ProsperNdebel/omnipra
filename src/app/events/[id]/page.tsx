@@ -114,7 +114,7 @@ export default async function EventPage({
                               : `/send/${event.id}/${l.hostId}`
                           }
                         >
-                          {request ? requestWord(request.status) : "Send my agent"}
+                          {request ? requestWord(request.status) : "Request host"}
                         </Link>
                       </div>
                     </li>
