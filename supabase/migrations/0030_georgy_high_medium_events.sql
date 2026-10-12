@@ -12,8 +12,8 @@ declare
   v_mission_id uuid;
   v_manifestation_id uuid;
 begin
-  select count(*), min(id)
-    into v_agent_count, v_agent_id
+  select count(*)
+    into v_agent_count
   from agents
   where lower(name) = 'georgy';
 
@@ -22,6 +22,12 @@ begin
   elsif v_agent_count > 1 then
     raise exception 'More than one agent named Georgy exists; disambiguate by owner before running this migration.';
   end if;
+
+  select id
+    into v_agent_id
+  from agents
+  where lower(name) = 'georgy'
+  limit 1;
 
   for r in
     with targets(source_url, priority, host_alias) as (
