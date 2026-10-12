@@ -54,15 +54,17 @@ export async function openAccountAction(form: FormData) {
   const email = value(form, "email").toLowerCase();
   if (!validEmail(email)) backError("Enter a valid email.");
 
+  let link: string;
   try {
     const account = await getDeps().repos.accounts.byEmail(email);
-    if (!account) backError("Create that account first.");
+    if (!account) throw new Error("Create that account first.");
 
     const callback = new URL("/auth/callback", await siteOrigin());
     callback.searchParams.set("next", "/agent");
-    const link = await adminMagicLink(email, callback.toString());
-    redirect(link);
+    link = await adminMagicLink(email, callback.toString());
   } catch (err) {
     backError(err instanceof Error ? err.message : "Could not open account.");
   }
+
+  redirect(link);
 }
