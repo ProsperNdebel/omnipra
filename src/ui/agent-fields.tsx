@@ -25,6 +25,18 @@ export function AgentFields({
   return (
     <>
       <label className="field">
+        <span>Name</span>
+        <input
+          type="text"
+          name="name"
+          required
+          maxLength={60}
+          defaultValue={agent?.name ?? defaultName}
+          placeholder={namePlaceholder}
+        />
+      </label>
+
+      <label className="field">
         <span>Brief your agent</span>
         <textarea
           name="profile"
@@ -73,18 +85,6 @@ export function AgentFields({
           ))}
         </div>
       </fieldset>
-
-      <label className="field">
-        <span>Name</span>
-        <input
-          type="text"
-          name="name"
-          required
-          maxLength={60}
-          defaultValue={agent?.name ?? defaultName}
-          placeholder={namePlaceholder}
-        />
-      </label>
 
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
         <span>Meeting other agents</span>
