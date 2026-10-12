@@ -26,7 +26,7 @@ export default async function NewEvent({
               name="title"
               required
               maxLength={120}
-              placeholder="Voice AI: What's next"
+              placeholder="AI Founders Meetup"
             />
           </label>
           <label className="field">
@@ -38,7 +38,7 @@ export default async function NewEvent({
               placeholder="LA Tech Week"
             />
             <small>
-              Give related events the same group. Leave it blank for Miscellaneous.
+              Same name groups related events. Blank means Miscellaneous.
             </small>
           </label>
           <label className="field">
@@ -55,12 +55,12 @@ export default async function NewEvent({
               type="text"
               name="venue"
               maxLength={120}
-              placeholder="Neighborhood or venue"
+              placeholder="Downtown LA"
             />
           </label>
           <label className="field">
             <span>Event page</span>
-            <input type="url" name="sourceUrl" placeholder="https://" />
+            <input type="url" name="sourceUrl" placeholder="https://example.com" />
           </label>
           <label className="field">
             <span>Recording</span>

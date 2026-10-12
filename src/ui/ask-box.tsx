@@ -103,7 +103,7 @@ export function AskBox({
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder={
-              turns.length ? "Ask a follow up" : "What did you learn today?"
+              turns.length ? "Ask a follow-up" : "What stood out?"
             }
             maxLength={500}
           />

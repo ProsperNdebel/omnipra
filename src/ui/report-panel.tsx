@@ -51,7 +51,7 @@ export function ReportPanel({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={2000}
-          placeholder="What happened?"
+          placeholder="Describe the issue"
           aria-label="What happened"
           style={{ minHeight: "5rem" }}
         />

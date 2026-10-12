@@ -202,7 +202,7 @@ function Talk({
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={1000}
-          placeholder="Focus on pricing now, or: ask whether they're hiring"
+          placeholder="Focus on pricing"
         />
       </label>
       <div className="actions">

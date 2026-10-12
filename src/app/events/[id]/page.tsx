@@ -176,7 +176,7 @@ export default async function EventPage({
                   required
                   maxLength={40}
                   defaultValue={mine?.displayName}
-                  placeholder="Sarah M."
+                  placeholder="Jordan M."
                 />
               </label>
               <label className="field">

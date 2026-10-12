@@ -124,7 +124,7 @@ export function ApiKeysPanel({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           maxLength={60}
-          placeholder="What it's for: my research agent"
+          placeholder="Research agent"
           aria-label="Key label"
         />
         <button type="submit" className="button quiet" disabled={busy}>

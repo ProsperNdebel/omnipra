@@ -99,7 +99,7 @@ function Edit({ id, plan }: { id: string; plan: PlanItem[] }) {
             type="text"
             name="added"
             maxLength={300}
-            placeholder="Also watch for anyone hiring speech engineers"
+            placeholder="Anyone hiring ML engineers"
           />
         </label>
         <small className="muted">Clear a line to remove it.</small>

@@ -34,7 +34,7 @@ export default async function NewAgent({
           {next && <input type="hidden" name="next" value={next} />}
           <AgentFields
             defaultName={first ? "Scout" : undefined}
-            namePlaceholder={first ? undefined : "Fundraising scout"}
+            namePlaceholder={first ? undefined : "Investor scout"}
           />
           <SubmitButton pending="Making your agent">Make agent</SubmitButton>
         </form>

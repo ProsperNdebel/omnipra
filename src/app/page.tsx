@@ -76,7 +76,7 @@ export default async function Home({
             type="search"
             name="q"
             defaultValue={q ?? ""}
-            placeholder={`Search ${selected.events.length} events`}
+            placeholder="Search events"
             aria-label={`Search ${selected.label}`}
           />
         </form>

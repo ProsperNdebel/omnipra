@@ -75,7 +75,7 @@ export function MemoryPanel({
         title="Working on for you"
         items={active.goal}
         empty={`No goals yet. Give ${name} something to work toward across events.`}
-        placeholder="Find banks that need Shona speech recognition"
+        placeholder="Find U.S. fintech customers"
         extra={(m) => <Progress p={progress[m.id]} />}
       />
 
@@ -84,7 +84,7 @@ export function MemoryPanel({
         kind="owner"
         title="About you"
         items={active.owner}
-        placeholder="I'm raising a seed round early next year"
+        placeholder="I'm raising a seed round"
         intro={
           <>
             <p className="prose muted">{agent.profile}</p>
@@ -100,7 +100,7 @@ export function MemoryPanel({
         kind="identity"
         title={`Who ${name} is`}
         items={active.identity}
-        placeholder="Lead with the number. Skip the pleasantries."
+        placeholder="Short and direct."
         intro={
           <p className="prose muted">
             {agent.style.trim() || "Default voice: short and direct."}{" "}

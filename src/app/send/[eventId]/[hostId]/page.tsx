@@ -104,7 +104,7 @@ export default async function Send({
             <textarea
               name="instructions"
               required
-              placeholder="Capture any inference pricing. Note which companies work on low resource languages. Tell me which founders I should talk to."
+              placeholder="Track pricing and founders to meet."
             />
             <small>
               {only ? only.name : "Your agent"} already knows what you care
@@ -117,7 +117,7 @@ export default async function Send({
               name="alerts"
               style={{ minHeight: "5rem" }}
               placeholder={
-                "Anyone mentions African markets\nA speaker says they're hiring"
+                "They mention a partnership\nThey're hiring"
               }
             />
             <small>One per line. Optional.</small>

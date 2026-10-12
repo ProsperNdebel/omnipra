@@ -42,7 +42,7 @@ export function OutingsPanel({
             name="request"
             required
             maxLength={300}
-            placeholder="AI infrastructure events where founders and investors talk"
+            placeholder="AI events in San Francisco"
           />
         </label>
         <div style={{ display: "flex", gap: 20 }}>

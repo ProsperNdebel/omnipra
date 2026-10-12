@@ -72,7 +72,7 @@ export default async function RequestHost({
             <textarea
               name="instructions"
               required
-              placeholder="Note which investors are on the panel and what they say they're looking for. Tell me who I should follow up with."
+              placeholder="Find investors and what they fund."
             />
           </label>
           <label className="field">
@@ -80,7 +80,7 @@ export default async function RequestHost({
             <textarea
               name="alerts"
               style={{ minHeight: "5rem" }}
-              placeholder={"Someone mentions agent marketplaces\nA speaker says they're hiring"}
+              placeholder={"They're hiring\nThey mention seed funding"}
             />
             <small>One per line. Optional.</small>
           </label>

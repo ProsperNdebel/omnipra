@@ -134,7 +134,7 @@ export function DevicesPanel({
               name="name"
               required
               maxLength={60}
-              placeholder="Table mic"
+              placeholder="Room mic"
             />
           </label>
           <label className="field">

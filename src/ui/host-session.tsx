@@ -394,7 +394,7 @@ function HostAsk({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={500}
-          placeholder="What did you find out?"
+          placeholder="What did they say?"
           aria-label="What you found out"
           style={{ marginTop: 12 }}
         />
@@ -478,7 +478,7 @@ function SnapPhoto({
         value={caption}
         onChange={(e) => setCaption(e.target.value)}
         maxLength={300}
-        placeholder="What is it? (optional) The pricing slide"
+        placeholder="Pricing slide"
         aria-label="What the photo shows"
       />
       <label

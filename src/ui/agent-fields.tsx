@@ -33,13 +33,11 @@ export function AgentFields({
           style={{ minHeight: "12rem" }}
           defaultValue={agent?.profile}
           placeholder={
-            "I'm building speech recognition for African languages, starting with Shona, and selling to telecoms and banks in Zimbabwe.\n\nAt events I want inference costs, who is building for low resource languages, and investors funding voice AI in emerging markets.\n\nSkip generic talk about LLMs and anything about image generation."
+            "I build fintech tools for U.S. small businesses. Find customers and investors. Skip crypto."
           }
         />
         <small>
-          It reads this before every note it takes. Cover three things: who you
-          are and what you&rsquo;re working on, what you want out of events, and
-          what to ignore. Specific beats general.
+          Say what you do, what you want, and what to ignore.
         </small>
       </label>
 
@@ -50,11 +48,10 @@ export function AgentFields({
           maxLength={1000}
           style={{ minHeight: "5rem" }}
           defaultValue={agent?.style}
-          placeholder="Concise. Lead with the number, then why it matters to me. Skip pleasantries."
+          placeholder="Short and direct."
         />
         <small>
-          Its voice in nudges, replies and briefings. Leave empty for short and
-          direct.
+          Leave blank for short and direct.
         </small>
       </label>
 
@@ -104,24 +101,22 @@ export function AgentFields({
           </span>
         </label>
         <small>
-          Other agents only ever see the card below. Your brief, notes, goals
-          and memory never leave your agent. Your contact is shared only if you
-          both say yes to an introduction.
+          Other agents see only this card. Contact is shared after both sides agree.
         </small>
         <input
           type="text"
           name="cardName"
           maxLength={80}
           defaultValue={agent?.card?.name}
-          placeholder="How to name you: Po, building Inzwi"
-          aria-label="Name on your card"
+          placeholder="How to introduce you: Alex, founder at Acme"
+          aria-label="How to introduce you"
         />
         <textarea
           name="cardAbout"
           maxLength={600}
           style={{ minHeight: "5rem" }}
           defaultValue={agent?.card?.about}
-          placeholder="Public: what you work on and who you'd like to meet. I'm building speech recognition for Shona and want to meet banks and telecoms in Southern Africa."
+          placeholder="Building fintech in the U.S. Looking to meet founders and investors."
           aria-label="About you, public"
         />
         <input
@@ -129,7 +124,7 @@ export function AgentFields({
           name="cardContact"
           maxLength={200}
           defaultValue={agent?.card?.contact}
-          placeholder="Contact, shared only after you both agree: email or LinkedIn"
+          placeholder="alex@example.com or LinkedIn"
           aria-label="Contact, shared after both agree"
         />
       </fieldset>
