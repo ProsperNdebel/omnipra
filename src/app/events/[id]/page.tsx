@@ -47,6 +47,7 @@ export default async function EventPage({
   ]);
   const mine = listings.find((l) => l.hostId === me);
   const others = listings.filter((l) => l.hostId !== me);
+  const ownWish = wishes.find(({ wish }) => wish.ownerId === me);
   const requestByHost = new Map(requests.map((r) => [r.hostId, r]));
   const open = event.capturePolicy !== "none";
 
@@ -85,9 +86,15 @@ export default async function EventPage({
               <>
                 <p className="muted">Nobody here is hosting yet.</p>
                 <p>
-                  <Link className="button quiet" href={`/request/${event.id}`}>
-                    Ask for a host
-                  </Link>
+                  {ownWish ? (
+                    <span className="button quiet" aria-disabled="true">
+                      Request pending
+                    </span>
+                  ) : (
+                    <Link className="button quiet" href={`/request/${event.id}`}>
+                      Ask for a host
+                    </Link>
+                  )}
                 </p>
               </>
             ) : (
