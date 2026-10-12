@@ -7,6 +7,10 @@
 -- Host2 = Jordan K. ($18)
 -- Host3 = Alex T.   ($22)
 -- Host4 = Sam P.    ($30)
+--
+-- Demo density:
+-- 7 selected events have 2 hosts total.
+-- "Full Sphere: Going Global with a16z's Brian Roberts" has 3 hosts total.
 
 -- Ensure the dummy devices exist even if 0028 was never run.
 insert into endpoints (id, host_id, kind, capabilities, name, created_at)
@@ -58,7 +62,16 @@ with assignments(source_url, host_alias) as (
     ('https://www.tech-week.com/calendar/la/events/a-venice-happy-hour-with-venture-point-legal-startupvc-lawyers-176d7234-540e-44f1-b9be-96bda869d6d5', 'Host2'),
     ('https://www.tech-week.com/calendar/la/events/reindustrializing-the-manufacturing-industry-robot-mixer-launchpad-hq-la-techwee-e379901b-7a7d-4e1a-b864-079f196f2a91', 'Host3'),
     ('https://www.tech-week.com/calendar/la/events/gp-fo-happy-hour-hosted-by-fidelity-3i-members-2ca6d411-490b-485c-88f9-c0306e10f05d', 'Host1'),
-    ('https://www.tech-week.com/calendar/la/events/la-fintech-4c7b890a-2345-4c8a-bf5e-febcf86536ae', 'Host2')
+    ('https://www.tech-week.com/calendar/la/events/la-fintech-4c7b890a-2345-4c8a-bf5e-febcf86536ae', 'Host2'),
+    ('https://www.tech-week.com/calendar/la/events/ai-for-finance-summit-2026-la-1a788789-2a00-4dd3-94dd-042d63bf1e93', 'Host2'),
+    ('https://www.tech-week.com/calendar/la/events/the-official-a16z-tech-week-kickoff-by-hsbc-and-fenwick-bd4905fd-1223-4b6d-8285-65a3e771333f', 'Host1'),
+    ('https://www.tech-week.com/calendar/la/events/critical-industries-brunch-riot-stifel-venture-banking-5da8a844-1f42-43ec-93ad-f38c63c13f5d', 'Host4'),
+    ('https://www.tech-week.com/calendar/la/events/discovery-to-impact-at-caltech-d96c32ac-6853-49a9-9630-d56351d7e4cc', 'Host3'),
+    ('https://www.tech-week.com/calendar/la/events/jp-morgan-sunset-social-with-the-innovation-economy-2398a733-0d0e-4c8d-833b-55b270507a06', 'Host1'),
+    ('https://www.tech-week.com/calendar/la/events/quantum-from-research-to-real-world-impact-fac1902b-2ccb-4e9d-b8dc-1e92798a8a93', 'Host4'),
+    ('https://www.tech-week.com/calendar/la/events/la-fintech-4c7b890a-2345-4c8a-bf5e-febcf86536ae', 'Host3'),
+    ('https://www.tech-week.com/calendar/la/events/full-sphere-going-global-with-a16zs-brian-roberts-c14689de-9938-4b74-991c-8756afd40590', 'Host1'),
+    ('https://www.tech-week.com/calendar/la/events/full-sphere-going-global-with-a16zs-brian-roberts-c14689de-9938-4b74-991c-8756afd40590', 'Host2')
 ),
 hosts(host_alias, host_id, endpoint_id, display_name, price_cents, open_to_requests) as (
   values
