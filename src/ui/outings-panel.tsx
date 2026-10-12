@@ -15,62 +15,78 @@ export function OutingsPanel({
   agentId,
   name,
   outings,
+  heading,
+  subsection = false,
+  showScout = true,
 }: {
   agentId: string;
   name: string;
   outings: Outing[];
+  heading?: string;
+  subsection?: boolean;
+  showScout?: boolean;
 }) {
+  if (!showScout && outings.length === 0) return null;
+  const title = heading ?? `Where ${name} should be`;
   return (
-    <section id="outings" className="narrow">
-      <h2 className="section">Where {name} should be</h2>
-      <p className="muted small">
-        Tell {name} what you&rsquo;re after and what to spend. It ranks
-        what&rsquo;s on against your goals, picks hosts, and writes each
-        mission. Nothing is booked until you say so.
-      </p>
+    <section id={showScout ? "outings" : undefined} className="narrow">
+      {subsection ? (
+        <h3 className="group">{title}</h3>
+      ) : (
+        <h2 className="section">{title}</h2>
+      )}
+      {showScout && (
+        <p className="muted small">
+          Tell {name} what you&rsquo;re after and what to spend. It ranks
+          what&rsquo;s on against your goals, picks hosts, and writes each
+          mission. Nothing is booked until you say so.
+        </p>
+      )}
 
       {outings.map((o) => (
         <OutingCard key={o.id} o={o} agentId={agentId} name={name} />
       ))}
 
-      <form action={scoutAction} className="stack" style={{ marginTop: 20 }}>
-        <input type="hidden" name="agentId" value={agentId} />
-        <label className="field">
-          <span>What should it look for?</span>
-          <input
-            type="text"
-            name="request"
-            required
-            maxLength={300}
-            placeholder="AI events in San Francisco"
-          />
-        </label>
-        <div style={{ display: "flex", gap: 20 }}>
-          <label className="field" style={{ flex: 1 }}>
-            <span>Spend up to ($)</span>
-            <input
-              type="number"
-              name="budget"
-              min={1}
-              max={1000}
-              defaultValue={100}
-              required
-            />
-          </label>
-          <label className="field" style={{ flex: 1 }}>
-            <span>In the next</span>
-            <select name="days" defaultValue="7">
-              <option value="3">3 days</option>
-              <option value="7">7 days</option>
-              <option value="14">14 days</option>
-              <option value="30">30 days</option>
-            </select>
-          </label>
-        </div>
-        <div className="actions">
-          <SubmitButton pending="Looking">Find places for me</SubmitButton>
-        </div>
-      </form>
+      {showScout && (
+              <form action={scoutAction} className="stack" style={{ marginTop: 20 }}>
+                <input type="hidden" name="agentId" value={agentId} />
+                <label className="field">
+                  <span>What should it look for?</span>
+                  <input
+                    type="text"
+                    name="request"
+                    required
+                    maxLength={300}
+                    placeholder="AI events in San Francisco"
+                  />
+                </label>
+                <div style={{ display: "flex", gap: 20 }}>
+                  <label className="field" style={{ flex: 1 }}>
+                    <span>Spend up to ($)</span>
+                    <input
+                      type="number"
+                      name="budget"
+                      min={1}
+                      max={1000}
+                      defaultValue={100}
+                      required
+                    />
+                  </label>
+                  <label className="field" style={{ flex: 1 }}>
+                    <span>In the next</span>
+                    <select name="days" defaultValue="7">
+                      <option value="3">3 days</option>
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="actions">
+                  <SubmitButton pending="Looking">Find places for me</SubmitButton>
+                </div>
+              </form>
+      )}
     </section>
   );
 }

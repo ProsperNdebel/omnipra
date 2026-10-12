@@ -74,20 +74,37 @@ export default async function AgentPage({
   const rest = rows.filter((r) => r.manifestation.status !== "live");
   const hostRequests = waiting.filter(({ wish }) => wish.agentId === agent.id);
 
+  const currentOutings = outings.filter((o) => o.status === "proposed");
+  const pastOutings = outings.filter((o) => o.status !== "proposed");
+  const needsAttention =
+    suggestions.length > 0 ||
+    met.some((e) => e.status === "open" && e.myAnswer === "pending") ||
+    actions.proposed.length > 0 ||
+    actions.todo.length > 0;
+
   return (
-    <main className="page">
+    <main className="page agent-dashboard">
       <p className="small" style={{ marginTop: 40 }}>
         <Link href="/agent">All agents</Link>
       </p>
-      <h1 className="title" style={{ marginTop: 12 }}>
-        <Dot on={live.length > 0} breathe={live.length > 0} />
-        {agent.name}
-      </h1>
-      <p>
-        {live.length === 0
-          ? "Not at any event right now."
-          : `Present at ${plural(live.length, "event")} right now.`}
-      </p>
+
+      <header className="agent-hero">
+        <div>
+          <h1 className="title" style={{ marginTop: 12 }}>
+            <Dot on={live.length > 0} breathe={live.length > 0} />
+            {agent.name}
+          </h1>
+          <p>
+            {live.length === 0
+              ? "Idle right now."
+              : `Present at ${plural(live.length, "event")} right now.`}
+          </p>
+        </div>
+        <Link className="button quiet agent-edit" href={`/agent/${agent.id}/edit`}>
+          Edit agent
+        </Link>
+      </header>
+
       {saved && <SavedNotice name={agent.name} />}
       {memory.proposed.length > 0 && (
         <p>
@@ -98,102 +115,166 @@ export default async function AgentPage({
         </p>
       )}
 
-      {hostRequests.length > 0 && (
+      <nav className="agent-jump" aria-label="Agent sections">
+        <a href="#now">Now</a>
+        <a href="#ask">Ask</a>
+        <a href="#attention">Attention{needsAttention ? " ·" : ""}</a>
+        <a href="#memory">Memory</a>
+        <a href="#history">History</a>
+      </nav>
+
+      <section id="now" className="agent-section">
         <div className="narrow">
-          <h2 className="section">Waiting for a host</h2>
-          <ul className="rows">
-            {hostRequests.map(({ wish, event }) => (
-              <li key={wish.id}>
-                <div>
-                  <div>
-                    <Link href={`/events/${event.id}`}>{event.title}</Link>
-                  </div>
-                  <div className="small muted">
-                    {fmtDay(event.startsAt)}, up to {money(wish.maxPriceCents)}
-                  </div>
-                </div>
-                <form action={cancelWishAction}>
-                  <input type="hidden" name="id" value={wish.id} />
-                  <input type="hidden" name="back" value={`/agent/${agent.id}`} />
-                  <SubmitButton quiet pending="Withdrawing">
-                    Withdraw request
-                  </SubmitButton>
-                </form>
-              </li>
-            ))}
-          </ul>
+          <h2 className="section">Right now</h2>
         </div>
-      )}
 
-      <SuggestionsPanel agentId={agent.id} open={suggestions} />
-      <EncountersPanel agentId={agent.id} name={agent.name} met={met} />
-      <ActionsPanel agentId={agent.id} name={agent.name} {...actions} />
+        {live.length > 1 ? (
+          <MultiPresence
+            name={agent.name}
+            attention={attention}
+            rooms={live.map((r) => ({
+              id: r.manifestation.id,
+              eventTitle: r.event.title,
+              hostName: r.hostName,
+              observations: r.observations,
+            }))}
+          />
+        ) : (
+          live.length > 0 && <Sessions rows={live} />
+        )}
 
-      {live.length > 1 ? (
-        <MultiPresence
-          name={agent.name}
-          attention={attention}
-          rooms={live.map((r) => ({
-            id: r.manifestation.id,
-            eventTitle: r.event.title,
-            hostName: r.hostName,
-            observations: r.observations,
-          }))}
-        />
-      ) : (
-        live.length > 0 && <Sessions rows={live} />
-      )}
+        {live.length === 0 && hostRequests.length === 0 && currentOutings.length === 0 && (
+          <p className="muted narrow">
+            Nothing active right now. You can ask {agent.name} to find somewhere
+            useful to be.
+          </p>
+        )}
 
-      <div className="narrow">
-        <h2 className="section">Ask {agent.name}</h2>
-        <p className="muted small">
-          Answers come from what {agent.name} heard at events and what it knows
-          about you below.
-        </p>
-        <AskBox
+        {hostRequests.length > 0 && (
+          <div className="narrow">
+            <h3 className="group">Waiting for a host</h3>
+            <ul className="rows">
+              {hostRequests.map(({ wish, event }) => (
+                <li key={wish.id}>
+                  <div>
+                    <div>
+                      <Link href={`/events/${event.id}`}>{event.title}</Link>
+                    </div>
+                    <div className="small muted">
+                      {fmtDay(event.startsAt)}, up to {money(wish.maxPriceCents)}
+                    </div>
+                  </div>
+                  <form action={cancelWishAction}>
+                    <input type="hidden" name="id" value={wish.id} />
+                    <input type="hidden" name="back" value={`/agent/${agent.id}`} />
+                    <SubmitButton quiet pending="Withdrawing">
+                      Withdraw request
+                    </SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <OutingsPanel
           agentId={agent.id}
           name={agent.name}
-          initial={turns.map(({ id, question, answer }) => ({
-            id,
-            question,
-            answer,
-          }))}
+          outings={currentOutings}
+          heading="Plans and outings"
+          subsection
+          showScout
         />
-      </div>
+      </section>
 
-      <OutingsPanel agentId={agent.id} name={agent.name} outings={outings} />
+      <section id="ask" className="agent-section">
+        <div className="narrow">
+          <h2 className="section">Talk to {agent.name}</h2>
+          <p className="muted small">
+            Ask about what it heard at events or what it knows about you.
+          </p>
+          <AskBox
+            agentId={agent.id}
+            name={agent.name}
+            initial={turns.map(({ id, question, answer }) => ({
+              id,
+              question,
+              answer,
+            }))}
+          />
+        </div>
+      </section>
 
-      <MemoryPanel
-        agent={agent}
-        memory={memory}
-        progress={progress}
-        error={error}
-      />
+      <section id="attention" className="agent-section">
+        <div className="narrow">
+          <h2 className="section">What needs your attention</h2>
+          {!needsAttention && (
+            <p className="muted small">Nothing needs a decision right now.</p>
+          )}
+        </div>
+        <SuggestionsPanel agentId={agent.id} open={suggestions} />
+        <ActionsPanel agentId={agent.id} name={agent.name} {...actions} />
+        <EncountersPanel agentId={agent.id} name={agent.name} met={met} />
+      </section>
 
-      <ApiKeysPanel
-        agentId={agent.id}
-        name={agent.name}
-        keys={keys.map((k) => ({
-          id: k.id,
-          label: k.label,
-          prefix: k.prefix,
-          createdAt: k.createdAt,
-          lastUsedAt: k.lastUsedAt,
-        }))}
-      />
+      <section className="agent-section">
+        <MemoryPanel
+          agent={agent}
+          memory={memory}
+          progress={progress}
+          error={error}
+        />
+      </section>
 
-      <h2 className="section">Sessions</h2>
-      {rest.length === 0 && live.length === 0 ? (
-        <p className="muted">
-          {agent.name} hasn&rsquo;t been anywhere yet.{" "}
-          <Link href="/">Find an event</Link>.
-        </p>
-      ) : (
-        <Sessions rows={rest} />
-      )}
+      <section id="history" className="agent-section">
+        <div className="narrow">
+          <h2 className="section">History</h2>
+        </div>
+
+        {pastOutings.length > 0 && (
+          <OutingsPanel
+            agentId={agent.id}
+            name={agent.name}
+            outings={pastOutings}
+            heading="Previous outing plans"
+            subsection
+            showScout={false}
+          />
+        )}
+
+        <div className="narrow">
+          <h3 className="group">Previous sessions</h3>
+          {rest.length === 0 && live.length === 0 ? (
+            <p className="muted">
+              {agent.name} hasn&rsquo;t been anywhere yet.{" "}
+              <Link href="/">Find an event</Link>.
+            </p>
+          ) : rest.length === 0 ? (
+            <p className="muted small">No previous sessions yet.</p>
+          ) : (
+            <Sessions rows={rest} />
+          )}
+        </div>
+      </section>
+
+      <section className="agent-section narrow">
+        <details className="advanced">
+          <summary>Advanced</summary>
+          <ApiKeysPanel
+            agentId={agent.id}
+            name={agent.name}
+            keys={keys.map((k) => ({
+              id: k.id,
+              label: k.label,
+              prefix: k.prefix,
+              createdAt: k.createdAt,
+              lastUsedAt: k.lastUsedAt,
+            }))}
+          />
+        </details>
+      </section>
     </main>
-  );
-}
+  );}
 
 function Sessions({ rows }: { rows: Awaited<ReturnType<typeof agentHome>> }) {
   return (
