@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { attendAction } from "@/app/actions";
-import { takeWishAction } from "@/app/wish-actions";
+import { cancelWishAction, takeWishAction } from "@/app/wish-actions";
 import { DomainError, type EventId, type ManifestationStatus } from "@/core";
 import {
   eventHostRequests,
@@ -147,16 +147,23 @@ export default async function EventPage({
                             {tooHigh && ", below your price"}
                           </div>
                         </div>
-                        {!own &&
-                          (mine ? (
-                            <form action={takeWishAction}>
-                              <input type="hidden" name="id" value={wish.id} />
-                              <input type="hidden" name="back" value={`/events/${event.id}`} />
-                              <SubmitButton pending="Taking it">Take it</SubmitButton>
-                            </form>
-                          ) : (
-                            <span className="small muted">List yourself below to take it</span>
-                          ))}
+                        {own ? (
+                          <form action={cancelWishAction}>
+                            <input type="hidden" name="id" value={wish.id} />
+                            <input type="hidden" name="back" value={`/events/${event.id}`} />
+                            <SubmitButton quiet pending="Withdrawing">
+                              Withdraw request
+                            </SubmitButton>
+                          </form>
+                        ) : mine ? (
+                          <form action={takeWishAction}>
+                            <input type="hidden" name="id" value={wish.id} />
+                            <input type="hidden" name="back" value={`/events/${event.id}`} />
+                            <SubmitButton pending="Taking it">Take it</SubmitButton>
+                          </form>
+                        ) : (
+                          <span className="small muted">List yourself below to take it</span>
+                        )}
                       </li>
                     );
                   })}
