@@ -72,6 +72,7 @@ export async function GET() {
     endsAt: now,
     venue: "San Francisco",
     sourceUrl: null,
+    collection: null,
     capturePolicy: "public_talk",
   };
   const mission: Mission = {
