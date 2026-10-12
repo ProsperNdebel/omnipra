@@ -28,6 +28,7 @@ import { OutingsPanel } from "@/ui/outings-panel";
 import { ActionsPanel } from "@/ui/actions-panel";
 import { SuggestionsPanel } from "@/ui/suggestions-panel";
 import { SubmitButton } from "@/ui/submit-button";
+import { SavedNotice } from "@/ui/saved-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ export default async function AgentPage({
           ? "Not at any event right now."
           : `Present at ${plural(live.length, "event")} right now.`}
       </p>
-      {saved && <p>Saved. {agent.name} uses this from its next note.</p>}
+      {saved && <SavedNotice name={agent.name} />}
       {memory.proposed.length > 0 && (
         <p>
           <a href="#memory">
