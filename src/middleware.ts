@@ -52,6 +52,18 @@ export async function middleware(req: NextRequest) {
       }
     }
     const path = req.nextUrl.pathname;
+
+    // A JWT can still look unexpired after its auth user has been deleted or the
+    // session has been revoked. For protected routes, verify that Supabase still
+    // recognizes it before allowing the request through.
+    if (access && !isPublicPath(path)) {
+      const user = await goTrue().user(access).catch(() => null);
+      if (!user) {
+        access = undefined;
+        set.push([ACCESS_COOKIE, "", 0], [REFRESH_COOKIE, "", 0]);
+      }
+    }
+
     if (!access && !isPublicPath(path)) {
       const res = path.startsWith("/api/")
         ? NextResponse.json(
