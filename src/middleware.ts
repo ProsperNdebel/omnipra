@@ -24,19 +24,31 @@ export async function middleware(req: NextRequest) {
     let access = req.cookies.get(ACCESS_COOKIE)?.value;
     const refresh = req.cookies.get(REFRESH_COOKIE)?.value;
     const exp = access ? tokenExpiry(access) : null;
-    if (refresh && (!access || !exp || exp - 60 < Date.now() / 1000)) {
-      const fresh: AuthSession | null = await goTrue()
-        .refresh(refresh)
-        .catch(() => null);
-      if (fresh) {
-        access = fresh.accessToken;
-        set.push(
-          [ACCESS_COOKIE, fresh.accessToken],
-          [REFRESH_COOKIE, fresh.refreshToken],
-        );
+    const needsRefresh =
+      !access || !exp || exp - 60 < Date.now() / 1000;
+
+    if (needsRefresh) {
+      if (refresh) {
+        const fresh: AuthSession | null = await goTrue()
+          .refresh(refresh)
+          .catch(() => null);
+        if (fresh) {
+          access = fresh.accessToken;
+          set.push(
+            [ACCESS_COOKIE, fresh.accessToken],
+            [REFRESH_COOKIE, fresh.refreshToken],
+          );
+        } else {
+          access = undefined;
+          set.push([ACCESS_COOKIE, "", 0], [REFRESH_COOKIE, "", 0]);
+        }
       } else {
+        // An expired, malformed or missing access token is not a usable session on
+        // its own. Without a refresh token there is no way to recover it, so treat
+        // the browser as signed out instead of letting the request reach viewerId()
+        // and fail later with an unexpected 401.
         access = undefined;
-        set.push([ACCESS_COOKIE, "", 0], [REFRESH_COOKIE, "", 0]);
+        set.push([ACCESS_COOKIE, "", 0]);
       }
     }
     const path = req.nextUrl.pathname;
