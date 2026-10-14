@@ -399,6 +399,8 @@ export interface Repos {
     ): Promise<boolean>;
     /** Record that the body sent something. Never touches status. */
     heard(id: ManifestationId, at: string): Promise<void>;
+    /** The host paused (a time) or resumed (null). Never touches status. */
+    paused(id: ManifestationId, at: string | null): Promise<void>;
     /** Compare and set on observedThroughSec. Returns false if `from` is stale, so only one worker owns a window. */
     advanceCursor(
       id: ManifestationId,

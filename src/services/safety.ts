@@ -105,6 +105,8 @@ const WORDS: Record<AuditAction, string> = {
   "session.start": "Session started (recording confirmed)",
   "session.end": "Session ended",
   "session.stop": "Emergency stop",
+  "session.pause": "Host paused listening",
+  "session.resume": "Host resumed listening",
   "session.abandoned": "Ended automatically",
   "request.sent": "Ask sent to the host",
   "request.declined": "Host declined an ask",

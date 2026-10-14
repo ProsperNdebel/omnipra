@@ -99,6 +99,7 @@ export async function sendAgent(
     startedAt: null,
     endedAt: null,
     lastHeardAt: null,
+    pausedAt: null,
     createdAt: d.now(),
   };
   await d.repos.manifestations.save(manifestation, null);

@@ -24,6 +24,8 @@ export interface Manifestation {
   endedAt: ISODate | null;
   /** When the body last sent anything. Written only by `heard`, so status saves never race it. */
   lastHeardAt: ISODate | null;
+  /** The host paused listening (mic off) at this time; null while listening. Written only by `paused`. */
+  pausedAt: ISODate | null;
   createdAt: ISODate;
 }
 
@@ -31,13 +33,23 @@ export interface Manifestation {
 export const STALE_AFTER_SEC = 90;
 /** No audio or images for this long while live: the session is treated as abandoned and ended. */
 export const ABANDONED_AFTER_SEC = 15 * 60;
+/** A pause longer than this is treated like silence: the session ends. */
+export const MAX_PAUSE_SEC = 60 * 60;
 
-/** How long a live session has been without input, or null if it isn't live or hasn't started sending. */
+/**
+ * How long a live session has been without input, or null if it isn't live or hasn't
+ * started sending. A paused session isn't silent, it's paused, until the pause runs long.
+ */
 export function silentForSec(
-  m: Pick<Manifestation, "status" | "lastHeardAt" | "startedAt">,
+  m: Pick<Manifestation, "status" | "lastHeardAt" | "startedAt"> &
+    Partial<Pick<Manifestation, "pausedAt">>,
   now: ISODate,
 ): number | null {
   if (m.status !== "live") return null;
+  if (m.pausedAt) {
+    const paused = Math.max(0, (Date.parse(now) - Date.parse(m.pausedAt)) / 1000);
+    return paused > MAX_PAUSE_SEC ? paused : null;
+  }
   const last = m.lastHeardAt ?? m.startedAt;
   return last ? Math.max(0, (Date.parse(now) - Date.parse(last)) / 1000) : null;
 }

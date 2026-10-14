@@ -213,8 +213,10 @@ export interface Feed {
   hostTakesRequests: boolean;
   /** Owner only. Null until drafted. */
   plan: PlanItem[] | null;
-  /** Seconds since the host's device last sent anything. Null unless live. */
+  /** Seconds since the host's device last sent anything. Null unless live, or while paused. */
   silentSec: number | null;
+  /** The host paused listening. */
+  paused: boolean;
 }
 
 export async function feed(
@@ -256,5 +258,6 @@ export async function feed(
       listings.find((l) => l.hostId === ctx.endpoint.hostId)?.openToRequests ??
       false,
     silentSec: silentForSec(m, d.now()),
+    paused: m.status === "live" && !!m.pausedAt,
   };
 }

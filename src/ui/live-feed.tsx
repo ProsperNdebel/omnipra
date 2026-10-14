@@ -93,6 +93,12 @@ export function LiveFeed({
           in the room.
         </p>
       )}
+      {live && f.paused && (
+        <p className="muted">
+          {hostName} paused {agentName}, so it isn&rsquo;t listening right now.
+          It picks up again when they resume.
+        </p>
+      )}
       {live && f.silentSec !== null && f.silentSec >= STALE_AFTER_SEC && (
         <p className="error">
           Nothing from {hostName}&rsquo;s device for{" "}
@@ -103,7 +109,7 @@ export function LiveFeed({
           ends on its own after {ABANDONED_AFTER_SEC / 60} minutes of silence.
         </p>
       )}
-      {live && obs.length === 0 && (
+      {live && !f.paused && obs.length === 0 && (
         <p className="muted">
           {agentName} is listening. Notes appear about a minute behind the room,
           once there&rsquo;s enough to work with.

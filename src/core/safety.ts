@@ -27,6 +27,8 @@ export type AuditAction =
   | "session.start"
   | "session.end"
   | "session.stop"
+  | "session.pause"
+  | "session.resume"
   | "session.abandoned"
   | "request.sent"
   | "request.declined"

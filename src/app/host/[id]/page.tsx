@@ -29,6 +29,7 @@ export default async function HostSessionPage({
       capturePolicy={a.event.capturePolicy}
       initialStatus={a.manifestation.status}
       startedAt={a.manifestation.startedAt}
+      initialPaused={!!a.manifestation.pausedAt}
       sensors={sensorsInWords(a.mission.requires)}
     />
   );

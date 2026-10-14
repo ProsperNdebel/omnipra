@@ -17,6 +17,8 @@ interface Props {
   capturePolicy: CapturePolicy;
   initialStatus: ManifestationStatus;
   startedAt: string | null;
+  /** The host paused listening before this page loaded. */
+  initialPaused?: boolean;
   /** The sensors this session uses, in words (see sensorsInWords). */
   sensors: string;
 }
@@ -43,8 +45,10 @@ export function HostSession({
   capturePolicy,
   initialStatus,
   startedAt,
+  initialPaused = false,
   sensors,
 }: Props) {
+  const [paused, setPaused] = useState(initialPaused);
   const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState(initialStatus);
   const [cap, setCap] = useState<CaptureState | null>(null);
@@ -129,6 +133,29 @@ export function HostSession({
       setStatus("live");
     }
     await capturing;
+    // Resuming from a pause: tell the server, so the owner stops seeing "paused".
+    if (paused) {
+      setPaused(false);
+      await fetch(`/api/manifestations/${id}/pause`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paused: false }),
+      }).catch(() => null);
+    }
+  }
+
+  /** Mic off for a while (a private chat, a break); the session stays open. */
+  async function pause() {
+    setError(null);
+    await session.current?.pause();
+    setPaused(true);
+    const res = await fetch(`/api/manifestations/${id}/pause`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paused: true }),
+    }).catch(() => null);
+    if (!res?.ok)
+      setError("The mic is off, but the pause didn't reach the server. Check your connection.");
   }
 
   async function end() {
@@ -213,7 +240,9 @@ export function HostSession({
           <Dot on={capturing} breathe={capturing} />
           {capturing
             ? `${agentName} is listening`
-            : `${agentName} is not listening`}
+            : paused && status === "live"
+              ? `${agentName} is paused`
+              : `${agentName} is not listening`}
         </p>
         <p className="small muted" style={{ marginTop: 4 }}>
           {eventTitle}
@@ -256,6 +285,18 @@ export function HostSession({
                 {plural(pending, "chunk")} waiting to upload.
               </p>
             )}
+          </>
+        ) : paused && status === "live" ? (
+          <>
+            <h1 className="title" style={{ marginTop: 0 }}>
+              {agentName} is paused
+            </h1>
+            <p>The mic is off. Nothing is heard until you resume.</p>
+            <p className="small muted">
+              The session stays open and the clock keeps running. {agentName}
+              &rsquo;s owner sees that it&rsquo;s paused. After an hour paused,
+              the session ends on its own.
+            </p>
           </>
         ) : (
           <>
@@ -309,9 +350,12 @@ export function HostSession({
           <>
             <button
               className="button huge quiet"
-              onClick={end}
+              onClick={pause}
               disabled={ending}
             >
+              Pause listening
+            </button>
+            <button className="button quiet" onClick={end} disabled={ending}>
               {ending
                 ? pending > 0
                   ? `Uploading ${plural(pending, "chunk")}`
@@ -323,16 +367,24 @@ export function HostSession({
             </button>
           </>
         ) : (
-          <button
-            className="button huge"
-            onClick={start}
-            disabled={
-              cap?.status === "starting" ||
-              (status === "accepted" && !confirmed)
-            }
-          >
-            {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
-          </button>
+          <>
+            <button
+              className="button huge"
+              onClick={start}
+              disabled={
+                cap?.status === "starting" ||
+                cap?.status === "stopping" ||
+                (status === "accepted" && !confirmed)
+              }
+            >
+              {status === "live" ? `Resume ${agentName}` : `Start ${agentName}`}
+            </button>
+            {status === "live" && (
+              <button className="button quiet" onClick={end} disabled={ending}>
+                {ending ? "Ending" : "End session"}
+              </button>
+            )}
+          </>
         )}
         <ReportPanel sessionId={id} asHost />
       </div>

@@ -14,7 +14,7 @@ import { ScreenWakeLock } from "./wake-lock";
  */
 
 export type CaptureStatus =
-  "idle" | "starting" | "live" | "stopping" | "stopped" | "error";
+  "idle" | "starting" | "live" | "paused" | "stopping" | "stopped" | "error";
 
 export interface CaptureState {
   status: CaptureStatus;
@@ -98,7 +98,8 @@ export class CaptureSession {
   }
 
   async start(): Promise<void> {
-    if (this.state.status !== "idle" && this.state.status !== "error") return;
+    // From paused too: resuming is a fresh start of the mic on the same session clock.
+    if (!["idle", "error", "paused"].includes(this.state.status)) return;
     this.set({ status: "starting", error: null });
     // Still inside the tap: the level meter needs that to run on Safari.
     this.meter.prime();
@@ -128,11 +129,15 @@ export class CaptureSession {
         this.fail("The microphone was disconnected or taken by another app");
     }
 
+    // One clock for the whole session: a resume after a pause continues it, so the
+    // timeline (and the transcript's times) carry on instead of restarting at 0:00.
+    this.startedAt = this.opts.anchorMs ?? (this.startedAt || Date.now());
+
     this.recorder = new SegmentedRecorder(this.stream, {
-      // 10s chunks keep the agent about half a minute behind the room.
-      chunkSec: this.opts.chunkSec ?? 10,
+      // 20s chunks: fewer uploads and fewer cut words, the agent about a minute behind.
+      chunkSec: this.opts.chunkSec ?? 20,
       mimeType: pickMimeType(),
-      anchorMs: this.opts.anchorMs,
+      anchorMs: this.startedAt,
       onChunk: (c) => void this.enqueue(c),
       onError: (e) => this.fail(e.message),
     });
@@ -142,8 +147,6 @@ export class CaptureSession {
     document.addEventListener("visibilitychange", this.onVisibility);
     this.meter.start(this.stream, (rms) => this.onLevel(rms));
 
-    // The clock counts from the session's start, so a resume carries on rather than restarting at 0:00.
-    this.startedAt = this.opts.anchorMs ?? Date.now();
     this.clock = setInterval(
       () =>
         this.set({
@@ -155,8 +158,25 @@ export class CaptureSession {
     this.set({ status: "live" });
   }
 
+  /**
+   * Pause: the mic goes off (the phone's mic indicator too) and what was recorded so far
+   * keeps uploading. `start()` picks up again on the same clock.
+   */
+  async pause(): Promise<void> {
+    if (this.state.status !== "live") return;
+    this.set({ status: "stopping" });
+    await this.recorder?.stop();
+    await this.release();
+    this.set({ status: "paused", level: 0, warning: null });
+  }
+
   /** Stops capture. Resolves when every chunk has reached the server. */
   async stop(): Promise<void> {
+    if (this.state.status === "paused") {
+      await this.uploader.drained();
+      this.set({ status: "stopped" });
+      return;
+    }
     if (this.state.status !== "live") return;
     this.set({ status: "stopping" });
     await this.recorder?.stop();

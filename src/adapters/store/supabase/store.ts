@@ -281,6 +281,15 @@ export class SupabaseStore implements BlobStore, Memory {
           "manifestations.heard",
         );
       },
+      paused: async (id, at) => {
+        must(
+          await this.db
+            .from("manifestations")
+            .update({ paused_at: at })
+            .eq("id", id),
+          "manifestations.paused",
+        );
+      },
       advanceCursor: async (id, from, to) => {
         const rows = must(
           await this.db
@@ -1263,6 +1272,7 @@ const MIGRATION_PROBES: [file: string, table: string, column: string][] = [
   ["0023_leads", "leads", "intent"],
   ["0024_lead_contact", "leads", "chat"],
   ["0025_lead_twin", "leads", "twin"],
+  ["0033_pause", "manifestations", "paused_at"],
   ["0026_wishes", "wishes", "max_price_cents"],
   ["0027_event_collections", "events", "collection"],
 ];

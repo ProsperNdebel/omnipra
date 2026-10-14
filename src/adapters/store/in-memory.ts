@@ -155,6 +155,7 @@ export class InMemoryStore implements BlobStore, Memory {
                 ...m,
                 observedThroughSec: current.observedThroughSec,
                 lastHeardAt: current.lastHeardAt,
+                pausedAt: current.pausedAt ?? null,
               }
             : m,
         );
@@ -190,6 +191,10 @@ export class InMemoryStore implements BlobStore, Memory {
       heard: async (id, at) => {
         const m = this.manifestations.get(id);
         if (m) this.manifestations.set(id, { ...m, lastHeardAt: at });
+      },
+      paused: async (id, at) => {
+        const m = this.manifestations.get(id);
+        if (m) this.manifestations.set(id, { ...m, pausedAt: at });
       },
       advanceCursor: async (id, from, to) => {
         const m = this.manifestations.get(id);
