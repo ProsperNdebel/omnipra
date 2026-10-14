@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DomainError } from "@/core";
 import { cancelWishAction } from "@/app/wish-actions";
 import { askHistory } from "@/pipeline";
 import {
@@ -43,7 +44,13 @@ export default async function AgentPage({
   const [{ id }, { saved, error }] = await Promise.all([params, searchParams]);
   const d = getDeps();
   const me = await viewerId();
-  const agent = await ownedAgent(d, me, id).catch(() => notFound());
+  let agent;
+  try {
+    agent = await ownedAgent(d, me, id);
+  } catch (err) {
+    if (err instanceof DomainError && err.code === "not_found") notFound();
+    throw err;
+  }
 
   const [
     rows,
