@@ -6,7 +6,6 @@
 // when ffmpeg is installed, joins each recording into <out>/<recording>.m4a.
 // Reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY from the env.
 
-import { createClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,18 +23,29 @@ if (!url || !key) {
   process.exit(1);
 }
 const out = outArg ?? join("audio", sessionId);
-const db = createClient(url, key, { auth: { persistSession: false } });
+// Plain Storage REST calls, so this runs on any Node with fetch (18+).
+const headers = { apikey: key, Authorization: `Bearer ${key}` };
+const api = `${url.replace(/\/$/, "")}/storage/v1`;
 
 async function list(prefix) {
   const all = [];
   for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await db.storage
-      .from(BUCKET)
-      .list(prefix, { limit: 1000, offset, sortBy: { column: "name", order: "asc" } });
-    if (error) throw new Error(`list ${prefix}: ${error.message}`);
+    const res = await fetch(`${api}/object/list/${BUCKET}`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix, limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
+    });
+    if (!res.ok) throw new Error(`list ${prefix}: ${res.status} ${await res.text()}`);
+    const data = await res.json();
     all.push(...data);
     if (data.length < 1000) return all;
   }
+}
+
+async function download(path) {
+  const res = await fetch(`${api}/object/${BUCKET}/${path}`, { headers });
+  if (!res.ok) throw new Error(`download ${path}: ${res.status} ${await res.text()}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 const extFor = (mime = "") => (mime.includes("mp4") ? "m4a" : "webm");
@@ -64,10 +74,8 @@ for (const rec of recordings) {
   const files = [];
   for (const c of chunks) {
     const path = `${sessionId}/${rec.name}/${c.name}`;
-    const { data, error } = await db.storage.from(BUCKET).download(path);
-    if (error || !data) throw new Error(`download ${path}: ${error?.message ?? "no data"}`);
     const file = join(dir, `${c.name}.${extFor(c.metadata.mimetype)}`);
-    writeFileSync(file, Buffer.from(await data.arrayBuffer()));
+    writeFileSync(file, await download(path));
     files.push(file);
   }
   total += files.length;
